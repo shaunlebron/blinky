@@ -1,0 +1,39 @@
+Make dinput.h and dsound.h from wine usable for compiling quake
+
+This patch adds some missing winelib defines so these directx headers
+can be used for compiling Quake. Patches apply against the sources
+taken from wine 1.5.18 but will likely continue to apply to future
+versions.
+
+--- dinput.h.orig	2012-12-07 13:09:42 +1030
++++ dinput.h	2012-12-07 10:17:53 +1030
+@@ -26,6 +26,13 @@
+ #define DIRECTINPUT_VERSION	0x0800
+ #endif
+ 
++#ifdef UNICODE
++#  define WINELIB_NAME_AW(func) func##W
++#else
++# define WINELIB_NAME_AW(func) func##A
++#endif
++#define DECL_WINELIB_TYPE_AW(type)  typedef WINELIB_NAME_AW(type) type;
++
+ /* Classes */
+ DEFINE_GUID(CLSID_DirectInput,		0x25E609E0,0xB259,0x11CF,0xBF,0xC7,0x44,0x45,0x53,0x54,0x00,0x00);
+ DEFINE_GUID(CLSID_DirectInputDevice,	0x25E609E1,0xB259,0x11CF,0xBF,0xC7,0x44,0x45,0x53,0x54,0x00,0x00);
+--- dsound.h.orig	2012-12-07 13:10:03 +1030
++++ dsound.h	2012-12-07 13:11:53 +1030
+@@ -27,6 +27,13 @@
+ #include <objbase.h>
+ #include <float.h>
+ 
++#ifdef UNICODE
++#  define WINELIB_NAME_AW(func) func##W
++#else
++# define WINELIB_NAME_AW(func) func##A
++#endif
++#define DECL_WINELIB_TYPE_AW(type)  typedef WINELIB_NAME_AW(type) type;
++
+ #ifdef __cplusplus
+ extern "C" {
+ #endif /* defined(__cplusplus) */

@@ -1,0 +1,720 @@
+.\" Process this file with
+.\" groff -man -Tascii tyrquake.6
+.\"
+.TH TYRQUAKE 6 "TYR_VERSION"
+.SH NAME
+tyr\-quake, tyr\-glquake, tyr\-qwcl, tyr\-glqwcl, tyr\-qwsv \-
+Client and server programs for the computer game \fBQuake\fP
+.SH SYNOPSIS
+\fBtyr\-quake\fP   [\-\fIOPTION\fP [\fIarg\fP]]... [+\fICOMMAND\fP [\fIarg\fP]]...
+.br
+\fBtyr\-glquake\fP [\-\fIOPTION\fP [\fIarg\fP]]... [+\fICOMMAND\fP [\fIarg\fP]]...
+.br
+\fBtyr\-qwcl\fP    [\-\fIOPTION\fP [\fIarg\fP]]... [+\fICOMMAND\fP [\fIarg\fP]]...
+.br
+\fBtyr\-glqwcl\fP  [\-\fIOPTION\fP [\fIarg\fP]]... [+\fICOMMAND\fP [\fIarg\fP]]...
+.br
+\fBtyr\-qwsv\fP    [\-\fIOPTION\fP [\fIarg\fP]]... [+\fICOMMAND\fP [\fIarg\fP]]...
+
+.SH DESCRIPTION
+\fBTyrQuake\fP is a port of \fIid Software\fP's \fBQuake\fP engine which
+attempts to maintain the original look and feel of the game while also
+providing support for modern platforms and user created content.
+
+Currently \fBTyrQuake\fP is implemented as five separate programs; two
+NetQuake clients (\fBtyr\-quake\fP and \fBtyr\-glquake\fP), two Quakeworld
+clients (\fBtyr\-qwcl\fP and \fBtyr\-glqwcl\fP) and a Quakeworld server
+(\fBtyr\-qwsv\fP). The 'gl' notation indicates the OpenGL accelerated clients
+and the non-gl versions use a software-only renderer.
+
+.SH OPTIONS
+.IP "\fB\-heapsize n, \-mem n\fP"
+Specifies the size of Quake's internal memory heap.  For historical reasons,
+when using \fB\-heapsize\fP n is specified in kB and when using \fB-mem\fP n
+is specified in MB.  Default 128MB.
+.IP "\fB\-zone\fP"
+Specifies the amount of memory in kB to reserve for Quake's dynamic memory
+allocator.  Default 256kB.
+.IP "\fB\-minmemory\fP"
+Allocate only a minimal sized heap for Quake. If playing standard
+quake (\fB\-game\fP \fIid1\fP) this is ~5.5MB, otherwise ~15.5MB.
+Probably only useful for testing purposes.
+
+.IP "\fB\-basedir\fP \fIdirectory\fP"
+Specify the base directory where the Quake data is located.  The default is OS
+and distribution dependent.
+.IP "\fB\-game\fP \fIdirectory\fP"
+Specify a game directory under \fIbasedir\fP to search for game data. Default
+is \fIid1\fP.  If this option is specified, then the given \fIdirectory\fP
+will be searched first, followed by \fIid1\fP.
+.IP "\fB\-path\fP \fIdirectory\fP... (tyr-quake,tyr-glquake only)"
+Specify multiple directories to search for game data. Later directories
+override earlier ones (i.e. the ones given last on the command line have
+highest priority).
+.IP "\fB\-rogue\fP"
+Set up game directories and customised HUD for use with the Rogue expansion
+pack "Dissolution of Eternity".
+.IP "\fB\-hipnotic\fP"
+Set up game directories and customised HUD for use with the Hipnotic expansion
+pack "Scourge of Armagon".
+
+.IP "\fB\-window, \-w\fP"
+Start the game in windowed mode.
+.IP "\fB\-width n, \-height n\fP"
+Specify the width and/or height of the game window in pixels.
+.IP "\fB\-conwidth n, \-conheight n\fP (tyr-glquake,tyr-glqwcl only)"
+Can be used to specify a different resolution for the console so that the game
+can be rendered in high resolution without making the console text too
+small. For best results, make sure conwidth evenly divides width (and
+conheight, height). E.g. \fB\-width\fP \fI1280\fP \fB\-conwidth\fP \fI640\fP.
+.IP "\fB\-bpp n\fP (tyr-glquake,tyr-glqwcl Windows only)"
+Request an OpenGL context with the specified bits-per-pixel.
+.IP "\fB\-nomtex\fP"
+Disable use of OpenGL Multitexture extenstions.
+.IP "\fB\-nonpot\fP"
+Disable use of OpenGL non-power-of-two textures.  Textures will be stretched
+or padded to power-of two sizes as needed.
+.IP "\fB\-gamma n\fP"
+Set the video gamma value. Default 1.0.
+.IP "\fB\-fullsbar\fP (tyr-glquake,tyr-glqwcl Windows only)"
+Work around for buggy use of double/triple buffers and glClear.  Force the
+renderer to redraw the full status bar every frame.
+.IP "\fB\-noautostrectch\fP (tyr-quake,tyr-qwcl Windows only)"
+By default Quake will try to adjust up the default video mode and select a
+resolution appropriate for your monitor resolution. Use this command line
+switch to prevent this behaviour.
+.IP "\fB\-resetwinpos\fP (tyr-quake,tyr-qwcl Windows only)"
+By default Quake will try to remember the previous window position and place
+the window in the same position.  Specify this command line option to reset
+the window position to the top left corner of the screen.
+
+.IP "\fB\-nomouse\fP"
+Disable mouse input.
+.IP "\fB\-nodinput\fP (Windows only)"
+Disable direct input.
+.IP "\fB\-noforcemspd\fP (Windows only)"
+Don't reset the mouse speed while the game is active.
+.IP "\fB\-moforcemaccel\fP (Windows only)"
+Don't disable mouse acceleration while the game is active.
+.IP "\fB\-noforcemparms\fP (Windows only)"
+Don't change mouse parameters at all while the game is active.
+.IP "\fB\-nojoy\fP (Windows only)"
+Disable joystick input.
+
+.IP "\fB\-cddev dev\fP (Linux/BSD only)"
+Set the cd device filname to dev. Default /dev/cdrom.
+.IP "\fB\-nocdaudio\fP"
+Disable CD audio.
+.IP "\fB\-nosound\fP"
+Disable sound support.
+.IP "\fB\-simsound\fP"
+Disable sound output, but still perform all mixing. For testing purposes only.
+.IP "\fB\-sndbits n\fP (Linux, OSS only)"
+Specify number of bits per sample for sound output format, 8 or 16. Default 8.
+.IP "\fB\-sndspeed n (Linux, OSS only)\fP"
+Specify sample speed for sound output. Default 11025.
+.IP "\fB\-sndmono\fP (Linux, BSD only)"
+Request only a single channel for sound output.
+.IP "\fB\-sndstereo (Linux, BSD only)\fP"
+Request stereo sound output channels (Default).
+.IP "\fB\-snoforceformat\fP (Windows only)"
+Do not try to set the sound format of the primary sound buffer (Direct Sound).
+.IP "\fB\-primarysound\fP (Windows only)"
+Mix directly into the primary sound buffer. By default, Quake will set up and
+use a secondary sound buffer.
+.IP "\fB\-wavonly\fP (Windows only)"
+Do not initialize direct sound, use the Windows media API only.
+
+.IP "\fB\-surfcachesize n\fP"
+Explicitly set the size of the surface cache (in kB) used by the software
+renderer.  By default Quake will automatically calculate a suitable size for
+the screen resolution selected.
+.IP "\fB\-particles n\fP"
+Set the maximum number of particles supported by the renderer.  It can be
+useful to increase this if debugging a leak in a map where the pointfile is
+very large.  Default 2048.
+.IP "\fB\-lm_1, \-lm_a, \-lm_i, \-lm_2, \-lm_4\fP (DEPRECATED)"
+Specify the lightmap format used by OpenGL. \fB\-lm_1\fP => GL_LUMINANCE,
+\fB\-lm_a\fP => GL_ALPHA, \fB\-lm_i\fP => GL_INTENSITY, \fB\-lm_2\fP =>
+GL_RGBA4, \fB\-lm_4\fP => GL_RGBA. Default is GL_LUMINANCE.
+
+.IP "\fB\-cheats\fP (tyr-qwsv only)"
+Enable clients to send cheat commands.
+.IP "\fB\-developer\fP"
+Sets the \fBdeveloper\fP console variable to 1. Useful for getting developer
+debug messages early in the init process, before config.cfg and autoexec.cfg
+have been executed.
+.IP "\fB\-condebug\fP"
+Causes Quake to append all console messages to a file \fIqconsole.log\fP in
+the current game directory. By default the log is not written.
+.IP "\fB\-noconinput\fP (Linux, BSD only)"
+Disables console input from stdin.
+.IP "\fB\-nostdout\fP"
+Disables console output on stdout.
+.IP "\fB\-dedicated [n]\fP (tyr-quake, tyr-glquake only)"
+Start the engine in dedicated server mode (server only, no client) supporting
+up to \fIn\fP clients (\fIn\fP must be between 1 and 16). If \fB\-dedicated\fP
+is the last command line argument, then the server will default to supporting
+8 clients.
+.IP "\fB\-listen [n]\fP (tyr-quake, tyr-glquake only)"
+Start the engine in listen mode (both client and server) supporting up to
+\fIn\fP clients (\fIn\fP must be between 1 and 16). If \fB\-listen\fP is not
+specified, then the server will support up to 4 clients. If \fB\-listen\fP is
+specified as the last command line argument, then the server will default to
+supporting 8 clients.
+.IP "\fB\-nolan\fP (tyr-quake, tyr-glquake only)"
+Disable LAN support.
+.IP "\fB\-port n\fP"
+Set the UDP port that the LAN server will listen on.
+.IP "\fB\-udpport\fP (tyr-quake, tyr-glquake only)"
+Same as \fB\-port\fP.
+.IP "\fB\-noifscan\fP (Linux/BSD only)"
+By default Quake will attempt to scan the network interfaces on the host in
+order to guess the local IP address (needed for Quake's default network
+protocols). In case this causes problems, this command line parameter can be
+used to disable interface scanning.
+.IP "\fB\-localip ip\fP"
+Specify the local IP address to use for network play. Use in conjunction with
+the \fB\-noifscan\fP on Unix/BSD platforms if Quake incorrectly detects the
+local IP address.
+.IP "\fB\-noudp\fP (tyr-quake, tyr-glquake only)"
+Disables UDP networking. Essentially the same effect as \fB\-nolan\fP.
+
+.IP "\fB\-HFILE n, \-HPARENT n, \-HCHILD n\fP (tyr-quake, tyr-glquake, Windows only)"
+Originally intended for \fBQHost\fP, which as I understand provides a function
+similar to screen/tmux on unix for the Quake console.  You probably don't want
+to use this (and it probably doesn't even work anymore!)
+
+.SH "CONSOLE COMMANDS"
+
+.IP "\fBcd\fP [command] [arguments]"
+Passes commands to the CD audio subsystem.  Sub-commands are listed below.
+.RS
+.IP "\fBon\fP"
+Enable the CD audio subsystem.
+.IP "\fBoff\fP"
+Disable the CD audio subsystem.
+.IP "\fBplay n\fP" 
+Play CD audio track \fIn\fP.
+.IP "\fBloop n\fP"
+Play CD audio track \fIn\fP in a loop.
+.IP "\fBstop\fP"
+Stop playing CD audio.
+.IP "\fBpause\fP"
+Pause CD audio playback.
+.IP "\fBresume\fP"
+Resume playing CD audio (if currently paused).
+.IP "\fBeject\fP"
+Eject the CD media.
+.IP "\fBclose\fP"
+Request the CD tray to close.
+.IP "\fBremap x y\fP"
+Given two track numbers \fIx\fP and \fIy\fP, remap a CD track number such that
+a request to play track \fIx\fP will result in real track \fIy\fP being
+played.  Remappings can be reset with the \fIcd reset\fP command.
+.IP "\fBreset\fP"
+Stop playing audio, remove any CD track remappings and re-read the CD table of
+contents.
+.IP "\fBinfo\fP"
+Displays number of tracks on the currently loaded CD, which track is currently
+playing or paused (if any) and the current CD audio volume.
+.RE
+.IP "\fBstuffcmds\fP"
+.IP "\fBexec\fP"
+.IP "\fBecho\fP"
+.IP "\fBalias\fP"
+.IP "\fBwait\fP"
+.IP "\fBcmd\fP"
+.IP "\fBpath\fP"
+.IP "\fBtoggleconsole\fP"
+.IP "\fBmessagemode\fP"
+.IP "\fBmessagemode2\fP"
+.IP "\fBclear\fP"
+.IP "\fBmaplist\fP"
+.IP "\fBgl_texturemode\fP"
+.IP "\fBenvmap\fP"
+.IP "\fBpointfile\fP"
+.IP "\fBtimerefresh\fP"
+.IP "\fBforce_centerview\fP"
+.IP "\fBjoyadvancedupdate\fP"
+.IP "\fBbind\fP"
+.IP "\fBunbind\fP"
+.IP "\fBunbindall\fP"
+.IP "\fBpvscache\fP"
+.IP "\fBedict\fP"
+.IP "\fBedicts\fP"
+.IP "\fBedictcount\fP"
+.IP "\fBprofile\fP"
+.IP "\fBscreenshot\fP"
+.IP "\fBsizeup\fP"
+.IP "\fBsizedown\fP"
+.IP "\fBsnap\fP"
+.IP "\fBplay\fP"
+.IP "\fBplayvol\fP"
+.IP "\fBstopsound\fP"
+.IP "\fBsoundlist\fP"
+.IP "\fBsoundinfo\fP"
+.IP "\fBvid_describemodes\fP"
+.IP "\fBvid_nummodes\fP"
+.IP "\fBvid_describecurrentmode\fP"
+.IP "\fBvid_describemode\fP"
+.IP "\fBvid_describemodes\fP"
+.IP "\fBvid_forcemode\fP"
+.IP "\fBvid_windowed\fP"
+.IP "\fBvid_fullscreen\fP"
+.IP "\fBvid_minimize\fP"
+.IP "\fBflush\fP"
+.IP "\fBhunk print|printall\fP"
+Print information about internal memory allocations on the hunk.  If
+the argument \fIprint\fP is given, sequential allocations with the
+same hunk tag are totaled into one line.  If the \fIprintall\fP
+argument is given, details for every individual allocation are
+printed.
+.IP "\fBzone print|printall\fP"
+Print information about memory allocations in the zone allocator.  If
+the argument \fIprint\fP is given, only summary statistics are
+printed.  If the \fIprintall\fP argument is given, information about
+every memory block in the zone is printed.
+.IP "\fBcache\fP"
+.IP "\fB+moveup, \-moveup\fP"
+.IP "\fB+movedown, \-movedown\fP"
+.IP "\fB+left, \-left\fP"
+.IP "\fB+right, \-right\fP"
+.IP "\fB+forward, \-forward\fP"
+.IP "\fB+back, \-back\fP"
+.IP "\fB+lookup, \-lookup\fP"
+.IP "\fB+lookdown, \-lookdown\fP"
+.IP "\fB+strafe, \-strafe\fP"
+.IP "\fB+moveleft, \-moveleft\fP"
+.IP "\fB+moveright, \-moveright\fP"
+.IP "\fB+speed, \-speed\fP"
+.IP "\fB+attack, \-attack\fP"
+.IP "\fB+use, \-use\fP"
+.IP "\fB+jump, \-jump\fP"
+.IP "\fB+klook, \-klook\fP"
+.IP "\fB+mlook, \-mlook\fP"
+When the mlook key is depressed, mouse movement controls the view
+orientation instead of direction of movement.  If cvar "m_freelook" is
+1, then the reverse is true, with mouse look enabled by default and
+the mlook key activates mouse movement instead.
+.IP "\fBimpulse\fP"
+.IP "\fBentities\fP"
+.IP "\fBdisconnect\fP"
+.IP "\fBrecord\fP"
+.IP "\fBstop\fP"
+.IP "\fBplaydemo\fP"
+.IP "\fBtimedemo\fP"
+.IP "\fBmcache\fP"
+.IP "\fBstatus\fP"
+.IP "\fBquit\fP"
+.IP "\fBgod\fP"
+.IP "\fBnotarget\fP"
+.IP "\fBfly\fP"
+.IP "\fBrestart\fP"
+.IP "\fBmap\fP"
+.IP "\fBchangelevel\fP"
+.IP "\fBconnect\fP"
+.IP "\fBreconnect\fP"
+.IP "\fBname\fP"
+.IP "\fBnoclip\fP"
+.IP "\fBversion\fP"
+.IP "\fBsay\fP"
+.IP "\fBsay_team\fP"
+.IP "\fBtell\fP"
+.IP "\fBcolor\fP"
+.IP "\fBkill\fP"
+.IP "\fBpause\fP"
+.IP "\fBspawn\fP"
+.IP "\fBbegin\fP"
+.IP "\fBprespawn\fP"
+.IP "\fBkick\fP"
+.IP "\fBping\fP"
+.IP "\fBload\fP"
+.IP "\fBsave\fP"
+.IP "\fBgive\fP"
+.IP "\fBstartdemos\fP"
+.IP "\fBdemos\fP"
+.IP "\fBstopdemo\fP"
+.IP "\fBviewmodel\fP"
+.IP "\fBviewframe\fP"
+.IP "\fBviewnext\fP"
+.IP "\fBviewprev\fP"
+.IP "\fBtogglemenu\fP"
+.IP "\fBmenu_main\fP"
+.IP "\fBmenu_singleplayer\fP"
+.IP "\fBmenu_load\fP"
+.IP "\fBmenu_save\fP"
+.IP "\fBmenu_multiplayer\fP"
+.IP "\fBmenu_setup\fP"
+.IP "\fBmenu_options\fP"
+.IP "\fBmenu_keys\fP"
+.IP "\fBmenu_video\fP"
+.IP "\fBhelp\fP"
+.IP "\fBmenu_quit\fP"
+.IP "\fBnet_stats\fP"
+.IP "\fBban\fP"
+.IP "\fBtest\fP"
+.IP "\fBtest2\fP"
+.IP "\fBslist\fP"
+.IP "\fBlisten\fP"
+.IP "\fBmaxplayers\fP"
+.IP "\fBport\fP"
+.IP "\fB+showscores, \-showscores\fP"
+.IP "\fBsv_protocol\fP"
+.IP "\fBv_cshift\fP"
+.IP "\fBbf\fP"
+.IP "\fBcenterview\fP"
+.IP "\fBchanging\fP"
+.IP "\fBrerecord\fP"
+.IP "\fBskins\fP"
+.IP "\fBallskins\fP"
+.IP "\fBrcon\fP"
+.IP "\fBpacket\fP"
+.IP "\fBuser\fP"
+.IP "\fBusers\fP"
+.IP "\fBsetinfo\fP"
+.IP "\fBfullinfo\fP"
+.IP "\fBfullserverinfo\fP"
+.IP "\fBdownload\fP"
+.IP "\fBnextul\fP"
+.IP "\fBstopul\fP"
+.IP "\fBserverinfo\fP"
+.IP "\fBwindows\fP"
+.IP "\fB+showteamscores, \-showteamscores\fP"
+.IP "\fBlogfile\fP"
+.IP "\fBfraglogfile\fP"
+.IP "\fBsnapall\fP"
+.IP "\fBsetmaster\fP"
+.IP "\fBheartbeat\fP"
+.IP "\fBlocalinfo\fP"
+.IP "\fBgamedir\fP"
+.IP "\fBsv_gamedir\fP"
+.IP "\fBfloodprot\fP"
+.IP "\fBfloodprotmsg\fP"
+.IP "\fBaddip ip\fP[\fB/mask\fP]"
+Add an IP filter to drop packets from the specified IP address or network. IP
+addresses are specified in the standard form \fIA.B.C.D\fP.  A network can be
+specified using a netmask length, e.g. \fBaddip 10.10.10.0/24\fP or by giving
+only the first one, two or three octets; e.g. \fBaddip 10.10.10\fP.
+.IP "\fBremoveip ip\fP[\fB/mask\fP]"
+Remove an IP address or network from the IP filter list.  Note that if an IP
+address is filtered as part of a network filter, you can only un-filter the IP
+by removing the network filter.
+.IP "\fBlistip\fP"
+Show the current IP filter list.
+.IP "\fBwriteip\fP"
+Writes commands to re-construct the current IP filter list to the file
+listip.cfg which can later be restored with 'exec listip.cfg'.
+
+.SH "CONSOLE VARIABLES"
+
+.IP "\fBbgmvolume\fP"
+Set volume level for background music.  Valid values are between 0 (off) and 1
+(full volume).  Default 1.
+.IP "\fBregistered\fP"
+.IP "\fBcmdline\fP"
+.IP "\fBcon_notifytime\fP"
+.IP "\fBd_subdiv16\fP"
+.IP "\fBd_mipcap\fP"
+.IP "\fBd_mipscale\fP"
+.IP "\fBgl_nobind\fP"
+.IP "\fBgl_picmip\fP"
+.IP "\fBgl_constretch\fP"
+.IP "\fBgl_max_size\fP"
+.IP "\fBgl_npot\fP"
+If 1, allow use of non-power-of-two sized textures in OpenGL (if the ARB
+extension is advertised).  Set to zero to force stretching/padding of textures
+to power-of-two sizes.  Default 1.
+.IP "\fBr_lockpvs\fP"
+.IP "\fBr_lockfrustum\fP"
+.IP "\fBr_drawflat\fP"
+.IP "\fBr_speeds\fP"
+.IP "\fBr_fullbright\fP"
+.IP "\fBr_drawentities\fP"
+.IP "\fBr_drawviewmodel\fP"
+.IP "\fBr_lerpmodels 0\fP|\fB1\fP (tyr-quake,tyr-glquake only)"
+If 1, smooth out animation of alias models by interpolating between
+animation frames. If enabling this setting, it is recommended to enable
+r_lerpmove as well. Default 0.
+.IP "\fBr_lerpmove 0\fP|\fB1\fP"
+If 1, interpolate movement of alias model entities. Default 0.
+.IP "\fBr_norefresh\fP"
+.IP "\fBr_lightmap\fP"
+.IP "\fBr_shadows\fP"
+.IP "\fBr_mirroralpha\fP"
+.IP "\fBr_wateralpha\fP"
+.IP "\fBr_dynamic\fP"
+.IP "\fBr_novis\fP"
+.IP "\fBr_waterwarp\fP"
+.IP "\fBgl_finish\fP"
+.IP "\fBgl_clear\fP"
+.IP "\fBgl_texsort\fP"
+.IP "\fB_gl_allowgammafallback\fP"
+.IP "\fB_gl_drawhull\fP"
+.IP "\fBgl_cull\fP"
+.IP "\fBgl_smoothmodels\fP"
+.IP "\fBgl_affinemodels\fP"
+.IP "\fBgl_polyblend\fP"
+.IP "\fBgl_flashblend\fP"
+.IP "\fBgl_playermip\fP"
+.IP "\fBgl_nocolors\fP"
+.IP "\fBgl_keeptjunctions\fP"
+.IP "\fBgl_reporttjunctions\fP"
+.IP "\fBgl_doubleeyes\fP"
+.IP "\fBgl_zfix\fP"
+If 1, implements a workaround for z-fighting where world and brush
+models co-incide (e.g. the elevator to the E1M1 quad secret).  Causes
+some undesirable side effects such as cracks or ridges where brush
+models and the world would otherwise meet flush.  Default 0.
+.IP "\fBr_netgraph\fP"
+.IP "\fBin_snd_block\fP"
+.IP "\fBm_filter\fP"
+.IP "\fB_windowed_mouse\fP"
+.IP "\fBin_cfg_unbindall\fP"
+If 1, write an \fIunbindall\fP command before saving key bindings to
+config.cfg, so that any explicitly unbound keys are no longer restored
+to their defaults after reloading the engine. Default 1.
+.IP "\fBin_joystick\fP"
+.IP "\fBjoy_name\fP"
+.IP "\fBjoy_advanced\fP"
+.IP "\fBjoy_advaxisx\fP"
+.IP "\fBjoy_advaxisy\fP"
+.IP "\fBjoy_advaxisz\fP"
+.IP "\fBjoy_advaxisr\fP"
+.IP "\fBjoy_advaxisu\fP"
+.IP "\fBjoy_advaxisv\fP"
+.IP "\fBjoy_forwardthreshold\fP"
+.IP "\fBjoy_sidethreshold\fP"
+.IP "\fBjoy_pitchthreshold\fP"
+.IP "\fBjoy_yawthreshold\fP"
+.IP "\fBjoy_forwardsensitivity\fP"
+.IP "\fBjoy_sidesensitivity\fP"
+.IP "\fBjoy_pitchsensitivity\fP"
+.IP "\fBjoy_yawsensitivity\fP"
+.IP "\fBjoy_wwhack1\fP"
+.IP "\fBjoy_wwhack2\fP"
+.IP "\fBin_dgamouse\fP"
+.IP "\fBgl_subdivide_size\fP"
+.IP "\fBnomonsters\fP"
+.IP "\fBgamecfg\fP"
+.IP "\fBscratch1\fP"
+.IP "\fBscratch2\fP"
+.IP "\fBscratch3\fP"
+.IP "\fBscratch4\fP"
+.IP "\fBsavedgamecfg\fP"
+.IP "\fBsaved1\fP"
+.IP "\fBsaved2\fP"
+.IP "\fBsaved3\fP"
+.IP "\fBsaved4\fP"
+.IP "\fBr_draworder\fP"
+.IP "\fBr_speeds\fP"
+.IP "\fBr_graphheight\fP"
+.IP "\fBr_clearcolor\fP"
+.IP "\fBr_waterwarp\fP"
+.IP "\fBr_drawentities\fP"
+.IP "\fBr_drawviewmodel\fP"
+.IP "\fBr_drawflat\fP"
+.IP "\fBr_ambient\fP"
+.IP "\fBr_numsurfs\fP"
+.IP "\fBr_numedges\fP"
+.IP "\fBr_timegraph\fP"
+.IP "\fBr_aliasstats\fP"
+.IP "\fBr_dspeeds\fP"
+.IP "\fBr_reportsurfout\fP"
+.IP "\fBr_maxsurfs\fP"
+.IP "\fBr_reportedgeout\fP"
+.IP "\fBr_maxedges\fP"
+.IP "\fBr_aliastransbase\fP"
+.IP "\fBr_aliastransadj\fP"
+.IP "\fBr_netgraph\fP"
+.IP "\fBr_zgraph\fP"
+.IP "\fBscr_fov\fP"
+.IP "\fBscr_viewsize\fP"
+.IP "\fBscr_conspeed\fP"
+.IP "\fBscr_showram\fP"
+.IP "\fBscr_showturtle\fP"
+.IP "\fBscr_showpause\fP"
+.IP "\fBscr_centertime\fP"
+.IP "\fBscr_printspeed\fP"
+.IP "\fBshow_fps\fP"
+.IP "\fBgl_triplebuffer\fP"
+.IP "\fBscr_allowsnap\fP"
+.IP "\fBnosound\fP"
+.IP "\fBvolume\fP"
+.IP "\fBprecache\fP"
+.IP "\fBloadas8bit\fP"
+.IP "\fBbgmbuffer\fP"
+.IP "\fBambient_level\fP"
+.IP "\fBambient_fade\fP"
+.IP "\fBsnd_noextraupdate\fP"
+.IP "\fBsnd_show\fP"
+.IP "\fB_snd_mixahead\fP"
+.IP "\fBsys_nostdout\fP"
+.IP "\fBvid_mode\fP"
+.IP "\fBgl_ztrick\fP"
+.IP "\fBvid_wait\fP"
+.IP "\fBvid_nopageflip\fP"
+.IP "\fB_vid_wait_override\fP"
+.IP "\fB_vid_default_mode\fP"
+.IP "\fB_vid_default_mode_win\fP"
+.IP "\fBvid_fullscreen_mode\fP"
+.IP "\fBvid_windowed_mode\fP"
+.IP "\fBblock_switch\fP"
+.IP "\fBvid_window_x\fP"
+.IP "\fBvid_window_y\fP"
+.IP "\fBvid_config_x\fP"
+.IP "\fBvid_config_y\fP"
+.IP "\fBvid_stretch_by_2\fP"
+.IP "\fBhost_framerate\fP"
+.IP "\fBchase_back\fP"
+.IP "\fBchase_up\fP"
+.IP "\fBchase_right\fP"
+.IP "\fBchase_active\fP"
+.IP "\fBcl_name\fP"
+.IP "\fBcl_color\fP"
+.IP "\fBcl_upspeed\fP"
+.IP "\fBcl_forwardspeed\fP"
+.IP "\fBcl_forwardspeed\fP"
+.IP "\fBcl_backspeed\fP"
+.IP "\fBcl_sidespeed\fP"
+.IP "\fBcl_movespeedkey\fP"
+.IP "\fBcl_yawspeed\fP"
+.IP "\fBcl_pitchspeed\fP"
+.IP "\fBcl_anglespeedkey\fP"
+.IP "\fBcl_run\fP"
+.IP "\fBcl_shownet\fP"
+.IP "\fBcl_nolerp\fP"
+.IP "\fBlookspring\fP"
+.IP "\fBlookstrafe\fP"
+.IP "\fBsensitivity\fP"
+.IP "\fBm_pitch\fP"
+.IP "\fBm_yaw\fP"
+.IP "\fBm_forward\fP"
+.IP "\fBm_side\fP"
+.IP "\fBm_freelook\fP"
+If 1, view orientation is controlled by mouse and the "mouse look" key
+(+mlook) has the inverse effect of temporarily disabling free look
+mode while depressed.
+.IP "\fBhost_speeds\fP"
+.IP "\fBsys_ticrate\fP"
+.IP "\fBserverprofile\fP"
+.IP "\fBfraglimit\fP"
+.IP "\fBtimelimit\fP"
+.IP "\fBteamplay\fP"
+.IP "\fBsamelevel\fP"
+.IP "\fBnoexit\fP"
+.IP "\fBskill\fP"
+.IP "\fBdeathmatch\fP"
+.IP "\fBcoop\fP"
+.IP "\fBpausable\fP"
+.IP "\fBtemp1\fP"
+.IP "\fBdeveloper\fP"
+.IP "\fBnet_messagetimeout\fP"
+.IP "\fBhostname\fP"
+.IP "\fBsv_maxvelocity\fP"
+.IP "\fBsv_gravity\fP"
+.IP "\fBsv_friction\fP"
+.IP "\fBsv_edgefriction\fP"
+.IP "\fBsv_stopspeed\fP"
+.IP "\fBsv_maxspeed\fP"
+.IP "\fBsv_accelerate\fP"
+.IP "\fBsv_idealpitchscale\fP"
+.IP "\fBsv_aim\fP"
+.IP "\fBsv_nostep\fP"
+.IP "\fBv_centermove\fP"
+.IP "\fBv_centerspeed\fP"
+.IP "\fBv_iyaw_cycle\fP"
+.IP "\fBv_iroll_cycle\fP"
+.IP "\fBv_ipitch_cycle\fP"
+.IP "\fBv_iyaw_level\fP"
+.IP "\fBv_iroll_level\fP"
+.IP "\fBv_ipitch_level\fP"
+.IP "\fBv_idlescale\fP"
+.IP "\fBcrosshair\fP"
+.IP "\fBcrosshaircolor\fP"
+.IP "\fBcl_crossx\fP"
+.IP "\fBcl_crossy\fP"
+.IP "\fBgl_cshiftpercent\fP"
+.IP "\fBscr_ofsx\fP"
+.IP "\fBscr_ofsy\fP"
+.IP "\fBscr_ofsz\fP"
+.IP "\fBcl_rollspeed\fP"
+.IP "\fBcl_rollangle\fP"
+.IP "\fBcl_bob\fP"
+.IP "\fBcl_bobcycle\fP"
+.IP "\fBcl_bobup\fP"
+.IP "\fBv_kicktime\fP"
+.IP "\fBv_kickroll\fP"
+.IP "\fBv_kickpitch\fP"
+.IP "\fBv_gamma\fP"
+.IP "\fBcl_hightrack\fP"
+.IP "\fBcl_chasecam\fP"
+.IP "\fBcl_nodelta\fP"
+.IP "\fBcl_warncmd\fP"
+.IP "\fBcl_sbar\fP"
+.IP "\fBcl_hudswap\fP"
+.IP "\fBcl_maxfps\fP"
+.IP "\fBcl_timeout\fP"
+.IP "\fBrcon_password\fP"
+.IP "\fBrcon_address\fP"
+.IP "\fBentlatency\fP"
+.IP "\fBcl_predict_players\fP"
+.IP "\fBcl_predict_players2\fP"
+.IP "\fBcl_solid_players\fP"
+.IP "\fBlocalid\fP"
+.IP "\fBbaseskin\fP"
+.IP "\fBnoskins\fP"
+.IP "\fBpassword\fP"
+.IP "\fBspectator\fP"
+.IP "\fBskin\fP"
+.IP "\fBteam\fP"
+.IP "\fBtopcolor\fP"
+.IP "\fBbottomcolor\fP"
+.IP "\fBrate\fP"
+.IP "\fBmsg\fP"
+.IP "\fBnoaim\fP"
+.IP "\fBcl_pushlatency\fP"
+.IP "\fBcl_nopred\fP"
+.IP "\fBv_contentblend\fP"
+.IP "\fBshowpackets\fP"
+.IP "\fBshowdrop\fP"
+.IP "\fBqport\fP"
+.IP "\fBspectator_password\fP"
+.IP "\fBsv_mintic\fP"
+.IP "\fBsv_maxtic\fP"
+.IP "\fBmaxclients\fP"
+.IP "\fBmaxspectators\fP"
+.IP "\fBwatervis\fP"
+.IP "\fBzombietime\fP"
+.IP "\fBsv_spectatormaxspeed\fP"
+.IP "\fBsv_airaccelerate\fP"
+.IP "\fBsv_wateraccelerate\fP"
+.IP "\fBsv_waterfriction\fP"
+.IP "\fBfilterban\fP"
+.IP "\fBallow_download\fP"
+.IP "\fBallow_download_skins\fP"
+.IP "\fBallow_download_models\fP"
+.IP "\fBallow_download_sounds\fP"
+.IP "\fBallow_download_maps\fP"
+.IP "\fBsv_highchars\fP"
+.IP "\fBsv_phs\fP"
+.IP "\fBsv_spectalk\fP"
+.IP "\fBsv_mapcheck\fP"
+.IP "\fBsys_extrasleep\fP"
+
+.SH FILES
+.SH ENVIRONMENT
+.SH BUGS
+.SH AUTHOR
+.SH COPYRIGHT
+Copyright (C) 2013 Kevin Shanahan
+.br
+Copyright (C) 1997 id Software
+.PP
+License GPLv2+: GNU GPL version 2 or later
+.br
+<http://gnu.org/licenses/gpl2.html>.
+.PP
+This is free software:  you are free to change and redistribute it.
+There is NO WARRANTY, to the extent permitted by law.
+.SH "SEE ALSO"
