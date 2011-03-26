@@ -416,11 +416,19 @@ R_ViewChanged(vrect_t *pvrect, int lineadj, float aspect)
     r_refdef.aliasvrectbottom =
 	r_refdef.aliasvrect.y + r_refdef.aliasvrect.height;
 
-    pixelAspect = aspect;
+    // FISHEYE BEGIN EDIT:
+    // ORIGINAL: pixelAspect = aspect;
+    pixelAspect = (float)r_refdef.vrect.height/(float)r_refdef.vrect.width;
+    // FISHEYE END EDIT
+
     xOrigin = r_refdef.xOrigin;
     yOrigin = r_refdef.yOrigin;
 
-    screenAspect = r_refdef.vrect.width * pixelAspect / r_refdef.vrect.height;
+    // FISHEYE BEGIN EDIT:
+    // ORIGINAL: screenAspect = r_refdef.vrect.width * pixelAspect / r_refdef.vrect.height;
+    screenAspect = 1.0;
+    // FISHEYE END EDIT
+
 // 320*200 1.0 pixelAspect = 1.6 screenAspect
 // 320*240 1.0 pixelAspect = 1.3333 screenAspect
 // proper 320*200 pixelAspect = 0.8333333

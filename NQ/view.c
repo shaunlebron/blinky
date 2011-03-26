@@ -37,19 +37,42 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  * especially when crossing a water boudnary.
  */
 
+// FISHEYE BEGIN EDIT
+// ORIGINAL: (N/A)
+void R_RenderView_fisheye();
+
+cvar_t ffov = {"ffov", "180", true};
+cvar_t fviews = {"fviews", "6", true};
+cvar_t fmap = {"fmap", "1", true};
+cvar_t fborder = {"fborder", "1", true};
+cvar_t fcolor = {"fcolor", "1", true};
+
+// FISHEYE END EDIT
+
 cvar_t scr_ofsx = { "scr_ofsx", "0", false };
 cvar_t scr_ofsy = { "scr_ofsy", "0", false };
 cvar_t scr_ofsz = { "scr_ofsz", "0", false };
 
 cvar_t cl_rollspeed = { "cl_rollspeed", "200" };
-cvar_t cl_rollangle = { "cl_rollangle", "2.0" };
+
+// FISHEYE BEGIN EDIT
+// ORIGINAL:
+// cvar_t cl_rollangle = { "cl_rollangle", "2.0" };
+cvar_t cl_rollangle = { "cl_rollangle", "0.0" };
+// FISHEYE END EDIT
 
 cvar_t cl_bob = { "cl_bob", "0.02", false };
 cvar_t cl_bobcycle = { "cl_bobcycle", "0.6", false };
 cvar_t cl_bobup = { "cl_bobup", "0.5", false };
 
 cvar_t v_kicktime = { "v_kicktime", "0.5", false };
-cvar_t v_kickroll = { "v_kickroll", "0.6", false };
+
+// FISHEYE BEGIN EDIT
+// ORIGINAL:
+//cvar_t v_kickroll = { "v_kickroll", "0.6", false };
+cvar_t v_kickroll = { "v_kickroll", "0.0", false };
+// FISHEYE END EDIT
+
 cvar_t v_kickpitch = { "v_kickpitch", "0.6", false };
 
 cvar_t v_iyaw_cycle = { "v_iyaw_cycle", "2", false };
@@ -948,8 +971,12 @@ V_RenderView(void)
 	    V_CalcRefdef();
     }
 
-    R_PushDlights();
-    R_RenderView();
+    // FISHEYE BEGIN EDIT
+    // ORIGINAL:
+    // R_PushDlights();
+    // R_RenderView();
+    R_RenderView_fisheye();
+    // FISHEYE END EDIT
 
 #ifndef GLQUAKE
     if (crosshair.value)
@@ -1006,4 +1033,414 @@ V_Init(void)
 
     BuildGammaTable(1.0);	// no gamma yet
     Cvar_RegisterVariable(&v_gamma);
+
+    // FISHEYE BEGIN EDIT
+    // ORIGINAL: (N/A)
+	 Cvar_RegisterVariable (&ffov);
+	 Cvar_RegisterVariable (&fviews);
+    Cvar_RegisterVariable (&fmap);
+    Cvar_RegisterVariable (&fborder);
+    Cvar_RegisterVariable (&fcolor);
+    // FISHEYE END EDIT
 }
+
+// FISHEYE BEGIN EDIT
+// ORIGINAL: (N/A)
+
+typedef unsigned char B;
+
+#define BOX_FRONT  0
+#define BOX_BEHIND 2
+#define BOX_LEFT   3
+#define BOX_RIGHT  1
+#define BOX_TOP    4
+#define BOX_BOTTOM 5
+
+#define PI 3.141592654
+
+#define DEG(x) (x / PI * 180.0)
+#define RAD(x) (x * PI / 180.0)
+
+struct my_coords
+	{
+	double x, y, z;
+	};
+
+struct my_angles
+	{
+	double yaw, pitch, roll;
+	};
+
+void x_rot(struct my_coords *c, double pitch);
+void y_rot(struct my_coords *c, double yaw);
+void z_rot(struct my_coords *c, double roll);
+void my_get_angles(struct my_coords *in_o, struct my_coords *in_u, struct my_angles *a);
+
+// get_ypr()
+
+void get_ypr(double yaw, double pitch, double roll, int side, struct my_angles *a)
+  {
+  struct my_coords o, u;
+
+  // get 'o' (observer) and 'u' ('this_way_up') depending on box side
+
+  switch(side)
+    {
+    case BOX_FRONT:
+      //printf("(FRONT)");
+      o.x =  0.0; o.y =  0.0; o.z =  1.0;
+      u.x =  0.0; u.y =  1.0; u.z =  0.0; break;
+    case BOX_BEHIND:
+      //printf("(BEHIND)");
+      o.x =  0.0; o.y =  0.0; o.z = -1.0;
+      u.x =  0.0; u.y =  1.0; u.z =  0.0; break;
+    case BOX_LEFT:
+      //printf("(LEFT)");
+      o.x = -1.0; o.y =  0.0; o.z =  0.0;
+      u.x = -1.0; u.y =  1.0; u.z =  0.0; break;
+    case BOX_RIGHT:
+      //printf("(RIGHT)");
+      o.x =  1.0; o.y =  0.0; o.z =  0.0;
+      u.x =  0.0; u.y =  1.0; u.z =  0.0; break;
+    case BOX_TOP:
+      //printf("(TOP)");
+      o.x =  0.0; o.y = -1.0; o.z =  0.0;
+      u.x =  0.0; u.y =  0.0; u.z = -1.0; break;
+    case BOX_BOTTOM:
+      //printf("(BOTTOM)");
+      o.x =  0.0; o.y =  1.0; o.z =  0.0;
+      u.x =  0.0; u.y =  0.0; u.z = -1.0; break;
+    }
+
+  //printf(" - [inputs: yaw = %.4f, pitch = %.4f, roll = %.4f]\n", yaw, pitch, roll);
+
+  z_rot(&o, roll); z_rot(&u, roll);
+  x_rot(&o, pitch); x_rot(&u, pitch);
+  y_rot(&o, yaw); y_rot(&u, yaw);
+
+  my_get_angles(&o, &u, a);
+
+  /* normalise angles */
+
+  while (a->yaw   <   0.0) a->yaw   += 360.0;
+  while (a->yaw   > 360.0) a->yaw   -= 360.0;
+  while (a->pitch <   0.0) a->pitch += 360.0;
+  while (a->pitch > 360.0) a->pitch -= 360.0;
+  while (a->roll  <   0.0) a->roll  += 360.0;
+  while (a->roll  > 360.0) a->roll  -= 360.0;
+
+  //printf("get_ypr -> %.4f, %.4f, %.4f\n", a->yaw, a->pitch, a->roll);
+  }
+
+/* my_get_angles */
+
+void my_get_angles(struct my_coords *in_o, struct my_coords *in_u, struct my_angles *a)
+  {
+  double rad_yaw, rad_pitch;
+  struct my_coords o, u;
+
+  a->pitch = 0.0;
+  a->yaw = 0.0;
+  a->roll = 0.0;
+
+  // make a copy of the coords
+
+  o.x = in_o->x; o.y = in_o->y; o.z = in_o->z;
+  u.x = in_u->x; u.y = in_u->y; u.z = in_u->z;
+
+  //printf("%.4f, %.4f, %.4f - \n", o.x, o.y, o.z);
+
+  // special case when looking straight up or down
+
+  if ((o.x == 0.0) && (o.z == 0.0))
+    {
+    // printf("special!\n");
+    a->yaw   = 0.0;
+    if (o.y > 0.0) { a->pitch = -90.0; a->roll = 180.0 - DEG(atan2(u.x, u.z)); } // down
+    else           { a->pitch =  90.0; a->roll = DEG(atan2(u.x, u.z)); } // up
+    return;
+    }
+
+/******************************************************************************/
+
+  // get yaw angle and then rotate o and u so that yaw = 0
+
+  rad_yaw = atan2(-o.x, o.z);
+  a->yaw  = DEG(rad_yaw);
+
+  y_rot(&o, -rad_yaw);
+  y_rot(&u, -rad_yaw);
+
+  //printf("%.4f, %.4f, %.4f - stage 1\n", o.x, o.y, o.z);
+
+  // get pitch and then rotate o and u so that pitch = 0
+
+  rad_pitch = atan2(-o.y, o.z);
+  a->pitch  = DEG(rad_pitch);
+
+  x_rot(&o, -rad_pitch);
+  x_rot(&u, -rad_pitch);
+
+  //printf("%.4f, %.4f, %.4f - stage 2\n", u.x, u.y, u.z);
+
+  // get roll
+
+  a->roll = DEG(-atan2(u.x, u.y));
+
+  //printf("yaw = %.4f, pitch = %.4f, roll = %.4f\n", a->yaw, a->pitch, a->roll);
+  }
+
+/*******************************************************************************/
+
+/* x_rot (pitch) */
+
+void x_rot(struct my_coords *c, double pitch)
+	{
+	double nx, ny, nz;
+
+	nx = c->x;
+	ny = (c->y * cos(pitch)) - (c->z * sin(pitch));
+	nz = (c->y * sin(pitch)) + (c->z * cos(pitch));
+
+	c->x = nx; c->y = ny; c->z = nz;
+
+	/*printf("x_rot: %.4f, %.4f, %.4f\n", c->x, c->y, c->z);*/
+	}
+
+/* y_rot (yaw) */
+
+void y_rot(struct my_coords *c, double yaw)
+	{
+	double nx, ny, nz;
+
+	nx = (c->x * cos(yaw)) - (c->z * sin(yaw));
+	ny = c->y;
+	nz = (c->x * sin(yaw)) + (c->z * cos(yaw));
+
+	c->x = nx; c->y = ny; c->z = nz;
+	}
+
+/* z_rot (roll) */
+
+void z_rot(struct my_coords *c, double roll)
+	{
+	double nx, ny, nz;
+
+	nx = (c->x * cos(roll)) - (c->y * sin(roll));
+	ny = (c->x * sin(roll)) + (c->y * cos(roll));
+	nz = c->z;
+
+	c->x = nx; c->y = ny; c->z = nz;
+	}
+
+void rendercopy(int *dest) {
+  int *p = (int*)vid.buffer;
+  int pad = 5;
+  int x, y;
+  int color = (int)fcolor.value;
+  R_PushDlights();
+  R_RenderView();
+  int border = (int)fborder.value;
+  for(y = 0;y<vid.height;y++) {
+    for(x = 0;x<(vid.width/4);x++,dest++) {
+      int isborder = y<=pad || y+pad >= vid.height || x <= pad || x+pad>=vid.width/4;
+      *dest = (border && isborder) ? color : p[x];
+    } 
+
+    p += (vid.rowbytes/4);
+  };
+};
+
+void renderlookup(B **offs, B* bufs) {
+  B *p = (B*)vid.buffer;
+  int x, y;
+  for(y = 0;y<vid.height;y++) {
+    for(x = 0;x<vid.width;x++,offs++) p[x] = **offs;
+    p += vid.rowbytes;
+  };
+};
+
+void fisheyeMap(int width, int height, double fov, double dx, double dy, double *sx, double *sy, double *sz)
+{
+    double yaw = sqrt(dx*dx+dy*dy)*fov/((double)height);
+    double roll = -atan2(dy,dx);
+
+    *sx = sin(yaw) * cos(roll);
+    *sy = sin(yaw) * sin(roll);
+    *sz = cos(yaw);
+}
+
+void cylinderMap(int width, int height, double fov, double dx, double dy, double *sx, double *sy, double *sz)
+{
+    // create forward vector
+    *sx = 0;
+    *sy = 0;
+    *sz = 1;
+
+    double az = dx*fov/(double)height;
+    double el = -dy*fov/(double)height;
+
+    *sx = sin(az)*cos(el);
+    *sy = sin(el);
+    *sz = cos(az)*cos(el);
+}
+
+void perspectiveMap(int width, int height, double fov, double dx, double dy, double *sx, double *sy, double *sz)
+{
+    // create forward vector
+    *sx = 0;
+    *sy = 0;
+    *sz = 1;
+
+    double a = (double)height/2/tan(fov/2);
+
+    double x = dx;
+    double y = -dy;
+    double z = a;
+
+    double len = sqrt(x*x+y*y+z*z);
+
+    *sx = x/len;
+    *sy = y/len;
+    *sz = z/len;
+}
+
+
+void lookuptable(B **buf, int width, int height, B *scrp, double fov, int map) {
+  int x, y;
+  for(y = 0;y<height;y++) for(x = 0;x<width;x++) {
+    double dx = x-width/2;
+    double dy = -(y-height/2);
+
+    // map the current window coordinate to a ray vector
+    double sx, sy, sz;
+    if (map == 0) {
+       perspectiveMap(width, height, fov, dx, dy, &sx, &sy, &sz);
+    }
+    else if (map == 1) {
+       fisheyeMap(width, height, fov, dx, dy, &sx, &sy, &sz);
+    }
+    else {
+       cylinderMap(width, height, fov, dx, dy, &sx, &sy, &sz);
+    }
+
+    // determine which side of the box we need
+    double abs_x = fabs(sx);
+    double abs_y = fabs(sy);
+    double abs_z = fabs(sz);			
+    int side;
+    double xs=0, ys=0;
+    if (abs_x > abs_y) {
+      if (abs_x > abs_z) { side = ((sx > 0.0) ? BOX_RIGHT : BOX_LEFT);   }
+      else               { side = ((sz > 0.0) ? BOX_FRONT : BOX_BEHIND); }
+    } else {
+      if (abs_y > abs_z) { side = ((sy > 0.0) ? BOX_TOP   : BOX_BOTTOM); }
+      else               { side = ((sz > 0.0) ? BOX_FRONT : BOX_BEHIND); }
+    }
+
+    #define RC(x) ((x / 2.06) + 0.5)
+    #define R2(x) ((x / 2.03) + 0.5)
+
+    // scale up our vector [x,y,z] to the box
+    switch(side) {
+      case BOX_FRONT:  xs = RC( sx /  sz); ys = R2( sy /  sz); break;
+      case BOX_BEHIND: xs = RC(-sx / -sz); ys = R2( sy / -sz); break;
+      case BOX_LEFT:   xs = RC( sz / -sx); ys = R2( sy / -sx); break;
+      case BOX_RIGHT:  xs = RC(-sz /  sx); ys = R2( sy /  sx); break;
+      case BOX_TOP:    xs = RC( sx /  sy); ys = R2( sz / -sy); break; //bot
+      case BOX_BOTTOM: xs = RC(-sx /  sy); ys = R2( sz / -sy); break; //top??
+    }
+
+    if (xs <  0.0) xs = 0.0;
+    if (xs >= 1.0) xs = 0.999;
+    if (ys <  0.0) ys = 0.0;
+    if (ys >= 1.0) ys = 0.999;
+    *buf++=scrp+(((int)(xs*(double)width))+
+                 ((int)(ys*(double)height))*width)+
+                 side*width*height;
+  };
+};
+
+void renderside(B* bufs, double yaw, double pitch, double roll, int side) {
+  struct my_angles a;
+  get_ypr(RAD(yaw), RAD(pitch), RAD(roll), side, &a);
+  if (side == BOX_RIGHT) { a.roll = -a.roll; a.pitch = -a.pitch; }
+  if (side == BOX_LEFT)  { a.roll = -a.roll; a.pitch = -a.pitch; }
+  if (side == BOX_TOP)   { a.yaw += 180.0; a.pitch = 180.0 - a.pitch; }
+  r_refdef.viewangles[YAW] = a.yaw;
+  r_refdef.viewangles[PITCH] = a.pitch;
+  r_refdef.viewangles[ROLL] = a.roll;
+  rendercopy((int *)bufs);
+};
+
+//extern int istimedemo;
+
+void R_RenderView_fisheye() {
+  int width = vid.width; //r_refdef.vrect.width;
+  int height = vid.height; //r_refdef.vrect.height;
+  int scrsize = width*height;
+  int fov = (int)ffov.value;
+  int views = (int)fviews.value;
+  int map = (int)fmap.value;
+  double yaw = r_refdef.viewangles[YAW];
+  double pitch = r_refdef.viewangles[PITCH];
+  double roll = 0;//r_refdef.viewangles[ROLL];
+  static int pwidth = -1;
+  static int pheight = -1;
+  static int pfov = -1;
+  static int pviews = -1;
+  static int pmap = -1;
+  static B *scrbufs = NULL;  
+  static B **offs = NULL;
+  static int demonum = 0;
+  char framename[100];
+  //Con_Printf("renderfisheye: %d %d %d\n",vid.height,vid.width,vid.rowbytes);
+
+  if(fov<1) fov = 1;
+
+  if(pwidth!=width || pheight!=height || pfov!=fov || pmap!=map) {
+    if(scrbufs) free(scrbufs);
+    if(offs) free(offs);
+    scrbufs = (B*)malloc(scrsize*6); // front|right|back|left|top|bottom
+    offs = (B**)malloc(scrsize*sizeof(B*));
+    if(!scrbufs || !offs) exit(1); // the rude way
+    pwidth = width;
+    pheight = height;
+    pfov = fov;
+    pmap = map;
+    lookuptable(offs,width,height,scrbufs,((double)fov)*PI/180.0, map);
+  };
+
+  if(views!=pviews) {
+    int i;
+    pviews = views;
+    for(i = 0;i<scrsize*6;i++) scrbufs[i] = 0;
+  };
+
+  switch(views) {
+    case 6:  renderside(scrbufs+scrsize*2,yaw,pitch,roll, BOX_BEHIND);
+    case 5:  renderside(scrbufs+scrsize*5,yaw,pitch,roll, BOX_BOTTOM);
+    case 4:  renderside(scrbufs+scrsize*4,yaw,pitch,roll, BOX_TOP);
+    case 3:  renderside(scrbufs+scrsize*3,yaw,pitch,roll, BOX_LEFT);
+    case 2:  renderside(scrbufs+scrsize,  yaw,pitch,roll, BOX_RIGHT);
+    default: renderside(scrbufs,          yaw,pitch,roll, BOX_FRONT);
+  };
+
+  r_refdef.viewangles[YAW] = yaw;
+  r_refdef.viewangles[PITCH] = pitch;
+  r_refdef.viewangles[ROLL] = roll;
+  renderlookup(offs,scrbufs);
+
+  /*
+  if(istimedemo) { 
+    sprintf(framename,"anim/ani%05d.pcx",demonum++);
+    //Con_Printf("attempting to write %s\n",framename);
+    WritePCXfile(framename,vid.buffer,vid.width,vid.height,vid.rowbytes,host_basepal);
+  } else {
+    demonum = 0;
+  }
+  */
+};
+
+
+// FISHEYE END EDIT
