@@ -1305,6 +1305,18 @@ void perspectiveMap(int width, int height, double fov, double dx, double dy, dou
     *sz = z/len;
 }
 
+void stereographicMap(int width, int height, double fov, double dx, double dy, double *sx, double *sy, double *sz)
+{
+    double diam = (double)height / tan(fov/2);
+    double rad = diam/2;
+
+    double t = 2*rad*diam / (dx*dx + dy*dy + diam*diam);
+
+    *sx = dx * t / rad;
+    *sy = -dy * t / rad;
+    *sz = (-rad + diam * t) / rad;
+}
+
 
 void lookuptable(B **buf, int width, int height, B *scrp, double fov, int map) {
   int x, y;
@@ -1320,8 +1332,11 @@ void lookuptable(B **buf, int width, int height, B *scrp, double fov, int map) {
     else if (map == 1) {
        fisheyeMap(width, height, fov, dx, dy, &sx, &sy, &sz);
     }
-    else {
+    else if (map == 2) {
        cylinderMap(width, height, fov, dx, dy, &sx, &sy, &sz);
+    }
+    else {
+       stereographicMap(width, height, fov, dx, dy, &sx, &sy, &sz);
     }
 
     // determine which side of the box we need
