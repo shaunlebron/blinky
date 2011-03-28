@@ -1307,7 +1307,7 @@ void perspectiveMap(int width, int height, double fov, double dx, double dy, dou
 
 void stereographicMap(int width, int height, double fov, double dx, double dy, double *sx, double *sy, double *sz)
 {
-    double diam = (double)height / tan(fov/2);
+    double diam = (double)height/2 / tan(fov/4);
     double rad = diam/2;
 
     double t = 2*rad*diam / (dx*dx + dy*dy + diam*diam);
