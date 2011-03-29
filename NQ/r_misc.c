@@ -426,7 +426,19 @@ R_SetupFrame(void)
     VectorCopy(r_refdef.vieworg, modelorg);
     VectorCopy(r_refdef.vieworg, r_origin);
 
-    AngleVectors(r_refdef.viewangles, vpn, vright, vup);
+    // FISHEYE BEGIN EDIT
+    // ORIGINAL: AngleVectors(r_refdef.viewangles, vpn, vright, vup);
+    if (r_refdef.useViewVectors)
+    {
+       VectorCopy(r_refdef.forward, vpn);
+       VectorCopy(r_refdef.right, vright);
+       VectorCopy(r_refdef.up, vup);
+    }
+    else
+    {
+       AngleVectors(r_refdef.viewangles, vpn, vright, vup);
+    }
+    // FISHEYE END EDIT
 
 // current viewleaf
     r_oldviewleaf = r_viewleaf;

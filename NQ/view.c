@@ -53,12 +53,7 @@ cvar_t scr_ofsy = { "scr_ofsy", "0", false };
 cvar_t scr_ofsz = { "scr_ofsz", "0", false };
 
 cvar_t cl_rollspeed = { "cl_rollspeed", "200" };
-
-// FISHEYE BEGIN EDIT
-// ORIGINAL:
-// cvar_t cl_rollangle = { "cl_rollangle", "2.0" };
-cvar_t cl_rollangle = { "cl_rollangle", "0.0" };
-// FISHEYE END EDIT
+cvar_t cl_rollangle = { "cl_rollangle", "2.0" };
 
 cvar_t cl_bob = { "cl_bob", "0.02", false };
 cvar_t cl_bobcycle = { "cl_bobcycle", "0.6", false };
@@ -66,12 +61,7 @@ cvar_t cl_bobup = { "cl_bobup", "0.5", false };
 
 cvar_t v_kicktime = { "v_kicktime", "0.5", false };
 
-// FISHEYE BEGIN EDIT
-// ORIGINAL:
-//cvar_t v_kickroll = { "v_kickroll", "0.6", false };
-cvar_t v_kickroll = { "v_kickroll", "0.0", false };
-// FISHEYE END EDIT
-
+cvar_t v_kickroll = { "v_kickroll", "0.6", false };
 cvar_t v_kickpitch = { "v_kickpitch", "0.6", false };
 
 cvar_t v_iyaw_cycle = { "v_iyaw_cycle", "2", false };
@@ -1056,181 +1046,6 @@ typedef unsigned char B;
 
 #define PI 3.141592654
 
-#define DEG(x) (x / PI * 180.0)
-#define RAD(x) (x * PI / 180.0)
-
-struct my_coords
-	{
-	double x, y, z;
-	};
-
-struct my_angles
-	{
-	double yaw, pitch, roll;
-	};
-
-void x_rot(struct my_coords *c, double pitch);
-void y_rot(struct my_coords *c, double yaw);
-void z_rot(struct my_coords *c, double roll);
-void my_get_angles(struct my_coords *in_o, struct my_coords *in_u, struct my_angles *a);
-
-// get_ypr()
-
-void get_ypr(double yaw, double pitch, double roll, int side, struct my_angles *a)
-  {
-  struct my_coords o, u;
-
-  // get 'o' (observer) and 'u' ('this_way_up') depending on box side
-
-  switch(side)
-    {
-    case BOX_FRONT:
-      //printf("(FRONT)");
-      o.x =  0.0; o.y =  0.0; o.z =  1.0;
-      u.x =  0.0; u.y =  1.0; u.z =  0.0; break;
-    case BOX_BEHIND:
-      //printf("(BEHIND)");
-      o.x =  0.0; o.y =  0.0; o.z = -1.0;
-      u.x =  0.0; u.y =  1.0; u.z =  0.0; break;
-    case BOX_LEFT:
-      //printf("(LEFT)");
-      o.x = -1.0; o.y =  0.0; o.z =  0.0;
-      u.x = -1.0; u.y =  1.0; u.z =  0.0; break;
-    case BOX_RIGHT:
-      //printf("(RIGHT)");
-      o.x =  1.0; o.y =  0.0; o.z =  0.0;
-      u.x =  0.0; u.y =  1.0; u.z =  0.0; break;
-    case BOX_TOP:
-      //printf("(TOP)");
-      o.x =  0.0; o.y = -1.0; o.z =  0.0;
-      u.x =  0.0; u.y =  0.0; u.z = -1.0; break;
-    case BOX_BOTTOM:
-      //printf("(BOTTOM)");
-      o.x =  0.0; o.y =  1.0; o.z =  0.0;
-      u.x =  0.0; u.y =  0.0; u.z = -1.0; break;
-    }
-
-  //printf(" - [inputs: yaw = %.4f, pitch = %.4f, roll = %.4f]\n", yaw, pitch, roll);
-
-  z_rot(&o, roll); z_rot(&u, roll);
-  x_rot(&o, pitch); x_rot(&u, pitch);
-  y_rot(&o, yaw); y_rot(&u, yaw);
-
-  my_get_angles(&o, &u, a);
-
-  /* normalise angles */
-
-  while (a->yaw   <   0.0) a->yaw   += 360.0;
-  while (a->yaw   > 360.0) a->yaw   -= 360.0;
-  while (a->pitch <   0.0) a->pitch += 360.0;
-  while (a->pitch > 360.0) a->pitch -= 360.0;
-  while (a->roll  <   0.0) a->roll  += 360.0;
-  while (a->roll  > 360.0) a->roll  -= 360.0;
-
-  //printf("get_ypr -> %.4f, %.4f, %.4f\n", a->yaw, a->pitch, a->roll);
-  }
-
-/* my_get_angles */
-
-void my_get_angles(struct my_coords *in_o, struct my_coords *in_u, struct my_angles *a)
-  {
-  double rad_yaw, rad_pitch;
-  struct my_coords o, u;
-
-  a->pitch = 0.0;
-  a->yaw = 0.0;
-  a->roll = 0.0;
-
-  // make a copy of the coords
-
-  o.x = in_o->x; o.y = in_o->y; o.z = in_o->z;
-  u.x = in_u->x; u.y = in_u->y; u.z = in_u->z;
-
-  //printf("%.4f, %.4f, %.4f - \n", o.x, o.y, o.z);
-
-  // special case when looking straight up or down
-
-  if ((o.x == 0.0) && (o.z == 0.0))
-    {
-    // printf("special!\n");
-    a->yaw   = 0.0;
-    if (o.y > 0.0) { a->pitch = -90.0; a->roll = 180.0 - DEG(atan2(u.x, u.z)); } // down
-    else           { a->pitch =  90.0; a->roll = DEG(atan2(u.x, u.z)); } // up
-    return;
-    }
-
-/******************************************************************************/
-
-  // get yaw angle and then rotate o and u so that yaw = 0
-
-  rad_yaw = atan2(-o.x, o.z);
-  a->yaw  = DEG(rad_yaw);
-
-  y_rot(&o, -rad_yaw);
-  y_rot(&u, -rad_yaw);
-
-  //printf("%.4f, %.4f, %.4f - stage 1\n", o.x, o.y, o.z);
-
-  // get pitch and then rotate o and u so that pitch = 0
-
-  rad_pitch = atan2(-o.y, o.z);
-  a->pitch  = DEG(rad_pitch);
-
-  x_rot(&o, -rad_pitch);
-  x_rot(&u, -rad_pitch);
-
-  //printf("%.4f, %.4f, %.4f - stage 2\n", u.x, u.y, u.z);
-
-  // get roll
-
-  a->roll = DEG(-atan2(u.x, u.y));
-
-  //printf("yaw = %.4f, pitch = %.4f, roll = %.4f\n", a->yaw, a->pitch, a->roll);
-  }
-
-/*******************************************************************************/
-
-/* x_rot (pitch) */
-
-void x_rot(struct my_coords *c, double pitch)
-	{
-	double nx, ny, nz;
-
-	nx = c->x;
-	ny = (c->y * cos(pitch)) - (c->z * sin(pitch));
-	nz = (c->y * sin(pitch)) + (c->z * cos(pitch));
-
-	c->x = nx; c->y = ny; c->z = nz;
-
-	/*printf("x_rot: %.4f, %.4f, %.4f\n", c->x, c->y, c->z);*/
-	}
-
-/* y_rot (yaw) */
-
-void y_rot(struct my_coords *c, double yaw)
-	{
-	double nx, ny, nz;
-
-	nx = (c->x * cos(yaw)) - (c->z * sin(yaw));
-	ny = c->y;
-	nz = (c->x * sin(yaw)) + (c->z * cos(yaw));
-
-	c->x = nx; c->y = ny; c->z = nz;
-	}
-
-/* z_rot (roll) */
-
-void z_rot(struct my_coords *c, double roll)
-	{
-	double nx, ny, nz;
-
-	nx = (c->x * cos(roll)) - (c->y * sin(roll));
-	ny = (c->x * sin(roll)) + (c->y * cos(roll));
-	nz = c->z;
-
-	c->x = nx; c->y = ny; c->z = nz;
-	}
-
 void rendercopy(int *dest) {
   int *p = (int*)vid.buffer;
   int pad = 5;
@@ -1377,15 +1192,10 @@ void lookuptable(B **buf, int width, int height, B *scrp, double fov, int map) {
   };
 };
 
-void renderside(B* bufs, double yaw, double pitch, double roll, int side) {
-  struct my_angles a;
-  get_ypr(RAD(yaw), RAD(pitch), RAD(roll), side, &a);
-  if (side == BOX_RIGHT) { a.roll = -a.roll; a.pitch = -a.pitch; }
-  if (side == BOX_LEFT)  { a.roll = -a.roll; a.pitch = -a.pitch; }
-  if (side == BOX_TOP)   { a.yaw += 180.0; a.pitch = 180.0 - a.pitch; }
-  r_refdef.viewangles[YAW] = a.yaw;
-  r_refdef.viewangles[PITCH] = a.pitch;
-  r_refdef.viewangles[ROLL] = a.roll;
+void renderside(B* bufs, int side, vec3_t forward, vec3_t right, vec3_t up) {
+  VectorCopy(forward, r_refdef.forward);
+  VectorCopy(right, r_refdef.right);
+  VectorCopy(up, r_refdef.up);
   rendercopy((int *)bufs);
 };
 
@@ -1398,9 +1208,6 @@ void R_RenderView_fisheye() {
   int fov = (int)ffov.value;
   int views = (int)fviews.value;
   int map = (int)fmap.value;
-  double yaw = r_refdef.viewangles[YAW];
-  double pitch = r_refdef.viewangles[PITCH];
-  double roll = 0;//r_refdef.viewangles[ROLL];
   static int pwidth = -1;
   static int pheight = -1;
   static int pfov = -1;
@@ -1433,18 +1240,28 @@ void R_RenderView_fisheye() {
     for(i = 0;i<scrsize*6;i++) scrbufs[i] = 0;
   };
 
+  // get the directions of all the cube map faces
+  vec3_t forward, right, up, back, left, down;
+  AngleVectors(r_refdef.viewangles, forward, right, up);
+  VectorScale(forward, -1, back);
+  VectorScale(right, -1, left);
+  VectorScale(up, -1, down);
+
+  r_refdef.useViewVectors = 1;
+
   switch(views) {
-    case 6:  renderside(scrbufs+scrsize*2,yaw,pitch,roll, BOX_BEHIND);
-    case 5:  renderside(scrbufs+scrsize*5,yaw,pitch,roll, BOX_BOTTOM);
-    case 4:  renderside(scrbufs+scrsize*4,yaw,pitch,roll, BOX_TOP);
-    case 3:  renderside(scrbufs+scrsize*3,yaw,pitch,roll, BOX_LEFT);
-    case 2:  renderside(scrbufs+scrsize,  yaw,pitch,roll, BOX_RIGHT);
-    default: renderside(scrbufs,          yaw,pitch,roll, BOX_FRONT);
+    case 6:  renderside(scrbufs+scrsize*2, BOX_BEHIND, back, left, up);
+
+    // These have to be swapped to correct the math in lookuptable()
+    case 5:  renderside(scrbufs+scrsize*5, BOX_BOTTOM, up, right, back);
+    case 4:  renderside(scrbufs+scrsize*4, BOX_TOP, down, right, forward);
+
+    case 3:  renderside(scrbufs+scrsize*3, BOX_LEFT, left, forward, up);
+    case 2:  renderside(scrbufs+scrsize,   BOX_RIGHT, right, back, up);
+    default: renderside(scrbufs,           BOX_FRONT, forward, right, up);
   };
 
-  r_refdef.viewangles[YAW] = yaw;
-  r_refdef.viewangles[PITCH] = pitch;
-  r_refdef.viewangles[ROLL] = roll;
+  r_refdef.useViewVectors = 0;
   renderlookup(offs,scrbufs);
 
   /*
