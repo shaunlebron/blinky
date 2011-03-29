@@ -1,10 +1,14 @@
-This is a fork of TyrQuake for the purpose of integrating the FishEye mod to work on Linux.  Currently experimenting with different map projections (lenses).
+This is a fork of TyrQuake for the purpose of integrating the FishEye mod to work on Linux.  This makes various improvements to the FishEye mod including:
+  * seamless cube maps
+  * camera rolling
+  * variety of fisheye lenses
+  * status bar display
 
 The following commands are available:
   * ffov (vertical degrees of view)
-  * fmap (0|1|2|3 for gnomonic | azimuthal | cylindrical | stereographic)
+  * fmap (0|1|2|3 for gnomonic | azimuthal | cylindrical | stereographic lenses)
   * fborder (0|1 for drawing the border around the cube map)
-  * sbar_show (0|1 for hiding/showing the status bar)
+  * sbar_show (0|1|2 for the status bar: hidden | health | health+inventory)
 
 
 Fisheye Quake: http://strlen.com/gfxengine/fisheyequake/
