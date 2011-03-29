@@ -47,7 +47,7 @@ static float oldscreensize, oldfov;
 // ORIGINAL:
 // cvar_t scr_viewsize = { "viewsize", "100", true };
 // cvar_t scr_fov = { "fov", "90" };	// 10 - 170
-cvar_t scr_viewsize = { "viewsize_donotmodify", "120", true };
+cvar_t scr_viewsize = { "viewsize_donotmodify", "130" };
 cvar_t scr_fov = { "fov_donotmodify", "90" };	// 10 - 170
 // FISHEYE END EDIT
 

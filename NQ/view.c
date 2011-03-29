@@ -45,7 +45,6 @@ cvar_t ffov = {"ffov", "180", true};
 cvar_t fviews = {"fviews", "6", true};
 cvar_t fmap = {"fmap", "1", true};
 cvar_t fborder = {"fborder", "1", true};
-cvar_t fcolor = {"fcolor", "1", true};
 
 // FISHEYE END EDIT
 
@@ -1040,7 +1039,6 @@ V_Init(void)
 	 Cvar_RegisterVariable (&fviews);
     Cvar_RegisterVariable (&fmap);
     Cvar_RegisterVariable (&fborder);
-    Cvar_RegisterVariable (&fcolor);
     // FISHEYE END EDIT
 }
 
@@ -1237,7 +1235,7 @@ void rendercopy(int *dest) {
   int *p = (int*)vid.buffer;
   int pad = 5;
   int x, y;
-  int color = (int)fcolor.value;
+  int color = -1;
   R_PushDlights();
   R_RenderView();
   int border = (int)fborder.value;
@@ -1353,26 +1351,29 @@ void lookuptable(B **buf, int width, int height, B *scrp, double fov, int map) {
       else               { side = ((sz > 0.0) ? BOX_FRONT : BOX_BEHIND); }
     }
 
-    #define RC(x) ((x / 2.06) + 0.5)
-    #define R2(x) ((x / 2.03) + 0.5)
+    #define R(x) (((x)/2) + 0.5)
 
     // scale up our vector [x,y,z] to the box
     switch(side) {
-      case BOX_FRONT:  xs = RC( sx /  sz); ys = R2( sy /  sz); break;
-      case BOX_BEHIND: xs = RC(-sx / -sz); ys = R2( sy / -sz); break;
-      case BOX_LEFT:   xs = RC( sz / -sx); ys = R2( sy / -sx); break;
-      case BOX_RIGHT:  xs = RC(-sz /  sx); ys = R2( sy /  sx); break;
-      case BOX_TOP:    xs = RC( sx /  sy); ys = R2( sz / -sy); break; //bot
-      case BOX_BOTTOM: xs = RC(-sx /  sy); ys = R2( sz / -sy); break; //top??
+      case BOX_FRONT:  xs = R( sx /  sz); ys = R( sy /  sz); break;
+      case BOX_BEHIND: xs = R(-sx / -sz); ys = R( sy / -sz); break;
+      case BOX_LEFT:   xs = R( sz / -sx); ys = R( sy / -sx); break;
+      case BOX_RIGHT:  xs = R(-sz /  sx); ys = R( sy /  sx); break;
+      case BOX_TOP:    xs = R( sx /  sy); ys = R( sz / -sy); break; //bot
+      case BOX_BOTTOM: xs = R(-sx /  sy); ys = R( sz / -sy); break; //top??
     }
 
-    if (xs <  0.0) xs = 0.0;
-    if (xs >= 1.0) xs = 0.999;
-    if (ys <  0.0) ys = 0.0;
-    if (ys >= 1.0) ys = 0.999;
-    *buf++=scrp+(((int)(xs*(double)width))+
-                 ((int)(ys*(double)height))*width)+
-                 side*width*height;
+    int px = (int)(xs*width);
+    int py = (int)(ys*height);
+
+    // better to check bounds after pixel has been computed
+    // (I think this fixes the strange border artifacts)
+    if (px < 0) px = 0;
+    if (px >= width) px = width - 1;
+    if (py < 0) py = 0;
+    if (py >= height) py = height - 1;
+
+    *buf++ = scrp + (px + py*width) + side*width*height;
   };
 };
 
