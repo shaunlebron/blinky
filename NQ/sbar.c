@@ -31,6 +31,11 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "server.h"
 #include "wad.h"
 
+// FISHEYE BEGIN EDIT
+// ORIGINAL: (N/A)
+cvar_t sbar_show = {"sbar_show", "1", true};
+// FISHEYE END EDIT
+
 int sb_updates;			// if >= vid.numpages, no update needed
 
 #define STAT_MINUS		10	// num frame for '-' stats digit
@@ -264,6 +269,9 @@ Sbar_Init(void)
 	rsb_ammo[1] = Draw_PicFromWad("r_ammomulti");
 	rsb_ammo[2] = Draw_PicFromWad("r_ammoplasma");
     }
+
+    // add a show/hide command for the status bar
+    Cvar_RegisterVariable (&sbar_show);
 }
 
 
@@ -922,7 +930,10 @@ Sbar_Draw(void)
 	Sbar_DrawPic(0, 0, sb_scorebar);
 	Sbar_DrawScoreboard();
 	sb_updates = 0;
-    } else if (sb_lines) {
+   // FISHEYE BEGIN EDIT
+   // ORIGINAL: } else if (sb_lines) {
+    } else if ((int)sbar_show.value) {
+   // FISHEYE END EDIT
 	Sbar_DrawPic(0, 0, sb_sbar);
 
 	// keys (hipnotic only)
