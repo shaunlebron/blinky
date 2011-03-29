@@ -920,7 +920,10 @@ Sbar_Draw(void)
     if (sb_lines && vid.width > 320)
 	Draw_TileClear(0, vid.height - sb_lines, vid.width, sb_lines);
 
-    if (sb_lines > 24) {
+    // FISHEYE BEGIN EDIT
+    // ORIGINAL: if (sb_lines > 24) {
+    if (sb_lines > 24 || (int)sbar_show.value == 2) {
+    // FISHEYE END EDIT
 	Sbar_DrawInventory();
 	if (cl.maxclients != 1)
 	    Sbar_DrawFrags();
