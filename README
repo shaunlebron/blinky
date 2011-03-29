@@ -4,7 +4,7 @@ The following commands are available:
   * ffov (vertical degrees of view)
   * fmap (0|1|2|3 for perspective|azimuthal|cylindrical|stereographic)
   * fborder (0|1 for drawing the border around the cube map)
-  * fcolor (0-2^32 for changing the color of the border, not working too well yet)
+  * sbar_show (0|1 for hiding/showing the status bar)
 
 
 Fisheye Quake: http://strlen.com/gfxengine/fisheyequake/
