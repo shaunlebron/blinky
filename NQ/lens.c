@@ -209,32 +209,36 @@ void updateFovs(int width, int height)
       // just starting, so don't change anchor
    }
    else if (ph != hfov.value)
+   {
       Cvar_SetValue("fov_anchor", FOV_HORIZONTAL);
+   }
    else if (pv != vfov.value)
+   {
       Cvar_SetValue("fov_anchor", FOV_VERTICAL);
+   }
    else if (pd != dfov.value)
+   {
       Cvar_SetValue("fov_anchor", FOV_DIAGONAL);
+   }
    
-   // calculate the degrees per pixel
-   float diag = sqrt(width*width + height*height);
-   float degreesPerPixel;
+   // calculate focal length based on the fov anchor
+   double diag = sqrt(width*width + height*height);
    int anchor = (int)fov_anchor.value;
+   double focal_len;
+   #define FOCAL(range,fov) (double)(range)/2/tan(fov.value/360*M_PI)
    switch (anchor)
    {
-      case FOV_VERTICAL: degreesPerPixel = vfov.value / height; break;
-      case FOV_DIAGONAL: degreesPerPixel = dfov.value / diag; break;
+      case FOV_VERTICAL: focal_len = FOCAL(height, vfov); break;
+      case FOV_DIAGONAL: focal_len = FOCAL(diag, dfov); break;
       case FOV_HORIZONTAL: 
-      default: degreesPerPixel = hfov.value / width; 
+      default: focal_len = FOCAL(width, hfov);
    }
 
-   // clamp the FOV
-   if (degreesPerPixel <= 1.0f / diag || degreesPerPixel >= 360.0f / diag)
-      degreesPerPixel = 90.0f / width;
-
    // update all FOVs to reflect new change
-   Cvar_SetValue("hfov", degreesPerPixel * width);
-   Cvar_SetValue("vfov", degreesPerPixel * height);
-   Cvar_SetValue("dfov", degreesPerPixel * diag);
+   #define FOV(range, focal) atan2((range)/2,(focal))*360/M_PI
+   Cvar_SetValue("hfov", FOV(width, focal_len));
+   Cvar_SetValue("vfov", FOV(height, focal_len));
+   Cvar_SetValue("dfov", FOV(diag, focal_len));
 
    // update previous values for change detection
    ph = hfov.value;
