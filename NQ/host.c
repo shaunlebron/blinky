@@ -26,6 +26,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "host.h"
 #include "input.h"
 #include "keys.h"
+#include "lens.h"
 #include "menu.h"
 #include "net.h"
 #include "protocol.h"
@@ -857,6 +858,8 @@ Host_Init(quakeparms_t *parms)
 	CL_Init();
 
 	IN_Init();
+
+   L_Init();
     }
 
     Hunk_AllocName(0, "-HOST_HUNKLEVEL-");

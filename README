@@ -3,11 +3,14 @@ This is a fork of TyrQuake for the purpose of integrating the FishEye mod to wor
   * camera rolling
   * variety of fisheye lenses
   * status bar display
+  * horizontal, vertical, and diagonal FOV control (changing one will adjust the others)
 
 The following commands are available:
-  * ffov (vertical degrees of view)
-  * fmap (0|1|2|3 for gnomonic | azimuthal | cylindrical | stereographic lenses)
-  * fborder (0|1 for drawing the border around the cube map)
+  * hfov (horizontal FOV)
+  * vfov (vertical FOV)
+  * dfov (diagonal FOV)
+  * lens (0|1|2|3 for gnomonic | azimuthal | cylindrical | stereographic lenses)
+  * lens_grid (0|1 for drawing the border around the cube map)
   * sbar_show (0|1|2 for the status bar: hidden | health | health+inventory)
 
 

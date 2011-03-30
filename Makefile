@@ -387,6 +387,7 @@ NQ_COMMON_C_OBJS = \
 	host.o		\
 	host_cmd.o	\
 	keys.o		\
+   lens.o      \
 	mathlib.o	\
 	menu.o		\
 	net_dgrm.o	\

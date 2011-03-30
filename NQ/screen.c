@@ -43,13 +43,8 @@ float scr_conlines;		// lines of console to display
 
 static float oldscreensize, oldfov;
 
-// FISHEYE BEGIN EDIT:
-// ORIGINAL:
-// cvar_t scr_viewsize = { "viewsize", "100", true };
-// cvar_t scr_fov = { "fov", "90" };	// 10 - 170
-cvar_t scr_viewsize = { "viewsize_donotmodify", "130" };
-cvar_t scr_fov = { "fov_donotmodify", "90" };	// 10 - 170
-// FISHEYE END EDIT
+cvar_t scr_viewsize = { "viewsize", "130", true};
+cvar_t scr_fov = { "fov", "90" };	// 10 - 170
 
 cvar_t scr_conspeed = { "scr_conspeed", "300" };
 cvar_t scr_centertime = { "scr_centertime", "2" };
@@ -260,14 +255,20 @@ SCR_CalcRefdef(void)
 	Cvar_Set("viewsize", "120");
 
 // bound field of view
+    // FISHEYE (Deprecate this fov)
+    /*
     if (scr_fov.value < 10)
 	Cvar_Set("fov", "10");
     if (scr_fov.value > 170)
 	Cvar_Set("fov", "170");
+   */
 
     r_refdef.fov_x = scr_fov.value;
-    r_refdef.fov_y =
-	CalcFov(r_refdef.fov_x, r_refdef.vrect.width, r_refdef.vrect.height);
+    // FISHEYE BEGIN EDIT
+    // r_refdef.fov_y =
+	 // CalcFov(r_refdef.fov_x, r_refdef.vrect.width, r_refdef.vrect.height);
+    r_refdef.fov_y = scr_fov.value;
+    // FISHEYE END EDIT
 
 // intermission is always full screen
     if (cl.intermission)
@@ -340,7 +341,9 @@ SCR_Init
 void
 SCR_Init(void)
 {
-    Cvar_RegisterVariable(&scr_fov);
+    // FISHEYE (Deprecate this fov)
+    //Cvar_RegisterVariable(&scr_fov);
+    scr_fov.value = 90;
     Cvar_RegisterVariable(&scr_viewsize);
     Cvar_RegisterVariable(&scr_conspeed);
     Cvar_RegisterVariable(&scr_showram);

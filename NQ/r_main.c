@@ -417,7 +417,8 @@ R_ViewChanged(vrect_t *pvrect, int lineadj, float aspect)
 	r_refdef.aliasvrect.y + r_refdef.aliasvrect.height;
 
     // FISHEYE BEGIN EDIT:
-    // ORIGINAL: pixelAspect = aspect;
+    // ORIGINAL: 
+    // pixelAspect = aspect;
     pixelAspect = (float)r_refdef.vrect.height/(float)r_refdef.vrect.width;
     // FISHEYE END EDIT
 
