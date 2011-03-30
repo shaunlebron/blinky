@@ -7,10 +7,11 @@
 #include "cvar.h"
 #include "draw.h"
 #include "host.h"
+#include "lens.h"
 #include "quakedef.h"
 #include "screen.h"
+#include "sys.h"
 #include "view.h"
-#include "lens.h"
 
 cvar_t hfov = {"hfov", "180", true};
 cvar_t vfov = {"vfov", "180", true};
@@ -246,12 +247,16 @@ void updateFovs(int width, int height)
    pd = dfov.value;
 }
 
+extern void R_SetupFrame(void);
+extern void R_DrawViewModel(void);
+extern cvar_t r_drawviewmodel;
+
 void L_RenderView() {
 
   int width = vid.width; //r_refdef.vrect.width;
   int height = vid.height; //r_refdef.vrect.height;
   int scrsize = width*height;
-  int views = 6;
+  int views = 5;
 
   updateFovs(width, height);
   double fov = hfov.value;
@@ -297,6 +302,8 @@ void L_RenderView() {
   VectorScale(up, -1, down);
 
   r_refdef.useViewVectors = 1;
+  int backup_viewmodel = r_drawviewmodel.value;
+  r_drawviewmodel.value = 0;
 
   switch(views) {
     case 6:  renderside(scrbufs+scrsize*2, BOX_BEHIND, back, left, up);
@@ -309,6 +316,11 @@ void L_RenderView() {
 
   r_refdef.useViewVectors = 0;
   renderlookup(offs,scrbufs);
+
+  r_drawviewmodel.value = backup_viewmodel;
+  Sys_LowFPPrecision();
+  R_DrawViewModel();
+  Sys_HighFPPrecision();
 
   /*
   static int demonum = 0;
