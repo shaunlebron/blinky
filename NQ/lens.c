@@ -159,7 +159,7 @@ void lookuptable(B **buf, int width, int height, B *scrp, double fov, int map) {
       if (abs_x > abs_z) { side = ((sx > 0.0) ? BOX_RIGHT : BOX_LEFT);   }
       else               { side = ((sz > 0.0) ? BOX_FRONT : BOX_BEHIND); }
     } else {
-      if (abs_y > abs_z) { side = ((sy > 0.0) ? BOX_TOP   : BOX_BOTTOM); }
+      if (abs_y > abs_z) { side = ((sy > 0.0) ? BOX_BOTTOM : BOX_TOP); }
       else               { side = ((sz > 0.0) ? BOX_FRONT : BOX_BEHIND); }
     }
 
@@ -171,8 +171,8 @@ void lookuptable(B **buf, int width, int height, B *scrp, double fov, int map) {
       case BOX_BEHIND: xs = R(-sx / -sz); ys = R( sy / -sz); break;
       case BOX_LEFT:   xs = R( sz / -sx); ys = R( sy / -sx); break;
       case BOX_RIGHT:  xs = R(-sz /  sx); ys = R( sy /  sx); break;
-      case BOX_TOP:    xs = R( sx /  sy); ys = R( sz / -sy); break; //bot
-      case BOX_BOTTOM: xs = R(-sx /  sy); ys = R( sz / -sy); break; //top??
+      case BOX_BOTTOM: xs = R( sx /  sy); ys = R( sz / -sy); break;
+      case BOX_TOP:    xs = R(-sx /  sy); ys = R( sz / -sy); break;
     }
 
     int px = (int)(xs*width);
@@ -300,11 +300,8 @@ void L_RenderView() {
 
   switch(views) {
     case 6:  renderside(scrbufs+scrsize*2, BOX_BEHIND, back, left, up);
-
-    // These have to be swapped to correct the math in lookuptable()
-    case 5:  renderside(scrbufs+scrsize*5, BOX_BOTTOM, up, right, back);
-    case 4:  renderside(scrbufs+scrsize*4, BOX_TOP, down, right, forward);
-
+    case 5:  renderside(scrbufs+scrsize*5, BOX_BOTTOM, down, right, forward);
+    case 4:  renderside(scrbufs+scrsize*4, BOX_TOP, up, right, back);
     case 3:  renderside(scrbufs+scrsize*3, BOX_LEFT, left, forward, up);
     case 2:  renderside(scrbufs+scrsize,   BOX_RIGHT, right, back, up);
     default: renderside(scrbufs,           BOX_FRONT, forward, right, up);
