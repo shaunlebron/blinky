@@ -99,13 +99,10 @@ typedef struct {
     vec3_t viewangles;
 
     // FISHEYE BEGIN EDIT
-    int useViewVectors;
     vec3_t forward;
     vec3_t right;
     vec3_t up;
 
-    float pixelAspect;
-    float screenAspect;
     // FISHEYE END EDIT
 
     float fov_x, fov_y;

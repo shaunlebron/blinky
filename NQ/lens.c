@@ -61,11 +61,6 @@ void fisheyeMap(int width, int height, double fov, double dx, double dy, double 
 
 void cylinderMap(int width, int height, double fov, double dx, double dy, double *sx, double *sy, double *sz)
 {
-    // create forward vector
-    *sx = 0;
-    *sy = 0;
-    *sz = 1;
-
     double az = dx*fov/(double)width;
     double el = -dy*fov/(double)width;
 
@@ -76,11 +71,6 @@ void cylinderMap(int width, int height, double fov, double dx, double dy, double
 
 void perspectiveMap(int width, int height, double fov, double dx, double dy, double *sx, double *sy, double *sz)
 {
-    // create forward vector
-    *sx = 0;
-    *sy = 0;
-    *sz = 1;
-
     double a = (double)width/2/tan(fov/2);
 
     double x = dx;
@@ -105,33 +95,6 @@ void stereographicMap(int width, int height, double fov, double dx, double dy, d
     *sy = -dy * t / rad;
     *sz = (-rad + diam * t) / rad;
 }
-
-void rendercopy(int *dest) {
-  int *p = (int*)vid.buffer;
-  int pad = 3;
-  int x, y;
-  int color = -1;
-  R_PushDlights();
-  R_RenderView();
-  int border = (int)lens_grid.value;
-  for(y = 0;y<vid.height;y++) {
-    for(x = 0;x<(vid.width/4);x++,dest++) {
-      int isborder = y<=pad || y+pad >= vid.height || x <= pad || x+pad>=vid.width/4;
-      *dest = (border && isborder) ? color : p[x];
-    } 
-
-    p += (vid.rowbytes/4);
-  };
-};
-
-void renderlookup(B **offs, B* bufs) {
-  B *p = (B*)vid.buffer;
-  int x, y;
-  for(y = 0;y<vid.height;y++) {
-    for(x = 0;x<vid.width;x++,offs++) p[x] = **offs;
-    p += vid.rowbytes;
-  };
-};
 
 void lookuptable(B **buf, int width, int height, B *scrp, double fov, int map) {
   int x, y;
@@ -188,12 +151,29 @@ void lookuptable(B **buf, int width, int height, B *scrp, double fov, int map) {
   };
 };
 
+void renderlookup(B **offs, B* bufs) {
+  int x, y;
+  for(y = 0;y<scr_vrect.height;y++) {
+    for(x = 0;x<scr_vrect.width;x++,offs++) 
+       vid.buffer[scr_vrect.x+x+(y+scr_vrect.y)*vid.rowbytes] = **offs;
+  }
+}
+
 void renderside(B* bufs, int side, vec3_t forward, vec3_t right, vec3_t up) {
+  int y;
   VectorCopy(forward, r_refdef.forward);
   VectorCopy(right, r_refdef.right);
   VectorCopy(up, r_refdef.up);
-  rendercopy((int *)bufs);
-};
+
+  B *p = vid.buffer + scr_vrect.x + scr_vrect.y*vid.rowbytes;
+  R_PushDlights();
+  R_RenderView();
+  for(y = 0;y<scr_vrect.height;y++) {
+     memcpy(bufs, p, scr_vrect.width);
+     p += vid.rowbytes;
+     bufs += scr_vrect.width;
+  }
+}
 
 //extern int istimedemo;
 
@@ -253,8 +233,8 @@ extern cvar_t r_drawviewmodel;
 
 void L_RenderView() {
 
-  int width = vid.width; //r_refdef.vrect.width;
-  int height = vid.height; //r_refdef.vrect.height;
+  int width = scr_vrect.width; 
+  int height = scr_vrect.height;
   int scrsize = width*height;
   int views = 5;
 
@@ -300,18 +280,6 @@ void L_RenderView() {
   VectorScale(forward, -1, back);
   VectorScale(right, -1, left);
   VectorScale(up, -1, down);
-  
-
-  r_refdef.useViewVectors = 1;
-
-  // prepare render settings for the cube faces
-  r_refdef.fov_x = 90;
-  r_refdef.pixelAspect = (float)r_refdef.vrect.height/(float)r_refdef.vrect.width;
-  r_refdef.screenAspect = 1.0;
-  R_ViewChanged(&r_refdef.vrect, 0,0);
-  
-  int backup_viewmodel = r_drawviewmodel.value;
-  r_drawviewmodel.value = 0;
 
   switch(views) {
     case 6:  renderside(scrbufs+scrsize*2, BOX_BEHIND, back, left, up);
@@ -322,20 +290,7 @@ void L_RenderView() {
     default: renderside(scrbufs,           BOX_FRONT, forward, right, up);
   };
 
-  r_refdef.useViewVectors = 0;
   renderlookup(offs,scrbufs);
-
-  r_drawviewmodel.value = backup_viewmodel;
-
-  // prepare render settings for the view model
-  r_refdef.fov_x = 90;
-  r_refdef.pixelAspect = 1.0;
-  r_refdef.screenAspect = r_refdef.vrect.width * r_refdef.pixelAspect / r_refdef.vrect.height;
-  R_ViewChanged(&r_refdef.vrect, 0,0);
-
-  Sys_LowFPPrecision();
-  R_DrawViewModel();
-  Sys_HighFPPrecision();
 
   /*
   static int demonum = 0;

@@ -267,6 +267,7 @@ SCR_CalcRefdef(void)
 	 // CalcFov(r_refdef.fov_x, r_refdef.vrect.width, r_refdef.vrect.height);
     r_refdef.fov_y = scr_fov.value;
     */
+    r_refdef.fov_x = 90;
 
 // intermission is always full screen
     if (cl.intermission)
@@ -289,6 +290,7 @@ SCR_CalcRefdef(void)
     vrect.height = vid.height;
 
     R_SetVrect(&vrect, &scr_vrect, sb_lines);
+
 
 // guard against going from one mode to another that's less than half the
 // vertical resolution

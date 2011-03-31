@@ -416,21 +416,13 @@ R_ViewChanged(vrect_t *pvrect, int lineadj, float aspect)
     r_refdef.aliasvrectbottom =
 	r_refdef.aliasvrect.y + r_refdef.aliasvrect.height;
 
-    // FISHEYE BEGIN EDIT:
-    // ORIGINAL: 
-    // pixelAspect = aspect;
-    //pixelAspect = (float)r_refdef.vrect.height/(float)r_refdef.vrect.width;
-    pixelAspect = r_refdef.pixelAspect;
-    // FISHEYE END EDIT
+    //pixelAspect = aspect;
+    pixelAspect = (float)r_refdef.vrect.height / r_refdef.vrect.width;
 
     xOrigin = r_refdef.xOrigin;
     yOrigin = r_refdef.yOrigin;
 
-    // FISHEYE BEGIN EDIT:
-    // ORIGINAL: screenAspect = r_refdef.vrect.width * pixelAspect / r_refdef.vrect.height;
-    //screenAspect = 1.0;
-    screenAspect = r_refdef.screenAspect;
-    // FISHEYE END EDIT
+    screenAspect = r_refdef.vrect.width * pixelAspect / r_refdef.vrect.height;
 
 // 320*200 1.0 pixelAspect = 1.6 screenAspect
 // 320*240 1.0 pixelAspect = 1.3333 screenAspect
@@ -635,7 +627,6 @@ R_DrawEntitiesOnList(void)
 R_DrawViewModel
 =============
 */
-// FISHEYE: removed static so we can draw this from lens.c
 void
 R_DrawViewModel(void)
 {
