@@ -950,9 +950,9 @@ V_RenderView(void)
 	    V_CalcRefdef();
     }
 
-    R_PushDlights();
     // FISHEYE BEGIN EDIT
     // ORIGINAL:
+    //R_PushDlights();
     // R_RenderView();
     L_RenderView();
     // FISHEYE END EDIT
