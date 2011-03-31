@@ -261,14 +261,12 @@ SCR_CalcRefdef(void)
 	Cvar_Set("fov", "10");
     if (scr_fov.value > 170)
 	Cvar_Set("fov", "170");
-   */
 
     r_refdef.fov_x = scr_fov.value;
-    // FISHEYE BEGIN EDIT
     // r_refdef.fov_y =
 	 // CalcFov(r_refdef.fov_x, r_refdef.vrect.width, r_refdef.vrect.height);
     r_refdef.fov_y = scr_fov.value;
-    // FISHEYE END EDIT
+    */
 
 // intermission is always full screen
     if (cl.intermission)
@@ -343,7 +341,6 @@ SCR_Init(void)
 {
     // FISHEYE (Deprecate this fov)
     //Cvar_RegisterVariable(&scr_fov);
-    scr_fov.value = 90;
     Cvar_RegisterVariable(&scr_viewsize);
     Cvar_RegisterVariable(&scr_conspeed);
     Cvar_RegisterVariable(&scr_showram);
@@ -858,10 +855,12 @@ SCR_UpdateScreen(void)
 //
 // check for vid changes
 //
+    /*
     if (oldfov != scr_fov.value) {
 	oldfov = scr_fov.value;
 	vid.recalc_refdef = true;
     }
+    */
 
     if (oldscreensize != scr_viewsize.value) {
 	oldscreensize = scr_viewsize.value;

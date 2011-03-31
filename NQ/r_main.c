@@ -61,7 +61,7 @@ int r_clipflags;
 byte *r_warpbuffer;
 
 static byte *r_stack_start;
-static qboolean r_fov_greater_than_90;
+//static qboolean r_fov_greater_than_90;
 
 entity_t r_worldentity;
 
@@ -419,7 +419,8 @@ R_ViewChanged(vrect_t *pvrect, int lineadj, float aspect)
     // FISHEYE BEGIN EDIT:
     // ORIGINAL: 
     // pixelAspect = aspect;
-    pixelAspect = (float)r_refdef.vrect.height/(float)r_refdef.vrect.width;
+    //pixelAspect = (float)r_refdef.vrect.height/(float)r_refdef.vrect.width;
+    pixelAspect = r_refdef.pixelAspect;
     // FISHEYE END EDIT
 
     xOrigin = r_refdef.xOrigin;
@@ -427,7 +428,8 @@ R_ViewChanged(vrect_t *pvrect, int lineadj, float aspect)
 
     // FISHEYE BEGIN EDIT:
     // ORIGINAL: screenAspect = r_refdef.vrect.width * pixelAspect / r_refdef.vrect.height;
-    screenAspect = 1.0;
+    //screenAspect = 1.0;
+    screenAspect = r_refdef.screenAspect;
     // FISHEYE END EDIT
 
 // 320*200 1.0 pixelAspect = 1.6 screenAspect
@@ -494,10 +496,12 @@ R_ViewChanged(vrect_t *pvrect, int lineadj, float aspect)
     r_aliastransition = r_aliastransbase.value * res_scale;
     r_resfudge = r_aliastransadj.value * res_scale;
 
+    /*
     if (scr_fov.value <= 90.0)
 	r_fov_greater_than_90 = false;
     else
 	r_fov_greater_than_90 = true;
+   */
 
 // TODO: collect 386-specific code in one place
 #ifdef USE_X86_ASM
@@ -631,7 +635,8 @@ R_DrawEntitiesOnList(void)
 R_DrawViewModel
 =============
 */
-static void
+// FISHEYE: removed static so we can draw this from lens.c
+void
 R_DrawViewModel(void)
 {
 // FIXME: remove and do real lighting

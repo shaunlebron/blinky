@@ -300,8 +300,16 @@ void L_RenderView() {
   VectorScale(forward, -1, back);
   VectorScale(right, -1, left);
   VectorScale(up, -1, down);
+  
 
   r_refdef.useViewVectors = 1;
+
+  // prepare render settings for the cube faces
+  r_refdef.fov_x = 90;
+  r_refdef.pixelAspect = (float)r_refdef.vrect.height/(float)r_refdef.vrect.width;
+  r_refdef.screenAspect = 1.0;
+  R_ViewChanged(&r_refdef.vrect, 0,0);
+  
   int backup_viewmodel = r_drawviewmodel.value;
   r_drawviewmodel.value = 0;
 
@@ -318,6 +326,13 @@ void L_RenderView() {
   renderlookup(offs,scrbufs);
 
   r_drawviewmodel.value = backup_viewmodel;
+
+  // prepare render settings for the view model
+  r_refdef.fov_x = 90;
+  r_refdef.pixelAspect = 1.0;
+  r_refdef.screenAspect = r_refdef.vrect.width * r_refdef.pixelAspect / r_refdef.vrect.height;
+  R_ViewChanged(&r_refdef.vrect, 0,0);
+
   Sys_LowFPPrecision();
   R_DrawViewModel();
   Sys_HighFPPrecision();
