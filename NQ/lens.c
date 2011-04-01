@@ -58,6 +58,9 @@ typedef int (*map_t)(double dx, double dy, vec3_t ray);
 int fisheyeMap(double dx, double dy, vec3_t ray)
 {
     double yaw = sqrt(dx*dx+dy*dy)*fov/((double)width);
+    if (yaw > M_PI)
+       return 0;
+
     double roll = -atan2(dy,dx);
 
     ray[0] = sin(yaw) * cos(roll);
@@ -71,6 +74,11 @@ int cylinderMap(double dx, double dy, vec3_t ray)
 {
     double az = dx*fov/(double)width;
     double el = -dy*fov/(double)width;
+    if (el < -M_PI/2 || el > M_PI/2)
+       return 0;
+
+    if (az < -M_PI || az > M_PI)
+       return 0;
 
     ray[0] = sin(az)*cos(el);
     ray[1] = sin(el);
@@ -293,7 +301,7 @@ void L_RenderView() {
   width = scr_vrect.width; 
   height = scr_vrect.height;
   int scrsize = width*height;
-  int views = 5;
+  int views = 6;
 
   // update FOVs
   fov = hfov.value * M_PI / 180;
