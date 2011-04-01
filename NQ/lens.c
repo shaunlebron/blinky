@@ -8,6 +8,7 @@
 #include "draw.h"
 #include "host.h"
 #include "lens.h"
+#include "mathlib.h"
 #include "quakedef.h"
 #include "screen.h"
 #include "sys.h"
@@ -49,27 +50,36 @@ typedef unsigned char B;
 #define FOV_VERTICAL   1
 #define FOV_DIAGONAL   2
 
-void fisheyeMap(int width, int height, double fov, double dx, double dy, double *sx, double *sy, double *sz)
+static int width, height;
+static double fov;
+
+typedef int (*map_t)(double dx, double dy, vec3_t ray);
+
+int fisheyeMap(double dx, double dy, vec3_t ray)
 {
     double yaw = sqrt(dx*dx+dy*dy)*fov/((double)width);
     double roll = -atan2(dy,dx);
 
-    *sx = sin(yaw) * cos(roll);
-    *sy = sin(yaw) * sin(roll);
-    *sz = cos(yaw);
+    ray[0] = sin(yaw) * cos(roll);
+    ray[1] = sin(yaw) * sin(roll);
+    ray[2] = cos(yaw);
+
+    return 1;
 }
 
-void cylinderMap(int width, int height, double fov, double dx, double dy, double *sx, double *sy, double *sz)
+int cylinderMap(double dx, double dy, vec3_t ray)
 {
     double az = dx*fov/(double)width;
     double el = -dy*fov/(double)width;
 
-    *sx = sin(az)*cos(el);
-    *sy = sin(el);
-    *sz = cos(az)*cos(el);
+    ray[0] = sin(az)*cos(el);
+    ray[1] = sin(el);
+    ray[2] = cos(az)*cos(el);
+
+    return 1;
 }
 
-void perspectiveMap(int width, int height, double fov, double dx, double dy, double *sx, double *sy, double *sz)
+int perspectiveMap(double dx, double dy, vec3_t ray)
 {
     double a = (double)width/2/tan(fov/2);
 
@@ -79,41 +89,75 @@ void perspectiveMap(int width, int height, double fov, double dx, double dy, dou
 
     double len = sqrt(x*x+y*y+z*z);
 
-    *sx = x/len;
-    *sy = y/len;
-    *sz = z/len;
+    ray[0] = x/len;
+    ray[1] = y/len;
+    ray[2] = z/len;
+
+    return 1;
 }
 
-void stereographicMap(int width, int height, double fov, double dx, double dy, double *sx, double *sy, double *sz)
+int stereographicMap(double dx, double dy, vec3_t ray)
 {
-    double diam = (double)width/2 / tan(fov/4);
-    double rad = diam/2;
+    double r = (double)width/(4*tan(fov/4));
+    dx /= r;
+    dy /= r;
 
-    double t = 2*rad*diam / (dx*dx + dy*dy + diam*diam);
+    double t = 4 / (dx*dx + dy*dy + 4);
 
-    *sx = dx * t / rad;
-    *sy = -dy * t / rad;
-    *sz = (-rad + diam * t) / rad;
+    ray[0] = dx * t;
+    ray[1] = -dy * t;
+    ray[2] = 2*t-1;
+
+    return 1;
 }
 
-void lookuptable(B **buf, int width, int height, B *scrp, double fov, int map) {
+int equisolidMap(double dx, double dy, vec3_t ray)
+{
+   double cfov = fov <= 2*M_PI ? fov : 2*M_PI;
+   double r = (double)width/4 / sin(cfov/4);
+   dx /= r;
+   dy /= r;
+
+   double len = sqrt(dx*dx+dy*dy);
+   if (len > 2)
+      return 0;
+
+   double a = asin(len/2);
+
+   vec3_t in = { dx, dy, 0};
+   vec3_t axis = { dy/len, -dx/len, 0};
+   
+   RotatePointAroundVector(ray, axis, in, -a*180/M_PI);
+   ray[1] *= -1;
+   ray[2] += 1;
+
+   return 1;
+}
+
+static map_t maps[] = {
+   perspectiveMap,
+   fisheyeMap,
+   cylinderMap,
+   stereographicMap,
+   equisolidMap
+};
+
+void lookuptable(B **buf, B *scrp, int map) {
   int x, y;
   for(y = 0;y<height;y++) for(x = 0;x<width;x++) {
     double dx = x-width/2;
     double dy = -(y-height/2);
 
     // map the current window coordinate to a ray vector
-    double sx, sy, sz;
-    switch (map)
+    vec3_t ray;
+    if (!maps[map](dx,dy,ray))
     {
-       case 0: perspectiveMap(width, height, fov, dx, dy, &sx, &sy, &sz); break;
-       case 1: fisheyeMap(width, height, fov, dx, dy, &sx, &sy, &sz); break;
-       case 2: cylinderMap(width, height, fov, dx, dy, &sx, &sy, &sz); break;
-       case 3: 
-       default: stereographicMap(width, height, fov, dx, dy, &sx, &sy, &sz);
+       *buf++ = 0;
+       continue;
     }
 
     // determine which side of the box we need
+    double sx = ray[0], sy = ray[1], sz = ray[2];
     double abs_x = fabs(sx);
     double abs_y = fabs(sy);
     double abs_z = fabs(sz);			
@@ -155,7 +199,8 @@ void renderlookup(B **offs, B* bufs) {
   int x, y;
   for(y = 0;y<scr_vrect.height;y++) {
     for(x = 0;x<scr_vrect.width;x++,offs++) 
-       vid.buffer[scr_vrect.x+x+(y+scr_vrect.y)*vid.rowbytes] = **offs;
+       if (*offs)
+         vid.buffer[scr_vrect.x+x+(y+scr_vrect.y)*vid.rowbytes] = **offs;
   }
 }
 
@@ -177,8 +222,10 @@ void renderside(B* bufs, int side, vec3_t forward, vec3_t right, vec3_t up) {
 
 //extern int istimedemo;
 
-void updateFovs(int width, int height)
+void updateFovs()
 {
+   // TODO: fix this; vertical|diagonal FOVs rely on knowledge of the type of projection (this only applies to horizontal gnomonic)
+
    // previous FOV values
    static double ph = -1;
    static double pv = -1;
@@ -192,21 +239,24 @@ void updateFovs(int width, int height)
    else if (ph != hfov.value)
    {
       Cvar_SetValue("fov_anchor", FOV_HORIZONTAL);
+      Con_Printf("setting horizontal anchor");
    }
    else if (pv != vfov.value)
    {
       Cvar_SetValue("fov_anchor", FOV_VERTICAL);
+      Con_Printf("setting vertical anchor");
    }
    else if (pd != dfov.value)
    {
       Cvar_SetValue("fov_anchor", FOV_DIAGONAL);
+      Con_Printf("setting diagonal anchor");
    }
    
    // calculate focal length based on the fov anchor
    double diag = sqrt(width*width + height*height);
    int anchor = (int)fov_anchor.value;
    double focal_len;
-   #define FOCAL(range,fov) (double)(range)/2/tan(fov.value/360*M_PI)
+   #define FOCAL(range,f) (double)(range)/2/tan(f.value/360*M_PI)
    switch (anchor)
    {
       case FOV_VERTICAL: focal_len = FOCAL(height, vfov); break;
@@ -216,7 +266,7 @@ void updateFovs(int width, int height)
    }
 
    // update all FOVs to reflect new change
-   #define FOV(range, focal) atan2((range)/2,(focal))*360/M_PI
+   #define FOV(range, focal) atan2((double)(range)/2,(focal))*360/M_PI
    Cvar_SetValue("hfov", FOV(width, focal_len));
    Cvar_SetValue("vfov", FOV(height, focal_len));
    Cvar_SetValue("dfov", FOV(diag, focal_len));
@@ -233,25 +283,35 @@ extern cvar_t r_drawviewmodel;
 
 void L_RenderView() {
 
-  int width = scr_vrect.width; 
-  int height = scr_vrect.height;
-  int scrsize = width*height;
-  int views = 5;
-
-  updateFovs(width, height);
-  double fov = hfov.value;
-  int map = (int)lens.value;
-
   static int pwidth = -1;
   static int pheight = -1;
   static int pmap = -1;
-  static float pfov = -1;
+  static float pfovd = -1;
   static int pviews = -1;
+
+  // update screen size
+  width = scr_vrect.width; 
+  height = scr_vrect.height;
+  int scrsize = width*height;
+  int views = 5;
+
+  // update FOVs
+  fov = hfov.value * M_PI / 180;
+  double fovd = hfov.value;
+
+  // update Map
+  int map = (int)lens.value;
+  int numMaps = sizeof(maps) / sizeof(map_t);
+  if (map < 0 || map >= numMaps)
+  {
+     map = pmap == -1 ? 0 : pmap;
+     Cvar_SetValue("lens", map);
+  }
 
   static B *scrbufs = NULL;  
   static B **offs = NULL;
 
-  if(pwidth!=width || pheight!=height || pfov!=fov || pmap!=map) {
+  if(pwidth!=width || pheight!=height || pfovd!=fovd || pmap!=map) {
 
     if(scrbufs) free(scrbufs);
     if(offs) free(offs);
@@ -260,19 +320,13 @@ void L_RenderView() {
     offs = (B**)malloc(scrsize*sizeof(B*));
     if(!scrbufs || !offs) exit(1); // the rude way
 
-    pwidth = width;
-    pheight = height;
-    pfov = fov;
-    pmap = map;
-
-    lookuptable(offs,width,height,scrbufs,fov*M_PI/180.0, map);
-  };
+    lookuptable(offs,scrbufs, map);
+  }
 
   if(views!=pviews) {
     int i;
-    pviews = views;
     for(i = 0;i<scrsize*6;i++) scrbufs[i] = 0;
-  };
+  }
 
   // get the directions of all the cube map faces
   vec3_t forward, right, up, back, left, down;
@@ -288,9 +342,16 @@ void L_RenderView() {
     case 3:  renderside(scrbufs+scrsize*3, BOX_LEFT, left, forward, up);
     case 2:  renderside(scrbufs+scrsize,   BOX_RIGHT, right, back, up);
     default: renderside(scrbufs,           BOX_FRONT, forward, right, up);
-  };
+  }
 
+  Draw_TileClear(0, 0, vid.width, vid.height);
   renderlookup(offs,scrbufs);
+
+    pwidth = width;
+    pheight = height;
+    pfovd = fovd;
+    pmap = map;
+    pviews = views;
 
   /*
   static int demonum = 0;
@@ -303,5 +364,5 @@ void L_RenderView() {
     demonum = 0;
   }
   */
-};
+}
 
