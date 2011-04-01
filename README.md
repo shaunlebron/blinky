@@ -7,13 +7,10 @@ This is a fork of [TyrQuake](http://disenchant.net/engine.html) integrated with 
 * camera rolling
 * viewsize adjustment with status bar
 * variety of fisheye lenses
-* horizontal, vertical, and diagonal FOV control (changing one will adjust the others)
 
 #### Commands
-    lens <0|1|2|3>
+    lens <0|1|2|3|4>
     hfov <horizontal degrees>
-    vfov <vertical degrees>
-    dfov <diagonal degrees>
 
 Lens Types:
 
@@ -21,3 +18,4 @@ Lens Types:
 1. Azimuthal Equidistant (original fisheye)
 2. Equidistant Cylindrical
 3. Stereographic (another fisheye with less distortion)
+4. Equisolid (glass ball)
