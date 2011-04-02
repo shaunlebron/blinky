@@ -14,35 +14,17 @@
 #include "sys.h"
 #include "view.h"
 
-cvar_t hfov = {"hfov", "180", true};
-cvar_t vfov = {"vfov", "180", true};
-cvar_t dfov = {"dfov", "180", true};
-cvar_t fov_anchor = {"fov_anchor", "0", true};
-cvar_t lens = {"lens", "1", true};
-cvar_t lens_grid = {"lens_grid", "1", true};
-
-void L_Help()
-{
-   Con_Printf("hello");
-}
-
-void L_Init(void)
-{
-    Cmd_AddCommand("lens_help", L_Help);
-	 Cvar_RegisterVariable (&hfov);
-	 Cvar_RegisterVariable (&vfov);
-	 Cvar_RegisterVariable (&dfov);
-	 Cvar_RegisterVariable (&fov_anchor);
-    Cvar_RegisterVariable (&lens);
-    Cvar_RegisterVariable (&lens_grid);
-}
+cvar_t l_hfov = {"hfov", "90", true};
+cvar_t l_vfov = {"vfov", "-1", true};
+cvar_t l_dfov = {"dfov", "-1", true};
+cvar_t l_lens = {"lens", "0", true};
 
 typedef unsigned char B;
 
 #define BOX_FRONT  0
+#define BOX_RIGHT  1
 #define BOX_BEHIND 2
 #define BOX_LEFT   3
-#define BOX_RIGHT  1
 #define BOX_TOP    4
 #define BOX_BOTTOM 5
 
@@ -50,34 +32,137 @@ typedef unsigned char B;
 #define FOV_VERTICAL   1
 #define FOV_DIAGONAL   2
 
-static int width, height;
+static int left, top;
+static int width, height, diag;
 static double fov;
+static int lens;
+static int* framesize;
+static int views = 6;
 
-typedef int (*map_t)(double dx, double dy, vec3_t ray);
+// retrieves a pointer to a pixel in the video buffer
+#define VBUFFER(x,y) (vid.buffer + (x) + (y)*vid.rowbytes)
 
-int fisheyeMap(double dx, double dy, vec3_t ray)
+// retrieves a pointer to a pixel in a designated cubemap face
+#define CUBEFACE(side,x,y) (cubemap + (side)*width*height + (x) + (y)*width)
+
+void L_Help()
 {
-    double yaw = sqrt(dx*dx+dy*dy)*fov/((double)width);
-    if (yaw > M_PI)
-       return 0;
-
-    double roll = -atan2(dy,dx);
-
-    ray[0] = sin(yaw) * cos(roll);
-    ray[1] = sin(yaw) * sin(roll);
-    ray[2] = cos(yaw);
-
-    return 1;
 }
 
-int cylinderMap(double dx, double dy, vec3_t ray)
+void L_Init(void)
 {
-    double az = dx*fov/(double)width;
-    double el = -dy*fov/(double)width;
-    if (el < -M_PI/2 || el > M_PI/2)
-       return 0;
+    Cmd_AddCommand("lenses", L_Help);
+	 Cvar_RegisterVariable (&l_hfov);
+	 Cvar_RegisterVariable (&l_vfov);
+	 Cvar_RegisterVariable (&l_dfov);
+    Cvar_RegisterVariable (&l_lens);
+}
 
-    if (az < -M_PI || az > M_PI)
+// lens function takes a 2d coordinate (screen-centered origin) and returns a 3d ray
+typedef int (*lens_t)(double x, double y, vec3_t ray);
+
+// FISHEYE HELPERS
+#define HALF_FRAME ((double)(*framesize)/2)
+#define HALF_FOV (fov/2)
+#define R (sqrt(x*x+y*y))
+#define CalcRay \
+   double s = sin(el); \
+   double c = cos(el); \
+   ray[0] = x/r * s; \
+   ray[1] = y/r * s; \
+   ray[2] = c;
+
+int equidistant(double x, double y, vec3_t ray)
+{
+   // r = f*theta
+
+   double r = R;
+   double f = HALF_FRAME / HALF_FOV;
+   double el = r/f;
+
+   if (el > M_PI)
+      return 0;
+
+   CalcRay;
+   return 1;
+}
+
+int equisolid(double x, double y, vec3_t ray)
+{
+   // r = 2*f*sin(theta/2)
+
+   if (HALF_FOV > M_PI)
+      return 0;
+
+   double r = R;
+   double f = HALF_FRAME / (2*sin(HALF_FOV/2));
+   double maxr = 2*f*sin(M_PI/2);
+   if (r > maxr)
+      return 0;
+
+   double el = 2*asin(r/(2*f));
+
+   CalcRay;
+   return 1;
+}
+
+int stereographic(double x, double y, vec3_t ray)
+{
+   // r = 2f*tan(theta/2)
+
+   if (HALF_FOV > M_PI)
+      return 0;
+
+   double r = R;
+   double f = HALF_FRAME / (2 * tan(HALF_FOV/2));
+   double el = 2*atan2(r,2*f);
+
+   if (el > M_PI)
+      return 0;
+
+   CalcRay;
+   return 1;
+}
+
+int gnomonic(double x, double y, vec3_t ray)
+{
+   // r = f*tan(theta)
+
+   if (HALF_FOV > M_PI/2)
+      return 0;
+
+   double r = R;
+   double f = HALF_FRAME / tan(HALF_FOV);
+   double el = atan2(r,f);
+
+   CalcRay;
+   return 1;
+}
+
+int orthogonal(double x, double y, vec3_t ray)
+{
+   // r = f*sin(theta)
+
+   if (HALF_FOV > M_PI/2)
+      return 0;
+
+   double r = R;
+   double f = HALF_FRAME / sin(HALF_FOV);
+   double maxr = f*sin(M_PI/2);
+   if (r > f)
+      return 0;
+
+   double el = asin(r/f);
+
+   CalcRay;
+   return 1;
+}
+
+int equirectangular(double x, double y, vec3_t ray)
+{
+    double az = x*fov/(2*HALF_FRAME);
+    double el = y*fov/(2*HALF_FRAME);
+    if (el < -M_PI/2 || el > M_PI/2 || az < -M_PI || az > M_PI)
        return 0;
 
     ray[0] = sin(az)*cos(el);
@@ -87,82 +172,40 @@ int cylinderMap(double dx, double dy, vec3_t ray)
     return 1;
 }
 
-int perspectiveMap(double dx, double dy, vec3_t ray)
-{
-    double a = (double)width/2/tan(fov/2);
-
-    double x = dx;
-    double y = -dy;
-    double z = a;
-
-    double len = sqrt(x*x+y*y+z*z);
-
-    ray[0] = x/len;
-    ray[1] = y/len;
-    ray[2] = z/len;
-
-    return 1;
-}
-
-int stereographicMap(double dx, double dy, vec3_t ray)
-{
-    double r = (double)width/(4*tan(fov/4));
-    dx /= r;
-    dy /= r;
-
-    double t = 4 / (dx*dx + dy*dy + 4);
-
-    ray[0] = dx * t;
-    ray[1] = -dy * t;
-    ray[2] = 2*t-1;
-
-    return 1;
-}
-
-int equisolidMap(double dx, double dy, vec3_t ray)
-{
-   double cfov = fov <= 2*M_PI ? fov : 2*M_PI;
-   double r = (double)width/4 / sin(cfov/4);
-   dx /= r;
-   dy /= r;
-
-   double len = sqrt(dx*dx+dy*dy);
-   if (len > 2)
-      return 0;
-
-   double a = asin(len/2);
-
-   vec3_t in = { dx, dy, 0};
-   vec3_t axis = { dy/len, -dx/len, 0};
-   
-   RotatePointAroundVector(ray, axis, in, -a*180/M_PI);
-   ray[1] *= -1;
-   ray[2] += 1;
-
-   return 1;
-}
-
-static map_t maps[] = {
-   perspectiveMap,
-   fisheyeMap,
-   cylinderMap,
-   stereographicMap,
-   equisolidMap
+static lens_t lenses[] = {
+   gnomonic,
+   equidistant,
+   equisolid,
+   stereographic,
+   orthogonal,
+   equirectangular,
 };
 
-void lookuptable(B **buf, B *scrp, int map) {
+void create_lensmap(B **lensmap, B *cubemap)
+{
+  views=0;
+  int side_count[] = {0,0,0,0,0,0};
+
   int x, y;
-  for(y = 0;y<height;y++) for(x = 0;x<width;x++) {
-    double dx = x-width/2;
-    double dy = -(y-height/2);
+  for(y = 0;y<height;y++) 
+   for(x = 0;x<width;x++) {
+    double x0 = x-width/2;
+    double y0 = -(y-height/2);
 
     // map the current window coordinate to a ray vector
-    vec3_t ray;
-    if (!maps[map](dx,dy,ray))
+    vec3_t ray = { 0, 0, 1};
+    if (x==width/2 && y == height/2)
     {
-       *buf++ = 0;
+    }
+    else if (!lenses[lens](x0,y0,ray))
+    {
+       // pixel is outside projection
+       *lensmap++ = 0;
        continue;
     }
+
+    // FIXME: strange negative y anomaly
+    ray[1] *= -1;
 
     // determine which side of the box we need
     double sx = ray[0], sy = ray[1], sz = ray[2];
@@ -179,198 +222,189 @@ void lookuptable(B **buf, B *scrp, int map) {
       else               { side = ((sz > 0.0) ? BOX_FRONT : BOX_BEHIND); }
     }
 
-    #define R(x) (((x)/2) + 0.5)
+    #define T(x) (((x)/2) + 0.5)
 
     // scale up our vector [x,y,z] to the box
     switch(side) {
-      case BOX_FRONT:  xs = R( sx /  sz); ys = R( sy /  sz); break;
-      case BOX_BEHIND: xs = R(-sx / -sz); ys = R( sy / -sz); break;
-      case BOX_LEFT:   xs = R( sz / -sx); ys = R( sy / -sx); break;
-      case BOX_RIGHT:  xs = R(-sz /  sx); ys = R( sy /  sx); break;
-      case BOX_BOTTOM: xs = R( sx /  sy); ys = R( sz / -sy); break;
-      case BOX_TOP:    xs = R(-sx /  sy); ys = R( sz / -sy); break;
+      case BOX_FRONT:  xs = T( sx /  sz); ys = T( sy /  sz); break;
+      case BOX_BEHIND: xs = T(-sx / -sz); ys = T( sy / -sz); break;
+      case BOX_LEFT:   xs = T( sz / -sx); ys = T( sy / -sx); break;
+      case BOX_RIGHT:  xs = T(-sz /  sx); ys = T( sy /  sx); break;
+      case BOX_BOTTOM: xs = T( sx /  sy); ys = T( sz / -sy); break;
+      case BOX_TOP:    xs = T(-sx /  sy); ys = T( sz / -sy); break;
     }
+    side_count[side]++;
 
+    // convert to face coordinates
     int px = (int)(xs*width);
     int py = (int)(ys*height);
 
+    // clamp coordinates
     if (px < 0) px = 0;
     if (px >= width) px = width - 1;
     if (py < 0) py = 0;
     if (py >= height) py = height - 1;
 
-    *buf++ = scrp + (px + py*width) + side*width*height;
-  };
-};
-
-void renderlookup(B **offs, B* bufs) {
-  int x, y;
-  for(y = 0;y<scr_vrect.height;y++) {
-    for(x = 0;x<scr_vrect.width;x++,offs++) 
-       if (*offs)
-         vid.buffer[scr_vrect.x+x+(y+scr_vrect.y)*vid.rowbytes] = **offs;
+    // map lens pixel to cubeface pixel
+    *lensmap++ = CUBEFACE(side,px,py);
   }
+
+  //Con_Printf("cubemap side usage count:\n");
+  for(x=0; x<6; ++x)
+  {
+     //Con_Printf("   %d: %d\n",x,side_count[x]);
+     if (side_count[x] > width)
+        views++;
+  }
+  //Con_Printf("rendering %d views\n",views);
+
 }
 
-void renderside(B* bufs, int side, vec3_t forward, vec3_t right, vec3_t up) {
-  int y;
+void render_lensmap(B **lensmap)
+{
+  int x, y;
+  for(y=0; y<height; y++) 
+    for(x=0; x<width; x++,lensmap++) 
+       if (*lensmap)
+          *VBUFFER(x+left, y+top) = **lensmap;
+}
+
+void render_cubeface(B* cubeface, vec3_t forward, vec3_t right, vec3_t up) 
+{
+  // set camera orientation
   VectorCopy(forward, r_refdef.forward);
   VectorCopy(right, r_refdef.right);
   VectorCopy(up, r_refdef.up);
 
-  B *p = vid.buffer + scr_vrect.x + scr_vrect.y*vid.rowbytes;
+  // render view
   R_PushDlights();
   R_RenderView();
-  for(y = 0;y<scr_vrect.height;y++) {
-     memcpy(bufs, p, scr_vrect.width);
-     p += vid.rowbytes;
-     bufs += scr_vrect.width;
+
+  // copy from vid buffer to cubeface, row by row
+  B *vbuffer = VBUFFER(left,top);
+  int y;
+  for(y = 0;y<height;y++) {
+     memcpy(cubeface, vbuffer, width);
+     
+     // advance to the next row
+     vbuffer += vid.rowbytes;
+     cubeface += width;
   }
 }
 
-//extern int istimedemo;
-
-void updateFovs()
+void L_RenderView() 
 {
-   // TODO: fix this; vertical|diagonal FOVs rely on knowledge of the type of projection (this only applies to horizontal gnomonic)
-
-   // previous FOV values
-   static double ph = -1;
-   static double pv = -1;
-   static double pd = -1;
-
-   // set the most recently changed FOV as the anchor
-   if (ph == -1 && pv == -1 && pd == -1)
-   {
-      // just starting, so don't change anchor
-   }
-   else if (ph != hfov.value)
-   {
-      Cvar_SetValue("fov_anchor", FOV_HORIZONTAL);
-      Con_Printf("setting horizontal anchor");
-   }
-   else if (pv != vfov.value)
-   {
-      Cvar_SetValue("fov_anchor", FOV_VERTICAL);
-      Con_Printf("setting vertical anchor");
-   }
-   else if (pd != dfov.value)
-   {
-      Cvar_SetValue("fov_anchor", FOV_DIAGONAL);
-      Con_Printf("setting diagonal anchor");
-   }
-   
-   // calculate focal length based on the fov anchor
-   double diag = sqrt(width*width + height*height);
-   int anchor = (int)fov_anchor.value;
-   double focal_len;
-   #define FOCAL(range,f) (double)(range)/2/tan(f.value/360*M_PI)
-   switch (anchor)
-   {
-      case FOV_VERTICAL: focal_len = FOCAL(height, vfov); break;
-      case FOV_DIAGONAL: focal_len = FOCAL(diag, dfov); break;
-      case FOV_HORIZONTAL: 
-      default: focal_len = FOCAL(width, hfov);
-   }
-
-   // update all FOVs to reflect new change
-   #define FOV(range, focal) atan2((double)(range)/2,(focal))*360/M_PI
-   Cvar_SetValue("hfov", FOV(width, focal_len));
-   Cvar_SetValue("vfov", FOV(height, focal_len));
-   Cvar_SetValue("dfov", FOV(diag, focal_len));
-
-   // update previous values for change detection
-   ph = hfov.value;
-   pv = vfov.value;
-   pd = dfov.value;
-}
-
-extern void R_SetupFrame(void);
-extern void R_DrawViewModel(void);
-extern cvar_t r_drawviewmodel;
-
-void L_RenderView() {
-
   static int pwidth = -1;
   static int pheight = -1;
-  static int pmap = -1;
-  static float pfovd = -1;
+  static int plens = -1;
   static int pviews = -1;
+  static double phfov = -1;
+  static double pvfov = -1;
+  static double pdfov = -1;
+
+  static B *cubemap = NULL;  
+  static B **lensmap = NULL;
 
   // update screen size
+  left = scr_vrect.x;
+  top = scr_vrect.y;
   width = scr_vrect.width; 
   height = scr_vrect.height;
-  int scrsize = width*height;
-  int views = 6;
+  diag = sqrt(width*width+height*height);
+  int area = width*height;
+  int sizechange = pwidth!=width || pheight!=height;
 
-  // update FOVs
-  fov = hfov.value * M_PI / 180;
-  double fovd = hfov.value;
-
-  // update Map
-  int map = (int)lens.value;
-  int numMaps = sizeof(maps) / sizeof(map_t);
-  if (map < 0 || map >= numMaps)
+  // update lens
+  lens = (int)l_lens.value;
+  int numLenses = sizeof(lenses) / sizeof(lens_t);
+  if (lens < 0 || lens >= numLenses)
   {
-     map = pmap == -1 ? 0 : pmap;
-     Cvar_SetValue("lens", map);
+     lens = plens == -1 ? 0 : plens;
+     Cvar_SetValue("lens", lens);
+     Con_Printf("not a valid lens\n");
+  }
+  int lenschange = plens!=lens;
+
+  // update FOV and framesize
+  int fovchange = 1;
+  if (l_hfov.value != phfov)
+  {
+     fov = l_hfov.value * M_PI / 180;
+     framesize = &width;
+     Cvar_SetValue("vfov", -1);
+     Cvar_SetValue("dfov", -1);
+  }
+  else if (l_vfov.value != pvfov)
+  {
+     fov = l_vfov.value * M_PI / 180;
+     framesize = &height;
+     Cvar_SetValue("hfov", -1);
+     Cvar_SetValue("dfov", -1);
+  }
+  else if (l_dfov.value != pdfov)
+  {
+     fov = l_dfov.value * M_PI / 180;
+     framesize = &diag;
+     Cvar_SetValue("hfov", -1);
+     Cvar_SetValue("vfov", -1);
+  }
+  else
+  {
+     fovchange = 0;
   }
 
-  static B *scrbufs = NULL;  
-  static B **offs = NULL;
 
-  if(pwidth!=width || pheight!=height || pfovd!=fovd || pmap!=map) {
+  // allocate new buffers if size changes
+  if(sizechange)
+  {
+    if(cubemap) free(cubemap);
+    if(lensmap) free(lensmap);
 
-    if(scrbufs) free(scrbufs);
-    if(offs) free(offs);
-
-    scrbufs = (B*)malloc(scrsize*6); // front|right|back|left|top|bottom
-    offs = (B**)malloc(scrsize*sizeof(B*));
-    if(!scrbufs || !offs) exit(1); // the rude way
-
-    lookuptable(offs,scrbufs, map);
+    cubemap = (B*)malloc(area*6*sizeof(B));
+    lensmap = (B**)malloc(area*sizeof(B*));
+    if(!cubemap || !lensmap) exit(1); // the rude way
   }
 
+  // recalculate lens
+  if (sizechange || fovchange || lenschange) {
+    create_lensmap(lensmap,cubemap);
+  }
+
+  // black out the cube map
   if(views!=pviews) {
-    int i;
-    for(i = 0;i<scrsize*6;i++) scrbufs[i] = 0;
+     memset(cubemap, 0, sizeof(B)*area*6);
   }
 
-  // get the directions of all the cube map faces
-  vec3_t forward, right, up, back, left, down;
-  AngleVectors(r_refdef.viewangles, forward, right, up);
-  VectorScale(forward, -1, back);
+  // get the orientations required to render the cube faces
+  vec3_t front, right, up, back, left, down;
+  AngleVectors(r_refdef.viewangles, front, right, up);
+  VectorScale(front, -1, back);
   VectorScale(right, -1, left);
   VectorScale(up, -1, down);
 
+  // render the environment onto a cube map
   switch(views) {
-    case 6:  renderside(scrbufs+scrsize*2, BOX_BEHIND, back, left, up);
-    case 5:  renderside(scrbufs+scrsize*5, BOX_BOTTOM, down, right, forward);
-    case 4:  renderside(scrbufs+scrsize*4, BOX_TOP, up, right, back);
-    case 3:  renderside(scrbufs+scrsize*3, BOX_LEFT, left, forward, up);
-    case 2:  renderside(scrbufs+scrsize,   BOX_RIGHT, right, back, up);
-    default: renderside(scrbufs,           BOX_FRONT, forward, right, up);
+    //                          (local orientations)  FORWARD  RIGHT   UP
+    //                          --------------------------------------------------
+    case 6:  render_cubeface(cubemap+area*BOX_BEHIND, back,    left,   up);
+    case 5:  render_cubeface(cubemap+area*BOX_BOTTOM, down,    right,  front);
+    case 4:  render_cubeface(cubemap+area*BOX_TOP,    up,      right,  back);
+    case 3:  render_cubeface(cubemap+area*BOX_LEFT,   left,    front,  up);
+    case 2:  render_cubeface(cubemap+area*BOX_RIGHT,  right,   back,   up);
+    default: render_cubeface(cubemap+area*BOX_FRONT,  front,   right,  up);
   }
 
+  // render our view
   Draw_TileClear(0, 0, vid.width, vid.height);
-  renderlookup(offs,scrbufs);
+  render_lensmap(lensmap);
 
-    pwidth = width;
-    pheight = height;
-    pfovd = fovd;
-    pmap = map;
-    pviews = views;
-
-  /*
-  static int demonum = 0;
-  char framename[100];
-  if(istimedemo) { 
-    sprintf(framename,"anim/ani%05d.pcx",demonum++);
-    //Con_Printf("attempting to write %s\n",framename);
-    WritePCXfile(framename,vid.buffer,vid.width,vid.height,vid.rowbytes,host_basepal);
-  } else {
-    demonum = 0;
-  }
-  */
+  // store current values for change detection
+  pwidth = width;
+  pheight = height;
+  plens = lens;
+  pviews = views;
+  phfov = l_hfov.value;
+  pvfov = l_vfov.value;
+  pdfov = l_dfov.value;
 }
 
