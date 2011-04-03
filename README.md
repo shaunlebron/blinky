@@ -9,6 +9,7 @@ This is a fork of [TyrQuake](http://disenchant.net/engine.html) integrated with 
 * variety of fisheye lenses
 
 #### Commands
+    lenses : shows help
     lens <0|1|2|3|4|5>
     hfov <horizontal degrees>
     vfov <vertical degrees>
@@ -17,11 +18,12 @@ This is a fork of [TyrQuake](http://disenchant.net/engine.html) integrated with 
 #### Lens Descriptions:
 
 0. Standard Perspective
-1. Simple Fisheye
+1. Sphere unwrapped
 2. Mirror Ball
-3. Low distortion Fisheye
-4. Hemisphere
-5. Stretched Rectangle
+3. Sphere viewed from its surface
+4. Hemisphere Flattened
+5. Sphere unwrapped onto a Cylinder
+6. sky viewed from under water
 
 #### Actual Lens Names
 0. Gnomonic, Perspective, Rectilinear
@@ -30,3 +32,4 @@ This is a fork of [TyrQuake](http://disenchant.net/engine.html) integrated with 
 3. Stereographic (another fisheye with less distortion)
 4. Azimuthal Orthogonal, Sine-law
 5. Equirectangular, Equidistant Cylindrical
+6. Perspective from water (index of refraction 1.33)

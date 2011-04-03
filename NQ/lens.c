@@ -37,7 +37,8 @@ static int width, height, diag;
 static double fov;
 static int lens;
 static int* framesize;
-static int views = 6;
+static double focal;
+static int views;
 
 // retrieves a pointer to a pixel in the video buffer
 #define VBUFFER(x,y) (vid.buffer + (x) + (y)*vid.rowbytes)
@@ -45,9 +46,7 @@ static int views = 6;
 // retrieves a pointer to a pixel in a designated cubemap face
 #define CUBEFACE(side,x,y) (cubemap + (side)*width*height + (x) + (y)*width)
 
-void L_Help()
-{
-}
+void L_Help();
 
 void L_Init(void)
 {
@@ -57,9 +56,6 @@ void L_Init(void)
 	 Cvar_RegisterVariable (&l_dfov);
     Cvar_RegisterVariable (&l_lens);
 }
-
-// lens function takes a 2d coordinate (screen-centered origin) and returns a 3d ray
-typedef int (*lens_t)(double x, double y, vec3_t ray);
 
 // FISHEYE HELPERS
 #define HALF_FRAME ((double)(*framesize)/2)
@@ -72,13 +68,54 @@ typedef int (*lens_t)(double x, double y, vec3_t ray);
    ray[1] = y/r * s; \
    ray[2] = c;
 
-int equidistant(double x, double y, vec3_t ray)
+typedef struct
+{
+   int (*map)(double x, double y, vec3_t ray);
+   int (*focal)();
+   const char* name;
+   const char* desc;
+} lens_t;
+
+int fisheyeMap(double x, double y, vec3_t ray)
+{
+   // r = f*tan(t2) where sin(theta)/sin(t2) = 1.33
+   // this is an actual fisheye (i.e. what a fish would see when viewing the world from underwater)
+
+   // index of refraction of water
+   double index = 1.33;
+   
+   // get elevation
+   double r = R;
+   double len = sqrt(r*r+focal*focal);
+   double s2 = r/len;
+   double s1 = index*s2;
+   double el = asin(s1);
+
+   CalcRay;
+   return 1;
+}
+
+int fisheyeFocal()
+{
+   if (HALF_FOV > M_PI/2)
+      return 0;
+
+   // index of refraction of water
+   double index = 1.33;
+
+   // get focal length
+   double s2 = 1/index*sin(HALF_FOV);
+   double c2 = sqrt(1-s2*s2);
+   focal = HALF_FRAME * c2 / s2;
+   return 1;
+}
+
+int equidistantMap(double x, double y, vec3_t ray)
 {
    // r = f*theta
 
    double r = R;
-   double f = HALF_FRAME / HALF_FOV;
-   double el = r/f;
+   double el = r/focal;
 
    if (el > M_PI)
       return 0;
@@ -87,35 +124,42 @@ int equidistant(double x, double y, vec3_t ray)
    return 1;
 }
 
-int equisolid(double x, double y, vec3_t ray)
+int equidistantFocal()
+{
+   focal = HALF_FRAME / HALF_FOV;
+   return 1;
+}
+
+int equisolidMap(double x, double y, vec3_t ray)
 {
    // r = 2*f*sin(theta/2)
 
-   if (HALF_FOV > M_PI)
-      return 0;
-
    double r = R;
-   double f = HALF_FRAME / (2*sin(HALF_FOV/2));
-   double maxr = 2*f*sin(M_PI/2);
+   double maxr = 2*focal/* *sin(M_PI/2)*/;
    if (r > maxr)
       return 0;
 
-   double el = 2*asin(r/(2*f));
+   double el = 2*asin(r/(2*focal));
 
    CalcRay;
    return 1;
 }
 
-int stereographic(double x, double y, vec3_t ray)
+int equisolidFocal()
 {
-   // r = 2f*tan(theta/2)
-
    if (HALF_FOV > M_PI)
       return 0;
 
+   focal = HALF_FRAME / (2*sin(HALF_FOV/2));
+   return 1;
+}
+
+int stereographicMap(double x, double y, vec3_t ray)
+{
+   // r = 2f*tan(theta/2)
+
    double r = R;
-   double f = HALF_FRAME / (2 * tan(HALF_FOV/2));
-   double el = 2*atan2(r,2*f);
+   double el = 2*atan2(r,2*focal);
 
    if (el > M_PI)
       return 0;
@@ -124,41 +168,60 @@ int stereographic(double x, double y, vec3_t ray)
    return 1;
 }
 
-int gnomonic(double x, double y, vec3_t ray)
+int stereographicFocal()
+{
+   if (HALF_FOV > M_PI)
+      return 0;
+
+   focal = HALF_FRAME / (2 * tan(HALF_FOV/2));
+   return 1;
+}
+
+int gnomonicMap(double x, double y, vec3_t ray)
 {
    // r = f*tan(theta)
 
-   if (HALF_FOV > M_PI/2)
-      return 0;
-
    double r = R;
-   double f = HALF_FRAME / tan(HALF_FOV);
-   double el = atan2(r,f);
+   double el = atan2(r,focal);
 
    CalcRay;
    return 1;
 }
 
-int orthogonal(double x, double y, vec3_t ray)
+int gnomonicFocal()
+{
+   if (HALF_FOV > M_PI/2)
+      return 0;
+
+   focal = HALF_FRAME / tan(HALF_FOV);
+   return 1;
+}
+
+int orthogonalMap(double x, double y, vec3_t ray)
 {
    // r = f*sin(theta)
 
-   if (HALF_FOV > M_PI/2)
-      return 0;
-
    double r = R;
-   double f = HALF_FRAME / sin(HALF_FOV);
-   double maxr = f*sin(M_PI/2);
-   if (r > f)
+   //double maxr = f*sin(M_PI/2);
+   if (r > focal)
       return 0;
 
-   double el = asin(r/f);
+   double el = asin(r/focal);
 
    CalcRay;
    return 1;
 }
 
-int equirectangular(double x, double y, vec3_t ray)
+int orthogonalFocal()
+{
+   if (HALF_FOV > M_PI/2)
+      return 0;
+
+   focal = HALF_FRAME / sin(HALF_FOV);
+   return 1;
+}
+
+int equirectangularMap(double x, double y, vec3_t ray)
 {
     double az = x*fov/(2*HALF_FRAME);
     double el = y*fov/(2*HALF_FRAME);
@@ -172,23 +235,52 @@ int equirectangular(double x, double y, vec3_t ray)
     return 1;
 }
 
+int equirectangularFocal()
+{
+   return 1;
+}
+
+#define LENS(name, desc) { name##Map, name##Focal, #name, desc }
+
 static lens_t lenses[] = {
-   gnomonic,
-   equidistant,
-   equisolid,
-   stereographic,
-   orthogonal,
-   equirectangular,
+   LENS(gnomonic, "standard perspective"),
+   LENS(equidistant, "sphere unwrapped onto a circle"),
+   LENS(equisolid, "mirror ball"),
+   LENS(stereographic, "sphere viewed from its surface"),
+   LENS(orthogonal, "hemisphere flattened"),
+   LENS(equirectangular, "sphere unwrapped around cylinder"),
+   LENS(fisheye, "viewing the sky from underwater")
 };
+
+void L_Help()
+{
+   Con_Printf("QUAKE LENSES\n--------\n");
+   Con_Printf("hfov <degrees>: Specify FOV in horizontal degrees\n");
+   Con_Printf("vfov <degrees>: Specify FOV in vertical degrees\n");
+   Con_Printf("dfov <degrees>: Specify FOV in diagonal degrees\n");
+   Con_Printf("lens <#>: Change the lens\n");
+   int i;
+   for (i=0; i<sizeof(lenses)/sizeof(lens_t); ++i)
+   {
+      Con_Printf("   %d: %20s - %s\n", i, lenses[i].name, lenses[i].desc);
+   }
+}
 
 void create_lensmap(B **lensmap, B *cubemap)
 {
   views=0;
   int side_count[] = {0,0,0,0,0,0};
 
+  // lens' focal length impossible to compute from desired FOV
+  if (!lenses[lens].focal())
+  {
+     Con_Printf("This lens cannot handle the current FOV.\n");
+     return;
+  }
+
   int x, y;
   for(y = 0;y<height;y++) 
-   for(x = 0;x<width;x++) {
+   for(x = 0;x<width;x++,lensmap++) {
     double x0 = x-width/2;
     double y0 = -(y-height/2);
 
@@ -197,10 +289,9 @@ void create_lensmap(B **lensmap, B *cubemap)
     if (x==width/2 && y == height/2)
     {
     }
-    else if (!lenses[lens](x0,y0,ray))
+    else if (!lenses[lens].map(x0,y0,ray))
     {
        // pixel is outside projection
-       *lensmap++ = 0;
        continue;
     }
 
@@ -246,7 +337,7 @@ void create_lensmap(B **lensmap, B *cubemap)
     if (py >= height) py = height - 1;
 
     // map lens pixel to cubeface pixel
-    *lensmap++ = CUBEFACE(side,px,py);
+    *lensmap = CUBEFACE(side,px,py);
   }
 
   //Con_Printf("cubemap side usage count:\n");
@@ -324,6 +415,10 @@ void L_RenderView()
      Con_Printf("not a valid lens\n");
   }
   int lenschange = plens!=lens;
+  if (lenschange)
+  {
+     Con_Printf("lens %d: %s - %s\n",lens, lenses[lens].name, lenses[lens].desc);
+  }
 
   // update FOV and framesize
   int fovchange = 1;
@@ -367,6 +462,7 @@ void L_RenderView()
 
   // recalculate lens
   if (sizechange || fovchange || lenschange) {
+    memset(lensmap, 0, area*sizeof(B*));
     create_lensmap(lensmap,cubemap);
   }
 
