@@ -18,6 +18,10 @@ cvar_t l_hfov = {"hfov", "90", true};
 cvar_t l_vfov = {"vfov", "-1", true};
 cvar_t l_dfov = {"dfov", "-1", true};
 cvar_t l_lens = {"lens", "0", true};
+cvar_t l_lens_grid = {"lens_grid", "0", true};
+cvar_t l_lens_grid_space = {"lens_grid_space", "10", true};
+cvar_t l_lens_grid_width = {"lens_grid_width", "2", true};
+cvar_t l_lens_grid_color = {"lens_grid_color", "10", true};
 
 typedef unsigned char B;
 
@@ -55,6 +59,10 @@ void L_Init(void)
 	 Cvar_RegisterVariable (&l_vfov);
 	 Cvar_RegisterVariable (&l_dfov);
     Cvar_RegisterVariable (&l_lens);
+    Cvar_RegisterVariable (&l_lens_grid);
+    Cvar_RegisterVariable (&l_lens_grid_space);
+    Cvar_RegisterVariable (&l_lens_grid_width);
+    Cvar_RegisterVariable (&l_lens_grid_color);
 }
 
 // FISHEYE HELPERS
@@ -261,9 +269,7 @@ void L_Help()
    Con_Printf("lens <#>: Change the lens\n");
    int i;
    for (i=0; i<sizeof(lenses)/sizeof(lens_t); ++i)
-   {
       Con_Printf("   %d: %20s - %s\n", i, lenses[i].name, lenses[i].desc);
-   }
 }
 
 void create_lensmap(B **lensmap, B *cubemap)
@@ -374,8 +380,26 @@ void render_cubeface(B* cubeface, vec3_t forward, vec3_t right, vec3_t up)
   // copy from vid buffer to cubeface, row by row
   B *vbuffer = VBUFFER(left,top);
   int y;
+  int gridspace = (int)l_lens_grid_space.value;
+  int gridwidth = (int)l_lens_grid_width.value;
+  B gridcolor = (B)l_lens_grid_color.value;
+  int gridoffset;
+  int grid;
   for(y = 0;y<height;y++) {
-     memcpy(cubeface, vbuffer, width);
+     grid = 0;
+     if ((int)l_lens_grid.value)
+     {
+        for (gridoffset=0; gridoffset<gridwidth; ++gridoffset)
+           if ((y-gridoffset) % gridspace == 0)
+           {
+              grid = 1;
+              break;
+           }
+     }
+     if (grid)
+        memset(cubeface, gridcolor, width);
+     else
+        memcpy(cubeface, vbuffer, width);
      
      // advance to the next row
      vbuffer += vid.rowbytes;
