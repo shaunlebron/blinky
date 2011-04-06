@@ -75,6 +75,8 @@ SNDDMA_Init(void)
 	return 0;
     }
 
+    Con_Printf("DSP_CAP_TRIGGER = %d\nDSP_CAP_MMAP = %d\n",caps &  DSP_CAP_TRIGGER,caps & DSP_CAP_MMAP);
+
     if (!(caps & DSP_CAP_TRIGGER) || !(caps & DSP_CAP_MMAP)) {
 	Con_Printf("%s lacks required features\n", snd_dev);
 	close(audio_fd);

@@ -24,8 +24,10 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "d_local.h"
 
 
-int iskyspeed = 8;
-int iskyspeed2 = 2;
+//int iskyspeed = 8;
+//int iskyspeed2 = 2;
+int iskyspeed = 1;
+int iskyspeed2 = 1;
 float skyspeed, skyspeed2;
 
 float skytime;

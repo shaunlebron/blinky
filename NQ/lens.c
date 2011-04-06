@@ -22,6 +22,10 @@ cvar_t l_lens_grid = {"lens_grid", "0", true};
 cvar_t l_lens_grid_space = {"lens_grid_space", "10", true};
 cvar_t l_lens_grid_width = {"lens_grid_width", "2", true};
 cvar_t l_lens_grid_color = {"lens_grid_color", "10", true};
+cvar_t l_cube = {"cube", "0", true};
+cvar_t l_cube_rows = {"cube_rows", "3", true};
+cvar_t l_cube_cols = {"cube_cols", "3", true};
+cvar_t l_cube_order = {"cube_order", "949301952", true};
 
 typedef unsigned char B;
 
@@ -42,7 +46,7 @@ static double fov;
 static int lens;
 static int* framesize;
 static double focal;
-static int views;
+static int faceDisplay[] = {0,0,0,0,0,0};
 
 // retrieves a pointer to a pixel in the video buffer
 #define VBUFFER(x,y) (vid.buffer + (x) + (y)*vid.rowbytes)
@@ -63,6 +67,10 @@ void L_Init(void)
     Cvar_RegisterVariable (&l_lens_grid_space);
     Cvar_RegisterVariable (&l_lens_grid_width);
     Cvar_RegisterVariable (&l_lens_grid_color);
+    Cvar_RegisterVariable (&l_cube);
+    Cvar_RegisterVariable (&l_cube_rows);
+    Cvar_RegisterVariable (&l_cube_cols);
+    Cvar_RegisterVariable (&l_cube_order);
 }
 
 // FISHEYE HELPERS
@@ -274,8 +282,13 @@ void L_Help()
 
 void create_lensmap(B **lensmap, B *cubemap)
 {
-  views=0;
   int side_count[] = {0,0,0,0,0,0};
+
+  if ((int)l_cube.value)
+  {
+
+     return;
+  }
 
   // lens' focal length impossible to compute from desired FOV
   if (!lenses[lens].focal())
@@ -351,7 +364,7 @@ void create_lensmap(B **lensmap, B *cubemap)
   {
      //Con_Printf("   %d: %d\n",x,side_count[x]);
      if (side_count[x] > width)
-        views++;
+        faceDisplay[x] = 1;
   }
   //Con_Printf("rendering %d views\n",views);
 
@@ -412,10 +425,13 @@ void L_RenderView()
   static int pwidth = -1;
   static int pheight = -1;
   static int plens = -1;
-  static int pviews = -1;
   static double phfov = -1;
   static double pvfov = -1;
   static double pdfov = -1;
+  static int pcube = -1;
+  static int pcube_rows = -1;
+  static int pcube_cols = -1;
+  static char *pcube_order = 0;
 
   static B *cubemap = NULL;  
   static B **lensmap = NULL;
@@ -490,11 +506,6 @@ void L_RenderView()
     create_lensmap(lensmap,cubemap);
   }
 
-  // black out the cube map
-  if(views!=pviews) {
-     memset(cubemap, 0, sizeof(B)*area*6);
-  }
-
   // get the orientations required to render the cube faces
   vec3_t front, right, up, back, left, down;
   AngleVectors(r_refdef.viewangles, front, right, up);
@@ -503,16 +514,20 @@ void L_RenderView()
   VectorScale(up, -1, down);
 
   // render the environment onto a cube map
-  switch(views) {
-    //                          (local orientations)  FORWARD  RIGHT   UP
-    //                          --------------------------------------------------
-    case 6:  render_cubeface(cubemap+area*BOX_BEHIND, back,    left,   up);
-    case 5:  render_cubeface(cubemap+area*BOX_BOTTOM, down,    right,  front);
-    case 4:  render_cubeface(cubemap+area*BOX_TOP,    up,      right,  back);
-    case 3:  render_cubeface(cubemap+area*BOX_LEFT,   left,    front,  up);
-    case 2:  render_cubeface(cubemap+area*BOX_RIGHT,  right,   back,   up);
-    default: render_cubeface(cubemap+area*BOX_FRONT,  front,   right,  up);
-  }
+  int i;
+  for (i=0; i<6; ++i)
+     if (faceDisplay[i]) {
+        B* face = cubemap+area*i;
+        switch(i) {
+          //                                     FORWARD  RIGHT   UP
+          case BOX_BEHIND: render_cubeface(face, back,    left,   up);    break;
+          case BOX_BOTTOM: render_cubeface(face, down,    right,  front); break;
+          case BOX_TOP:    render_cubeface(face, up,      right,  back);  break;
+          case BOX_LEFT:   render_cubeface(face, left,    front,  up);    break;
+          case BOX_RIGHT:  render_cubeface(face, right,   back,   up);    break;
+          case BOX_FRONT:  render_cubeface(face, front,   right,  up);    break;
+        }
+     }
 
   // render our view
   Draw_TileClear(0, 0, vid.width, vid.height);
@@ -522,7 +537,6 @@ void L_RenderView()
   pwidth = width;
   pheight = height;
   plens = lens;
-  pviews = views;
   phfov = l_hfov.value;
   pvfov = l_vfov.value;
   pdfov = l_dfov.value;
