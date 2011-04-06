@@ -28,6 +28,9 @@ cvar_t l_cube_cols = {"cube_cols", "3", true};
 cvar_t l_cube_order = {"cube_order", "949301952", true};
 
 typedef unsigned char B;
+static B *cubemap = NULL;  
+static B **lensmap = NULL;
+
 
 #define BOX_FRONT  0
 #define BOX_RIGHT  1
@@ -65,9 +68,41 @@ static char cube_order[MAX_CUBE_ORDER];
 
 void L_Help();
 
+void L_CaptureCubeMap()
+{
+   char filename[100];
+   int i;
+   strcpy(filename,"cube00_top.pcx");
+   for (i=0; i<99; ++i)
+   {
+      filename[4] = i/10 + '0';
+      filename[5] = i%10 + '0';
+      if (Sys_FileTime(filename) == -1)
+         break;
+   }
+   if (i == 100)
+   {
+      Con_Printf("Too many saved cubemaps, reached limit of 100\n");
+      return;
+   }
+
+#define SET_FILE_FACE(face) sprintf(filename,"cubemaps/cube%02d_" face ".pcx",i);
+#define WRITE_FILE(n) WritePCXfile(filename,cubemap+width*height*n,width,height,width,host_basepal);
+
+   SET_FILE_FACE("front"); WRITE_FILE(BOX_FRONT);
+   SET_FILE_FACE("right"); WRITE_FILE(BOX_RIGHT);
+   SET_FILE_FACE("behind"); WRITE_FILE(BOX_BEHIND);
+   SET_FILE_FACE("left"); WRITE_FILE(BOX_LEFT);
+   SET_FILE_FACE("top"); WRITE_FILE(BOX_TOP);
+   SET_FILE_FACE("bottom"); WRITE_FILE(BOX_BOTTOM);
+
+   Con_Printf("Saved cubemap to cube%02d_XXXX.pcx\n",i);
+}
+
 void L_Init(void)
 {
     Cmd_AddCommand("lenses", L_Help);
+    Cmd_AddCommand("savecube", L_CaptureCubeMap);
 	 Cvar_RegisterVariable (&l_hfov);
 	 Cvar_RegisterVariable (&l_vfov);
 	 Cvar_RegisterVariable (&l_dfov);
@@ -491,9 +526,6 @@ void L_RenderView()
   static int pcube_cols = -1;
   static char pcube_order[MAX_CUBE_ORDER];
 
-  static B *cubemap = NULL;  
-  static B **lensmap = NULL;
-
   // update cube settings
   cube = (int)l_cube.value;
   cube_rows = (int)l_cube_rows.value;
@@ -609,5 +641,6 @@ void L_RenderView()
   pcube_rows = cube_rows;
   pcube_cols = cube_cols;
   strcpy(pcube_order, cube_order);
+
 }
 
