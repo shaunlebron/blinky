@@ -7,6 +7,7 @@ This is a fork of [TyrQuake](http://disenchant.net/engine.html) integrated with 
 * camera rolling
 * viewsize adjustment with status bar
 * variety of fisheye lenses
+* unfolded cubemap display
 
 #### Commands
     lenses : shows help
@@ -14,6 +15,10 @@ This is a fork of [TyrQuake](http://disenchant.net/engine.html) integrated with 
     hfov <horizontal degrees>
     vfov <vertical degrees>
     dfov <diagonal degrees>
+    cube <0|1> : shows unfolded cubemap
+    cube_rows <#> : number of rows in cubemap table display
+    cube_cols <#> : number of columns in cubemap table display
+    cube_order "########" : the faces to display in the table, in row order
 
 #### Lens Descriptions:
 

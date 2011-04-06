@@ -40,6 +40,8 @@ typedef unsigned char B;
 #define FOV_VERTICAL   1
 #define FOV_DIAGONAL   2
 
+#define MAX_CUBE_ORDER 20
+
 static int left, top;
 static int width, height, diag;
 static double fov;
@@ -47,12 +49,19 @@ static int lens;
 static int* framesize;
 static double focal;
 static int faceDisplay[] = {0,0,0,0,0,0};
+static int cube;
+static int cube_rows;
+static int cube_cols;
+static char cube_order[MAX_CUBE_ORDER];
 
 // retrieves a pointer to a pixel in the video buffer
 #define VBUFFER(x,y) (vid.buffer + (x) + (y)*vid.rowbytes)
 
 // retrieves a pointer to a pixel in a designated cubemap face
 #define CUBEFACE(side,x,y) (cubemap + (side)*width*height + (x) + (y)*width)
+
+// retrieves a pointer to a pixel in the lensmap
+#define LENSMAP(x,y) (lensmap + (x) + (y)*width)
 
 void L_Help();
 
@@ -280,15 +289,65 @@ void L_Help()
       Con_Printf("   %d: %20s - %s\n", i, lenses[i].name, lenses[i].desc);
 }
 
+int clamp(int value, int min, int max)
+{
+   if (value < min)
+      return min;
+   if (value > max)
+      return max;
+   return value;
+}
+
+void create_cubefold(B **lensmap, B *cubemap)
+{
+
+   // get size of each square cell
+   int xsize = width / cube_cols;
+   int ysize = height / cube_rows;
+   int size = (xsize < ysize) ? xsize : ysize;
+
+   // get top left position of the first row and first column
+   int left = (width - size*cube_cols)/2;
+   int top = (height - size*cube_rows)/2;
+
+   int r,c;
+   for (r=0; r<cube_rows; ++r)
+   {
+      int rowy = top + size*r;
+      for (c=0; c<cube_cols; ++c)
+      {
+         int colx = left + size*c;
+         int face = (int)(cube_order[c+r*cube_cols] - '0');
+         if (face > 5)
+            continue;
+
+         int x,y;
+         for (y=0;y<size;++y)
+            for (x=0;x<size;++x)
+            {
+               int lx = clamp(colx+x,0,width-1);
+               int ly = clamp(rowy+y,0,height-1);
+               int fx = clamp(width*x/size,0,width-1);
+               int fy = clamp(height*y/size,0,height-1);
+               *LENSMAP(lx,ly) = CUBEFACE(face,fx,fy);
+            }
+      }
+   }
+}
+
 void create_lensmap(B **lensmap, B *cubemap)
 {
-  int side_count[] = {0,0,0,0,0,0};
-
-  if ((int)l_cube.value)
+  if (cube)
   {
+     // set all faces to display
+     memset(faceDisplay,1,6*sizeof(int));
 
+     // create lookup table for unfolded cubemap
+     create_cubefold(lensmap,cubemap);
      return;
   }
+
+  int side_count[] = {0,0,0,0,0,0};
 
   // lens' focal length impossible to compute from desired FOV
   if (!lenses[lens].focal())
@@ -363,8 +422,7 @@ void create_lensmap(B **lensmap, B *cubemap)
   for(x=0; x<6; ++x)
   {
      //Con_Printf("   %d: %d\n",x,side_count[x]);
-     if (side_count[x] > width)
-        faceDisplay[x] = 1;
+     faceDisplay[x] = (side_count[x] > width);
   }
   //Con_Printf("rendering %d views\n",views);
 
@@ -431,10 +489,17 @@ void L_RenderView()
   static int pcube = -1;
   static int pcube_rows = -1;
   static int pcube_cols = -1;
-  static char *pcube_order = 0;
+  static char pcube_order[MAX_CUBE_ORDER];
 
   static B *cubemap = NULL;  
   static B **lensmap = NULL;
+
+  // update cube settings
+  cube = (int)l_cube.value;
+  cube_rows = (int)l_cube_rows.value;
+  cube_cols = (int)l_cube_cols.value;
+  strcpy(cube_order, l_cube_order.string);
+  int cubechange = cube != pcube || cube_rows!=pcube_rows || cube_cols!=pcube_cols || strcmp(cube_order,pcube_order);
 
   // update screen size
   left = scr_vrect.x;
@@ -501,7 +566,7 @@ void L_RenderView()
   }
 
   // recalculate lens
-  if (sizechange || fovchange || lenschange) {
+  if (sizechange || fovchange || lenschange || cubechange) {
     memset(lensmap, 0, area*sizeof(B*));
     create_lensmap(lensmap,cubemap);
   }
@@ -540,5 +605,9 @@ void L_RenderView()
   phfov = l_hfov.value;
   pvfov = l_vfov.value;
   pdfov = l_dfov.value;
+  pcube = cube;
+  pcube_rows = cube_rows;
+  pcube_cols = cube_cols;
+  strcpy(pcube_order, cube_order);
 }
 
