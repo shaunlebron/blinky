@@ -72,11 +72,12 @@ void L_CaptureCubeMap()
 {
    char filename[100];
    int i;
-   strcpy(filename,"cube00_top.pcx");
+   sprintf(filename,"%s/cubemaps/cube00_top.pcx",com_gamedir);
+   int len = strlen(filename);
    for (i=0; i<99; ++i)
    {
-      filename[4] = i/10 + '0';
-      filename[5] = i%10 + '0';
+      filename[len-10] = i/10 + '0';
+      filename[len-9] = i%10 + '0';
       if (Sys_FileTime(filename) == -1)
          break;
    }
@@ -84,6 +85,9 @@ void L_CaptureCubeMap()
    {
       Con_Printf("Too many saved cubemaps, reached limit of 100\n");
       return;
+   }
+   else
+   {
    }
 
 #define SET_FILE_FACE(face) sprintf(filename,"cubemaps/cube%02d_" face ".pcx",i);
