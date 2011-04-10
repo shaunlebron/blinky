@@ -131,6 +131,10 @@ void L_Init(void)
    ray[0] = x/r * s; \
    ray[1] = y/r * s; \
    ray[2] = c;
+#define CalcCylinderRay \
+   ray[0] = sin(lon)*cos(lat); \
+   ray[1] = sin(lat); \
+   ray[2] = cos(lon)*cos(lat);
 
 typedef struct
 {
@@ -287,20 +291,87 @@ int orthogonalFocal()
 
 int equirectangularMap(double x, double y, vec3_t ray)
 {
-    double az = x*fov/(2*HALF_FRAME);
-    double el = y*fov/(2*HALF_FRAME);
-    if (el < -M_PI/2 || el > M_PI/2 || az < -M_PI || az > M_PI)
+   x*=fov/(2*HALF_FRAME);
+   y*=fov/(2*HALF_FRAME);
+    double lon = x;
+    double lat = y;
+    if (abs(lat) > M_PI/2 || abs(lon) > M_PI)
        return 0;
-
-    ray[0] = sin(az)*cos(el);
-    ray[1] = sin(el);
-    ray[2] = cos(az)*cos(el);
-
+    CalcCylinderRay;
     return 1;
 }
 
 int equirectangularFocal()
 {
+   return 1;
+}
+
+int mercatorMap(double x, double y, vec3_t ray)
+{
+   x*=fov/(2*HALF_FRAME);
+   y*=fov/(2*HALF_FRAME);
+   double lon = x;
+   double lat = atan(sinh(y));
+   if (abs(lat) > M_PI/2 || abs(lon) > M_PI)
+      return 0;
+   CalcCylinderRay;
+   return 1;
+}
+
+int mercatorFocal()
+{
+   return 1;
+}
+
+int cylinderMap(double x, double y, vec3_t ray)
+{
+   x*=fov/(2*HALF_FRAME);
+   y*=fov/(2*HALF_FRAME);
+   double lon = x;
+   double lat = atan(y);
+   if (abs(lat) > M_PI/2 || abs(lon) > M_PI)
+      return 0;
+   CalcCylinderRay;
+   return 1;
+}
+
+int cylinderFocal()
+{
+   return 1;
+}
+
+int millerMap(double x, double y, vec3_t ray)
+{
+   x*=fov/(2*HALF_FRAME);
+   y*=fov/(2*HALF_FRAME);
+   double lon = x;
+   double lat = 5.0/4*atan(sinh(4.0/5*y));
+   if (abs(lat) > M_PI/2 || abs(lon) > M_PI)
+      return 0;
+   CalcCylinderRay;
+   return 1;
+}
+
+int millerFocal()
+{
+   return 1;
+}
+
+int panniniMap(double x, double y, vec3_t ray)
+{
+   x/=focal;
+   y/=focal;
+   double t = 4/(x*x+4);
+   ray[0] = x*t;
+   ray[1] = y*t;
+   ray[2] = -1+2*t;
+   return 1;
+}
+
+int panniniFocal()
+{
+   float r = HALF_FRAME / tan(HALF_FOV/2) / 2;
+   focal = r;
    return 1;
 }
 
@@ -312,8 +383,12 @@ static lens_t lenses[] = {
    LENS(equisolid, "mirror ball"),
    LENS(stereographic, "sphere viewed from its surface"),
    LENS(orthogonal, "hemisphere flattened"),
+   LENS(fisheye, "viewing the sky from underwater"),
    LENS(equirectangular, "sphere unwrapped around cylinder"),
-   LENS(fisheye, "viewing the sky from underwater")
+   LENS(cylinder, ""),
+   LENS(mercator, ""),
+   LENS(miller, ""),
+   LENS(pannini, "")
 };
 
 void L_Help()
