@@ -103,10 +103,16 @@ void L_CaptureCubeMap()
    Con_Printf("Saved cubemap to cube%02d_XXXX.pcx\n",i);
 }
 
+void L_ShowFovDeprecate()
+{
+   Con_Printf("Please use hfov instead\n");
+}
+
 void L_Init(void)
 {
     Cmd_AddCommand("lenses", L_Help);
     Cmd_AddCommand("savecube", L_CaptureCubeMap);
+    Cmd_AddCommand("fov", L_ShowFovDeprecate);
 	 Cvar_RegisterVariable (&l_hfov);
 	 Cvar_RegisterVariable (&l_vfov);
 	 Cvar_RegisterVariable (&l_dfov);
