@@ -36,3 +36,6 @@ This is a fork of [TyrQuake](http://disenchant.net/engine.html) integrated with 
 * 9: Cylindrical Conformal: (Mercator map)
 * 10: Cylindrical Conformal Shrink: (Miller map)
 * 11: Cylindrical Stereographic: (Braun map aka Panini)
+
+#### Motion Sickness:
+Some lenses may induce nausea! I find that the **stereographic** lenses do not, as they are the only true perspective projections here.  I recommend an fov of 180-200 using the stereographic lenses (4 and 11).

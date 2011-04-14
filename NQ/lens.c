@@ -463,6 +463,8 @@ void L_Help()
    Con_Printf("\n---------\n");
    Con_Printf("cube <0|1>: display cubemap\n");
    Con_Printf("colorcube <0|1>: paint cubemap\n");
+   Con_Printf("\n---------\n");
+   Con_Printf("Motion sick?  Try lens 4 or 11\n");
 }
 
 int clamp(int value, int min, int max)
