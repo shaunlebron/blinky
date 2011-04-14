@@ -106,11 +106,16 @@ void L_ShowFovDeprecate()
    Con_Printf("Please use hfov instead\n");
 }
 
+void L_NextLens();
+void L_PrevLens();
+
 void L_Init(void)
 {
     Cmd_AddCommand("lenses", L_Help);
     Cmd_AddCommand("savecube", L_CaptureCubeMap);
     Cmd_AddCommand("fov", L_ShowFovDeprecate);
+    Cmd_AddCommand("nextlens", L_NextLens);
+    Cmd_AddCommand("prevlens", L_PrevLens);
 	 Cvar_RegisterVariable (&l_hfov);
 	 Cvar_RegisterVariable (&l_vfov);
 	 Cvar_RegisterVariable (&l_dfov);
@@ -424,6 +429,25 @@ static lens_t lenses[] = {
    LENS(cylStereographic, "Cylindrical - Stereographic"),
 };
 
+void PrintLensType()
+{
+   int i = (int)l_lens.value;
+   Con_Printf("lens %d: %s\n",i, lenses[i].desc);
+}
+
+#define NUM_LENSES (sizeof(lenses)/sizeof(lens_t))
+
+void L_NextLens()
+{
+   Cvar_SetValue("lens", ((int)l_lens.value+1)%NUM_LENSES);
+}
+
+void L_PrevLens()
+{
+   Cvar_SetValue("lens", ((int)l_lens.value-1)%NUM_LENSES);
+}
+
+
 void L_Help()
 {
    Con_Printf("\nQUAKE LENSES\n--------\n");
@@ -431,6 +455,8 @@ void L_Help()
    Con_Printf("vfov <degrees>: Specify FOV in vertical degrees\n");
    Con_Printf("dfov <degrees>: Specify FOV in diagonal degrees\n");
    Con_Printf("lens <#>: Change the lens\n");
+   Con_Printf("nextlens : goes to next lens\n");
+   Con_Printf("prevlens : goes to previous lens\n");
    int i;
    for (i=0; i<sizeof(lenses)/sizeof(lens_t); ++i)
       Con_Printf("   %d: %s\n", i, lenses[i].desc);
@@ -653,7 +679,7 @@ void L_RenderView()
   int lenschange = plens!=lens;
   if (lenschange)
   {
-     Con_Printf("lens %d: %s\n",lens, lenses[lens].desc);
+     PrintLensType();
   }
 
   // update FOV and framesize

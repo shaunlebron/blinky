@@ -12,6 +12,8 @@ This is a fork of [TyrQuake](http://disenchant.net/engine.html) integrated with 
 #### Commands
     lenses : shows help
     lens <0-11>
+    nextlens
+    prevlens
     hfov <horizontal degrees>
     vfov <vertical degrees>
     dfov <diagonal degrees>
@@ -19,6 +21,7 @@ This is a fork of [TyrQuake](http://disenchant.net/engine.html) integrated with 
     cube_rows <#> : number of rows in cubemap table display
     cube_cols <#> : number of columns in cubemap table display
     cube_order "########" : the faces to display in the table, in row order, use 9 for empty
+    colorcube : paint the cubemap
 
 #### Lens Projections:
 * 0: Azimuthal Gnomonic: (all games use this)
