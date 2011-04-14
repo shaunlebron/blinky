@@ -1,4 +1,4 @@
-## Quake Lenses
+# Quake Lenses
 
 This is a fork of [TyrQuake](http://disenchant.net/engine.html) integrated with [Fisheye Quake](http://strlen.com/gfxengine/fisheyequake/). Its purpose is to explore different wide-angle views using well-known map projections.
 
