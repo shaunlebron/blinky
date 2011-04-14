@@ -18,14 +18,11 @@ cvar_t l_hfov = {"hfov", "90", true};
 cvar_t l_vfov = {"vfov", "-1", true};
 cvar_t l_dfov = {"dfov", "-1", true};
 cvar_t l_lens = {"lens", "0", true};
-cvar_t l_lens_grid = {"lens_grid", "0", true};
-cvar_t l_lens_grid_space = {"lens_grid_space", "10", true};
-cvar_t l_lens_grid_width = {"lens_grid_width", "2", true};
-cvar_t l_lens_grid_color = {"lens_grid_color", "10", true};
 cvar_t l_cube = {"cube", "0", true};
 cvar_t l_cube_rows = {"cube_rows", "3"};
 cvar_t l_cube_cols = {"cube_cols", "4"};
 cvar_t l_cube_order = {"cube_order", "9499" "3012" "9599"};
+cvar_t l_colorcube = {"colorcube", "0"};
 
 typedef unsigned char B;
 static B *cubemap = NULL;  
@@ -56,6 +53,7 @@ static int cube;
 static int cube_rows;
 static int cube_cols;
 static char cube_order[MAX_CUBE_ORDER];
+static int colorcube;
 
 // retrieves a pointer to a pixel in the video buffer
 #define VBUFFER(x,y) (vid.buffer + (x) + (y)*vid.rowbytes)
@@ -117,14 +115,11 @@ void L_Init(void)
 	 Cvar_RegisterVariable (&l_vfov);
 	 Cvar_RegisterVariable (&l_dfov);
     Cvar_RegisterVariable (&l_lens);
-    Cvar_RegisterVariable (&l_lens_grid);
-    Cvar_RegisterVariable (&l_lens_grid_space);
-    Cvar_RegisterVariable (&l_lens_grid_width);
-    Cvar_RegisterVariable (&l_lens_grid_color);
     Cvar_RegisterVariable (&l_cube);
     Cvar_RegisterVariable (&l_cube_rows);
     Cvar_RegisterVariable (&l_cube_cols);
     Cvar_RegisterVariable (&l_cube_order);
+    Cvar_RegisterVariable (&l_colorcube);
 }
 
 // FISHEYE HELPERS
@@ -149,6 +144,10 @@ typedef struct
    const char* name;
    const char* desc;
 } lens_t;
+
+/***************************************************
+             START LENS DEFINITIONS
+*************************************************/
 
 int waterMap(double x, double y, vec3_t ray)
 {
@@ -404,6 +403,10 @@ int hammerFocal()
    return 1;
 }
 
+/***************************************************
+             END LENS DEFINITIONS
+*************************************************/
+
 #define LENS(name, desc) { name##Map, name##Focal, #name, desc }
 
 static lens_t lenses[] = {
@@ -433,6 +436,7 @@ void L_Help()
       Con_Printf("   %d: %s\n", i, lenses[i].desc);
    Con_Printf("\n---------\n");
    Con_Printf("cube <0|1>: display cubemap\n");
+   Con_Printf("colorcube <0|1>: paint cubemap\n");
 }
 
 int clamp(int value, int min, int max)
@@ -597,26 +601,8 @@ void render_cubeface(B* cubeface, vec3_t forward, vec3_t right, vec3_t up)
   // copy from vid buffer to cubeface, row by row
   B *vbuffer = VBUFFER(left,top);
   int y;
-  int gridspace = (int)l_lens_grid_space.value;
-  int gridwidth = (int)l_lens_grid_width.value;
-  B gridcolor = (B)l_lens_grid_color.value;
-  int gridoffset;
-  int grid;
   for(y = 0;y<height;y++) {
-     grid = 0;
-     if ((int)l_lens_grid.value)
-     {
-        for (gridoffset=0; gridoffset<gridwidth; ++gridoffset)
-           if ((y-gridoffset) % gridspace == 0)
-           {
-              grid = 1;
-              break;
-           }
-     }
-     if (grid)
-        memset(cubeface, gridcolor, width);
-     else
-        memcpy(cubeface, vbuffer, width);
+     memcpy(cubeface, vbuffer, width);
      
      // advance to the next row
      vbuffer += vid.rowbytes;
@@ -636,12 +622,14 @@ void L_RenderView()
   static int pcube_rows = -1;
   static int pcube_cols = -1;
   static char pcube_order[MAX_CUBE_ORDER];
+  static int pcolorcube = -1;
 
   // update cube settings
   cube = (int)l_cube.value;
   cube_rows = (int)l_cube_rows.value;
   cube_cols = (int)l_cube_cols.value;
   strcpy(cube_order, l_cube_order.string);
+  colorcube = (int)l_colorcube.value;
   int cubechange = cube != pcube || cube_rows!=pcube_rows || cube_cols!=pcube_cols || strcmp(cube_order,pcube_order);
 
   // update screen size
@@ -723,19 +711,34 @@ void L_RenderView()
 
   // render the environment onto a cube map
   int i;
-  for (i=0; i<6; ++i)
-     if (faceDisplay[i]) {
-        B* face = cubemap+area*i;
-        switch(i) {
-          //                                     FORWARD  RIGHT   UP
-          case BOX_BEHIND: render_cubeface(face, back,    left,   up);    break;
-          case BOX_BOTTOM: render_cubeface(face, down,    right,  front); break;
-          case BOX_TOP:    render_cubeface(face, up,      right,  back);  break;
-          case BOX_LEFT:   render_cubeface(face, left,    front,  up);    break;
-          case BOX_RIGHT:  render_cubeface(face, right,   back,   up);    break;
-          case BOX_FRONT:  render_cubeface(face, front,   right,  up);    break;
+  if (colorcube)
+  {
+     if (pcolorcube != colorcube)
+     {
+        B colors[6] = {242,243,244,245,250,255};
+        for (i=0; i<6; ++i)
+        {
+           B* face = cubemap+area*i;
+           memset(face,colors[i],area);
         }
      }
+  }
+  else
+  {
+     for (i=0; i<6; ++i)
+        if (faceDisplay[i]) {
+           B* face = cubemap+area*i;
+           switch(i) {
+             //                                     FORWARD  RIGHT   UP
+             case BOX_BEHIND: render_cubeface(face, back,    left,   up);    break;
+             case BOX_BOTTOM: render_cubeface(face, down,    right,  front); break;
+             case BOX_TOP:    render_cubeface(face, up,      right,  back);  break;
+             case BOX_LEFT:   render_cubeface(face, left,    front,  up);    break;
+             case BOX_RIGHT:  render_cubeface(face, right,   back,   up);    break;
+             case BOX_FRONT:  render_cubeface(face, front,   right,  up);    break;
+           }
+        }
+  }
 
   // render our view
   Draw_TileClear(0, 0, vid.width, vid.height);
@@ -752,6 +755,6 @@ void L_RenderView()
   pcube_rows = cube_rows;
   pcube_cols = cube_cols;
   strcpy(pcube_order, cube_order);
-
+  pcolorcube = colorcube;
 }
 
