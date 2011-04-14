@@ -375,12 +375,36 @@ int cylStereographicFocal()
    return 1;
 }
 
+static double hammerWidth;
+
+int hammerMap(double x, double y, vec3_t ray)
+{
+   x*=hammerWidth/HALF_FRAME;
+   y*=hammerWidth/HALF_FRAME;
+
+   if (x*x/8+y*y/2 > 1)
+      return 0;
+
+   double z = sqrt(1-0.0625*x*x-0.25*y*y);
+   double lon = 2*atan(z*x/(2*(2*z*z-1)));
+   double lat = asin(z*y);
+   CalcCylinderRay;
+   return 1;
+}
+
+int hammerFocal()
+{
+   hammerWidth = 2*sqrt(2)*sin(HALF_FOV/2)/sqrt(1+cos(HALF_FOV/2));
+   return 1;
+}
+
 #define LENS(name, desc) { name##Map, name##Focal, #name, desc }
 
 static lens_t lenses[] = {
    LENS(azGnomonic, "Azimuthal - Gnomonic"),
    LENS(azEquidistant, "Azimuthal - Equidistant"),
    LENS(azEqualArea, "Azimuthal - Equal Area"),
+   LENS(hammer, "Azimuthal - Equal Area Ellipse"),
    LENS(azStereographic, "Azimuthal - Stereographic"),
    LENS(azOrthogonal, "Azimuthal - Orthogonal"),
    LENS(water, "Water"),

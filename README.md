@@ -1,40 +1,35 @@
 ## Quake Lenses
 
-This is a fork of [TyrQuake](http://disenchant.net/engine.html) integrated with [Fisheye Quake](http://strlen.com/gfxengine/fisheyequake/). Its purpose is to explore different ways to squeeze panoramic views on a small screen using different wide-angle lenses (map projections).
+This is a fork of [TyrQuake](http://disenchant.net/engine.html) integrated with [Fisheye Quake](http://strlen.com/gfxengine/fisheyequake/). Its purpose is to explore different wide-angle views using well-known map projections.
 
 #### How is it different from Fisheye Quake?
 * seamless cube maps
 * camera rolling
 * viewsize adjustment with status bar
-* variety of fisheye lenses
+* variety of wide-angle lenses
 * unfolded cubemap display
 
 #### Commands
     lenses : shows help
-    lens <0|1|2|3|4|5>
+    lens <0-11>
     hfov <horizontal degrees>
     vfov <vertical degrees>
     dfov <diagonal degrees>
     cube <0|1> : shows unfolded cubemap
     cube_rows <#> : number of rows in cubemap table display
     cube_cols <#> : number of columns in cubemap table display
-    cube_order "########" : the faces to display in the table, in row order
+    cube_order "########" : the faces to display in the table, in row order, use 9 for empty
 
-#### Lens Descriptions:
-
-0. Standard Perspective
-1. Sphere unwrapped
-2. Mirror Ball
-3. Sphere viewed from its surface
-4. Hemisphere Flattened
-5. Sphere unwrapped onto a Cylinder
-6. sky viewed from under water
-
-#### Actual Lens Names
-0. Gnomonic, Perspective, Rectilinear
-1. Azimuthal Equidistant (original fisheye)
-2. Azimuthal Equisolid, Azimuthal Equal Area
-3. Stereographic (another fisheye with less distortion)
-4. Azimuthal Orthogonal, Sine-law
-5. Equirectangular, Equidistant Cylindrical
-6. Perspective from water (index of refraction 1.33)
+#### Lens Projections:
+* 0: Azimuthal Gnomonic: (all games use this)
+* 1: Azimuthal Equidistant: (original fisheye)
+* 2: Azimuthal Equal-Area: (mirror ball)
+* 3: Azimuthal Equal-Area on Ellipse: (Hammer map)
+* 4: Azimuthal Stereographic:
+* 5: Azimuthal Orthogonal:
+* 6: Water:
+* 7: Cylindrical Gnomonic: (panorama)
+* 8: Cylindrical Equidistant: (equirectangular map)
+* 9: Cylindrical Conformal: (Mercator map)
+* 10: Cylindrical Conformal Shrink: (Miller map)
+* 11: Cylindrical Stereographic: (Braun map aka Panini)
