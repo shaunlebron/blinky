@@ -23,9 +23,9 @@ cvar_t l_lens_grid_space = {"lens_grid_space", "10", true};
 cvar_t l_lens_grid_width = {"lens_grid_width", "2", true};
 cvar_t l_lens_grid_color = {"lens_grid_color", "10", true};
 cvar_t l_cube = {"cube", "0", true};
-cvar_t l_cube_rows = {"cube_rows", "3", true};
-cvar_t l_cube_cols = {"cube_cols", "3", true};
-cvar_t l_cube_order = {"cube_order", "949301952", true};
+cvar_t l_cube_rows = {"cube_rows", "3"};
+cvar_t l_cube_cols = {"cube_cols", "4"};
+cvar_t l_cube_order = {"cube_order", "9499" "3012" "9599"};
 
 typedef unsigned char B;
 static B *cubemap = NULL;  
@@ -144,7 +144,7 @@ typedef struct
    const char* desc;
 } lens_t;
 
-int fisheyeMap(double x, double y, vec3_t ray)
+int waterMap(double x, double y, vec3_t ray)
 {
    // r = f*tan(t2) where sin(theta)/sin(t2) = 1.33
    // this is an actual fisheye (i.e. what a fish would see when viewing the world from underwater)
@@ -163,7 +163,7 @@ int fisheyeMap(double x, double y, vec3_t ray)
    return 1;
 }
 
-int fisheyeFocal()
+int waterFocal()
 {
    if (HALF_FOV > M_PI/2)
       return 0;
@@ -178,7 +178,7 @@ int fisheyeFocal()
    return 1;
 }
 
-int equidistantMap(double x, double y, vec3_t ray)
+int azEquidistantMap(double x, double y, vec3_t ray)
 {
    // r = f*theta
 
@@ -192,13 +192,13 @@ int equidistantMap(double x, double y, vec3_t ray)
    return 1;
 }
 
-int equidistantFocal()
+int azEquidistantFocal()
 {
    focal = HALF_FRAME / HALF_FOV;
    return 1;
 }
 
-int equisolidMap(double x, double y, vec3_t ray)
+int azEqualAreaMap(double x, double y, vec3_t ray)
 {
    // r = 2*f*sin(theta/2)
 
@@ -213,7 +213,7 @@ int equisolidMap(double x, double y, vec3_t ray)
    return 1;
 }
 
-int equisolidFocal()
+int azEqualAreaFocal()
 {
    if (HALF_FOV > M_PI)
       return 0;
@@ -222,7 +222,7 @@ int equisolidFocal()
    return 1;
 }
 
-int stereographicMap(double x, double y, vec3_t ray)
+int azStereographicMap(double x, double y, vec3_t ray)
 {
    // r = 2f*tan(theta/2)
 
@@ -236,7 +236,7 @@ int stereographicMap(double x, double y, vec3_t ray)
    return 1;
 }
 
-int stereographicFocal()
+int azStereographicFocal()
 {
    if (HALF_FOV > M_PI)
       return 0;
@@ -245,7 +245,7 @@ int stereographicFocal()
    return 1;
 }
 
-int gnomonicMap(double x, double y, vec3_t ray)
+int azGnomonicMap(double x, double y, vec3_t ray)
 {
    // r = f*tan(theta)
 
@@ -256,7 +256,7 @@ int gnomonicMap(double x, double y, vec3_t ray)
    return 1;
 }
 
-int gnomonicFocal()
+int azGnomonicFocal()
 {
    if (HALF_FOV > M_PI/2)
       return 0;
@@ -265,7 +265,7 @@ int gnomonicFocal()
    return 1;
 }
 
-int orthogonalMap(double x, double y, vec3_t ray)
+int azOrthogonalMap(double x, double y, vec3_t ray)
 {
    // r = f*sin(theta)
 
@@ -280,7 +280,7 @@ int orthogonalMap(double x, double y, vec3_t ray)
    return 1;
 }
 
-int orthogonalFocal()
+int azOrthogonalFocal()
 {
    if (HALF_FOV > M_PI/2)
       return 0;
@@ -289,7 +289,7 @@ int orthogonalFocal()
    return 1;
 }
 
-int equirectangularMap(double x, double y, vec3_t ray)
+int cylEquidistantMap(double x, double y, vec3_t ray)
 {
    x*=fov/(2*HALF_FRAME);
    y*=fov/(2*HALF_FRAME);
@@ -301,12 +301,12 @@ int equirectangularMap(double x, double y, vec3_t ray)
     return 1;
 }
 
-int equirectangularFocal()
+int cylEquidistantFocal()
 {
    return 1;
 }
 
-int mercatorMap(double x, double y, vec3_t ray)
+int cylConformalMap(double x, double y, vec3_t ray)
 {
    x*=fov/(2*HALF_FRAME);
    y*=fov/(2*HALF_FRAME);
@@ -318,12 +318,12 @@ int mercatorMap(double x, double y, vec3_t ray)
    return 1;
 }
 
-int mercatorFocal()
+int cylConformalFocal()
 {
    return 1;
 }
 
-int cylinderMap(double x, double y, vec3_t ray)
+int cylGnomonicMap(double x, double y, vec3_t ray)
 {
    x*=fov/(2*HALF_FRAME);
    y*=fov/(2*HALF_FRAME);
@@ -335,12 +335,12 @@ int cylinderMap(double x, double y, vec3_t ray)
    return 1;
 }
 
-int cylinderFocal()
+int cylGnomonicFocal()
 {
    return 1;
 }
 
-int millerMap(double x, double y, vec3_t ray)
+int cylConformalShrinkMap(double x, double y, vec3_t ray)
 {
    x*=fov/(2*HALF_FRAME);
    y*=fov/(2*HALF_FRAME);
@@ -352,12 +352,12 @@ int millerMap(double x, double y, vec3_t ray)
    return 1;
 }
 
-int millerFocal()
+int cylConformalShrinkFocal()
 {
    return 1;
 }
 
-int panniniMap(double x, double y, vec3_t ray)
+int cylStereographicMap(double x, double y, vec3_t ray)
 {
    x/=focal;
    y/=focal;
@@ -368,7 +368,7 @@ int panniniMap(double x, double y, vec3_t ray)
    return 1;
 }
 
-int panniniFocal()
+int cylStereographicFocal()
 {
    float r = HALF_FRAME / tan(HALF_FOV/2) / 2;
    focal = r;
@@ -378,29 +378,31 @@ int panniniFocal()
 #define LENS(name, desc) { name##Map, name##Focal, #name, desc }
 
 static lens_t lenses[] = {
-   LENS(gnomonic, "standard perspective"),
-   LENS(equidistant, "sphere unwrapped onto a circle"),
-   LENS(equisolid, "mirror ball"),
-   LENS(stereographic, "sphere viewed from its surface"),
-   LENS(orthogonal, "hemisphere flattened"),
-   LENS(fisheye, "viewing the sky from underwater"),
-   LENS(equirectangular, "sphere unwrapped around cylinder"),
-   LENS(cylinder, ""),
-   LENS(mercator, ""),
-   LENS(miller, ""),
-   LENS(pannini, "")
+   LENS(azGnomonic, "Azimuthal - Gnomonic"),
+   LENS(azEquidistant, "Azimuthal - Equidistant"),
+   LENS(azEqualArea, "Azimuthal - Equal Area"),
+   LENS(azStereographic, "Azimuthal - Stereographic"),
+   LENS(azOrthogonal, "Azimuthal - Orthogonal"),
+   LENS(water, "Water"),
+   LENS(cylGnomonic, "Cylindrical - Gnomonic"),
+   LENS(cylEquidistant, "Cylindrical - Equidistant"),
+   LENS(cylConformal, "Cylindrical - Conformal"),
+   LENS(cylConformalShrink, "Cylindrical - Conformal Shrink"),
+   LENS(cylStereographic, "Cylindrical - Stereographic"),
 };
 
 void L_Help()
 {
-   Con_Printf("QUAKE LENSES\n--------\n");
+   Con_Printf("\nQUAKE LENSES\n--------\n");
    Con_Printf("hfov <degrees>: Specify FOV in horizontal degrees\n");
    Con_Printf("vfov <degrees>: Specify FOV in vertical degrees\n");
    Con_Printf("dfov <degrees>: Specify FOV in diagonal degrees\n");
    Con_Printf("lens <#>: Change the lens\n");
    int i;
    for (i=0; i<sizeof(lenses)/sizeof(lens_t); ++i)
-      Con_Printf("   %d: %20s - %s\n", i, lenses[i].name, lenses[i].desc);
+      Con_Printf("   %d: %s\n", i, lenses[i].desc);
+   Con_Printf("\n---------\n");
+   Con_Printf("cube <0|1>: display cubemap\n");
 }
 
 int clamp(int value, int min, int max)
@@ -633,7 +635,7 @@ void L_RenderView()
   int lenschange = plens!=lens;
   if (lenschange)
   {
-     Con_Printf("lens %d: %s - %s\n",lens, lenses[lens].name, lenses[lens].desc);
+     Con_Printf("lens %d: %s\n",lens, lenses[lens].desc);
   }
 
   // update FOV and framesize
