@@ -87,6 +87,8 @@ void L_CaptureCubeMap()
    else
    {
    }
+   
+   extern void WritePCXfile(char *filename, byte *data, int width, int height, int rowbytes, byte *palette);
 
 #define SET_FILE_FACE(face) sprintf(filename,"cubemaps/cube%02d_" face ".pcx",i);
 #define WRITE_FILE(n) WritePCXfile(filename,cubemap+width*height*n,width,height,width,host_basepal);
@@ -374,6 +376,59 @@ int cylStereographicInit()
    return 1;
 }
 
+void getRayLonLat(vec3_t ray, double *lon, double *lat)
+{
+   VectorNormalize(ray);
+   double x=ray[0], y=ray[1], z=ray[2];
+   *lon = atan2(x,z);
+   *lat = atan2(y,sqrt(x*x+z*z));
+}
+
+
+static double gumbyScale;
+int gumbyCylinderMap(double x, double y, vec3_t ray)
+{
+   cylStereographicMap(x,y,ray);
+   double lon,lat;
+   getRayLonLat(ray,&lon,&lat);
+   lat /= gumbyScale;
+   lon /= gumbyScale;
+   CalcCylinderRay;
+   return 1;
+}
+
+int gumbyCylinderInit()
+{
+   gumbyScale = 0.75;
+   double r = HALF_FRAME / tan(HALF_FOV/2*gumbyScale) / 2;
+   scale = 1/r;
+   return 1;
+}
+
+int gumbySphereMap(double x, double y, vec3_t ray)
+{
+   // r = 2f*tan(theta/2)
+
+   double r = R;
+   double el = 2*atan2(r,2);
+   el /= gumbyScale;
+
+   if (el > M_PI)
+      return 0;
+
+   CalcRay;
+   return 1;
+}
+
+int gumbySphereInit()
+{
+   if (HALF_FOV > M_PI)
+      return 0;
+
+   scale = 2*tan(HALF_FOV/2*gumbyScale) / HALF_FRAME;
+   return 1;
+}
+
 int hammerMap(double x, double y, vec3_t ray)
 {
    if (x*x/8+y*y/2 > 1)
@@ -428,6 +483,8 @@ static lens_t lenses[] = {
    LENS(cylConformal, "Mercator"),
    LENS(cylConformalShrink, "Miller"),
    LENS(cylStereographic, "Panini"),
+   LENS(gumbyCylinder, "Gumby Cylinder"),
+   LENS(gumbySphere, "Gumby Sphere")
 };
 
 void PrintLensType()

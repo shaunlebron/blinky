@@ -35,6 +35,8 @@ This is a fork of [TyrQuake](http://disenchant.net/engine.html) integrated with 
 * 8: Mercator:
 * 9: Miller:
 * 10: Panini:
+* 11: Gumby Cylinder:
+* 12: Gumby Sphere: 
 
 #### Motion Sickness:
-Some lenses may induce nausea! I find that the **stereographic** lenses do not, as they are the only true perspective projections here.  I recommend an fov of 180-200 using Stereographic or Panini
+Some lenses may induce nausea! I find that the **stereographic** lenses do not, as they are the only true perspective projections here.  I recommend an fov of 180-200 using Stereographic, Panini, or Gumby
