@@ -288,7 +288,7 @@ int cylEquidistantMap(double x, double y, vec3_t ray)
 {
    double lon = x;
    double lat = y;
-   if (abs(lat) > M_PI/2 || abs(lon) > M_PI)
+   if (fabs(lat) > M_PI/2 || fabs(lon) > M_PI)
       return 0;
    CalcCylinderRay;
    return 1;
@@ -303,12 +303,12 @@ int cylEquidistantInit()
 static double mercatorHeight;
 int cylConformalMap(double x, double y, vec3_t ray)
 {
-   if (abs(y) > mercatorHeight)
+   if (fabs(y) > mercatorHeight)
       return 0;
    
    double lon = x;
    double lat = atan(sinh(y));
-   if (abs(lat) > M_PI/2 || abs(lon) > M_PI)
+   if (fabs(lat) > M_PI/2 || fabs(lon) > M_PI)
       return 0;
    CalcCylinderRay;
    return 1;
@@ -325,7 +325,7 @@ int cylGnomonicMap(double x, double y, vec3_t ray)
 {
    double lon = x;
    double lat = atan(y);
-   if (abs(lat) > M_PI/2 || abs(lon) > M_PI)
+   if (fabs(lat) > M_PI/2 || fabs(lon) > M_PI)
       return 0;
    CalcCylinderRay;
    return 1;
@@ -340,12 +340,12 @@ int cylGnomonicInit()
 static double millerHeight;
 int cylConformalShrinkMap(double x, double y, vec3_t ray)
 {
-   if (abs(y) > millerHeight)
+   if (fabs(y) > millerHeight)
       return 0;
    
    double lon = x;
    double lat = 5.0/4*atan(sinh(4.0/5*y));
-   if (abs(lat) > M_PI/2 || abs(lon) > M_PI)
+   if (fabs(lat) > M_PI/2 || fabs(lon) > M_PI)
       return 0;
    CalcCylinderRay;
    return 1;

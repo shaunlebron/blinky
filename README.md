@@ -27,7 +27,7 @@ This is a fork of [TyrQuake](http://disenchant.net/engine.html) integrated with 
 * 0: Rectilinear: (all games use this)
 * 1: Equidistant Fisheye: (original fisheye)
 * 2: Equisolid-Angle Fisheye: (mirror ball)
-* 3: Hammer: (Hammer map)
+* 3: Hammer:
 * 4: Stereographic:
 * 5: Orthogonal:
 * 6: Cylinder: 
