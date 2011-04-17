@@ -11,7 +11,7 @@ This is a fork of [TyrQuake](http://disenchant.net/engine.html) integrated with 
 
 #### Commands
     lenses : shows help
-    lens <0-11>
+    lens <#> : choose a lens (listed below)
     nextlens
     prevlens
     hfov <horizontal degrees>
@@ -24,18 +24,17 @@ This is a fork of [TyrQuake](http://disenchant.net/engine.html) integrated with 
     colorcube : paint the cubemap
 
 #### Lens Projections:
-* 0: Azimuthal Gnomonic: (all games use this)
-* 1: Azimuthal Equidistant: (original fisheye)
-* 2: Azimuthal Equal-Area: (mirror ball)
-* 3: Azimuthal Equal-Area on Ellipse: (Hammer map)
-* 4: Azimuthal Stereographic:
-* 5: Azimuthal Orthogonal:
-* 6: Water:
-* 7: Cylindrical Gnomonic: (panorama)
-* 8: Cylindrical Equidistant: (equirectangular map)
-* 9: Cylindrical Conformal: (Mercator map)
-* 10: Cylindrical Conformal Shrink: (Miller map)
-* 11: Cylindrical Stereographic: (Braun map aka Panini)
+* 0: Rectilinear: (all games use this)
+* 1: Equidistant Fisheye: (original fisheye)
+* 2: Equisolid-Angle Fisheye: (mirror ball)
+* 3: Hammer: (Hammer map)
+* 4: Stereographic:
+* 5: Orthogonal:
+* 6: Cylinder: 
+* 7: Equirectangular:
+* 8: Mercator:
+* 9: Miller:
+* 10: Panini:
 
 #### Motion Sickness:
-Some lenses may induce nausea! I find that the **stereographic** lenses do not, as they are the only true perspective projections here.  I recommend an fov of 180-200 using the stereographic lenses (4 and 11).
+Some lenses may induce nausea! I find that the **stereographic** lenses do not, as they are the only true perspective projections here.  I recommend an fov of 180-200 using Stereographic or Panini

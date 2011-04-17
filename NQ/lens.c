@@ -47,7 +47,7 @@ static int width, height, diag;
 static double fov;
 static int lens;
 static int* framesize;
-static double focal;
+static double scale;
 static int faceDisplay[] = {0,0,0,0,0,0};
 static int cube;
 static int cube_rows;
@@ -109,6 +109,22 @@ void L_ShowFovDeprecate()
 void L_NextLens();
 void L_PrevLens();
 
+void L_IncFov()
+{
+   int value = (int)l_hfov.value;
+   if (value >= 360)
+      return;
+   Cvar_SetValue("hfov", value + 45);
+}
+
+void L_DecFov()
+{
+   int value = (int)l_hfov.value;
+   if (value <= 90)
+      return;
+   Cvar_SetValue("hfov", value - 45);
+}
+
 void L_Init(void)
 {
     Cmd_AddCommand("lenses", L_Help);
@@ -116,6 +132,8 @@ void L_Init(void)
     Cmd_AddCommand("fov", L_ShowFovDeprecate);
     Cmd_AddCommand("nextlens", L_NextLens);
     Cmd_AddCommand("prevlens", L_PrevLens);
+    Cmd_AddCommand("incfov", L_IncFov);
+    Cmd_AddCommand("decfov", L_DecFov);
 	 Cvar_RegisterVariable (&l_hfov);
 	 Cvar_RegisterVariable (&l_vfov);
 	 Cvar_RegisterVariable (&l_dfov);
@@ -154,46 +172,12 @@ typedef struct
              START LENS DEFINITIONS
 *************************************************/
 
-int waterMap(double x, double y, vec3_t ray)
-{
-   // r = f*tan(t2) where sin(theta)/sin(t2) = 1.33
-   // this is an actual fisheye (i.e. what a fish would see when viewing the world from underwater)
-
-   // index of refraction of water
-   double index = 1.33;
-   
-   // get elevation
-   double r = R;
-   double len = sqrt(r*r+focal*focal);
-   double s2 = r/len;
-   double s1 = index*s2;
-   double el = asin(s1);
-
-   CalcRay;
-   return 1;
-}
-
-int waterFocal()
-{
-   if (HALF_FOV > M_PI/2)
-      return 0;
-
-   // index of refraction of water
-   double index = 1.33;
-
-   // get focal length
-   double s2 = 1/index*sin(HALF_FOV);
-   double c2 = sqrt(1-s2*s2);
-   focal = HALF_FRAME * c2 / s2;
-   return 1;
-}
-
 int azEquidistantMap(double x, double y, vec3_t ray)
 {
    // r = f*theta
 
    double r = R;
-   double el = r/focal;
+   double el = r;
 
    if (el > M_PI)
       return 0;
@@ -202,9 +186,9 @@ int azEquidistantMap(double x, double y, vec3_t ray)
    return 1;
 }
 
-int azEquidistantFocal()
+int azEquidistantInit()
 {
-   focal = HALF_FRAME / HALF_FOV;
+   scale = HALF_FOV / HALF_FRAME;
    return 1;
 }
 
@@ -213,22 +197,23 @@ int azEqualAreaMap(double x, double y, vec3_t ray)
    // r = 2*f*sin(theta/2)
 
    double r = R;
-   double maxr = 2*focal/* *sin(M_PI/2)*/;
+   double maxr = 2/* *sin(M_PI/2)*/;
    if (r > maxr)
       return 0;
 
-   double el = 2*asin(r/(2*focal));
+   double el = 2*asin(r/2);
 
    CalcRay;
    return 1;
 }
 
-int azEqualAreaFocal()
+
+int azEqualAreaInit()
 {
    if (HALF_FOV > M_PI)
       return 0;
 
-   focal = HALF_FRAME / (2*sin(HALF_FOV/2));
+   scale = 2*sin(HALF_FOV/2) / HALF_FRAME;
    return 1;
 }
 
@@ -237,7 +222,7 @@ int azStereographicMap(double x, double y, vec3_t ray)
    // r = 2f*tan(theta/2)
 
    double r = R;
-   double el = 2*atan2(r,2*focal);
+   double el = 2*atan2(r,2);
 
    if (el > M_PI)
       return 0;
@@ -246,12 +231,12 @@ int azStereographicMap(double x, double y, vec3_t ray)
    return 1;
 }
 
-int azStereographicFocal()
+int azStereographicInit()
 {
    if (HALF_FOV > M_PI)
       return 0;
 
-   focal = HALF_FRAME / (2 * tan(HALF_FOV/2));
+   scale = 2*tan(HALF_FOV/2) / HALF_FRAME;
    return 1;
 }
 
@@ -260,66 +245,67 @@ int azGnomonicMap(double x, double y, vec3_t ray)
    // r = f*tan(theta)
 
    double r = R;
-   double el = atan2(r,focal);
+   double el = atan2(r,1);
 
    CalcRay;
    return 1;
 }
 
-int azGnomonicFocal()
+int azGnomonicInit()
 {
    if (HALF_FOV > M_PI/2)
       return 0;
 
-   focal = HALF_FRAME / tan(HALF_FOV);
+   scale = tan(HALF_FOV) / HALF_FRAME;
    return 1;
 }
 
 int azOrthogonalMap(double x, double y, vec3_t ray)
 {
    // r = f*sin(theta)
-
+   
    double r = R;
    //double maxr = f*sin(M_PI/2);
-   if (r > focal)
+   if (r > 1)
       return 0;
 
-   double el = asin(r/focal);
+   double el = asin(r);
 
    CalcRay;
    return 1;
 }
 
-int azOrthogonalFocal()
+int azOrthogonalInit()
 {
    if (HALF_FOV > M_PI/2)
       return 0;
 
-   focal = HALF_FRAME / sin(HALF_FOV);
+   scale = sin(HALF_FOV) / HALF_FRAME;
    return 1;
 }
 
 int cylEquidistantMap(double x, double y, vec3_t ray)
 {
-   x*=fov/(2*HALF_FRAME);
-   y*=fov/(2*HALF_FRAME);
-    double lon = x;
-    double lat = y;
-    if (abs(lat) > M_PI/2 || abs(lon) > M_PI)
-       return 0;
-    CalcCylinderRay;
-    return 1;
-}
-
-int cylEquidistantFocal()
-{
+   double lon = x;
+   double lat = y;
+   if (abs(lat) > M_PI/2 || abs(lon) > M_PI)
+      return 0;
+   CalcCylinderRay;
    return 1;
 }
 
+int cylEquidistantInit()
+{
+   scale = fov/(2*HALF_FRAME);
+   return 1;
+}
+
+static double mercatorHeight;
 int cylConformalMap(double x, double y, vec3_t ray)
 {
-   x*=fov/(2*HALF_FRAME);
-   y*=fov/(2*HALF_FRAME);
+   if (abs(y) > mercatorHeight)
+      return 0;
+   
    double lon = x;
    double lat = atan(sinh(y));
    if (abs(lat) > M_PI/2 || abs(lon) > M_PI)
@@ -328,15 +314,15 @@ int cylConformalMap(double x, double y, vec3_t ray)
    return 1;
 }
 
-int cylConformalFocal()
+int cylConformalInit()
 {
+   scale = fov/(2*HALF_FRAME);
+   mercatorHeight = log(tan(M_PI/4 + M_PI/2/2));
    return 1;
 }
 
 int cylGnomonicMap(double x, double y, vec3_t ray)
 {
-   x*=fov/(2*HALF_FRAME);
-   y*=fov/(2*HALF_FRAME);
    double lon = x;
    double lat = atan(y);
    if (abs(lat) > M_PI/2 || abs(lon) > M_PI)
@@ -345,15 +331,18 @@ int cylGnomonicMap(double x, double y, vec3_t ray)
    return 1;
 }
 
-int cylGnomonicFocal()
+int cylGnomonicInit()
 {
+   scale = fov/(2*HALF_FRAME);
    return 1;
 }
 
+static double millerHeight;
 int cylConformalShrinkMap(double x, double y, vec3_t ray)
 {
-   x*=fov/(2*HALF_FRAME);
-   y*=fov/(2*HALF_FRAME);
+   if (abs(y) > millerHeight)
+      return 0;
+   
    double lon = x;
    double lat = 5.0/4*atan(sinh(4.0/5*y));
    if (abs(lat) > M_PI/2 || abs(lon) > M_PI)
@@ -362,15 +351,15 @@ int cylConformalShrinkMap(double x, double y, vec3_t ray)
    return 1;
 }
 
-int cylConformalShrinkFocal()
+int cylConformalShrinkInit()
 {
+   scale = fov/(2*HALF_FRAME);
+   millerHeight = 5/4*log(tan(M_PI/4 + 2*(M_PI/2)/5));
    return 1;
 }
 
 int cylStereographicMap(double x, double y, vec3_t ray)
 {
-   x/=focal;
-   y/=focal;
    double t = 4/(x*x+4);
    ray[0] = x*t;
    ray[1] = y*t;
@@ -378,20 +367,15 @@ int cylStereographicMap(double x, double y, vec3_t ray)
    return 1;
 }
 
-int cylStereographicFocal()
+int cylStereographicInit()
 {
-   float r = HALF_FRAME / tan(HALF_FOV/2) / 2;
-   focal = r;
+   double r = HALF_FRAME / tan(HALF_FOV/2) / 2;
+   scale = 1/r;
    return 1;
 }
 
-static double hammerWidth;
-
 int hammerMap(double x, double y, vec3_t ray)
 {
-   x*=hammerWidth/HALF_FRAME;
-   y*=hammerWidth/HALF_FRAME;
-
    if (x*x/8+y*y/2 > 1)
       return 0;
 
@@ -402,9 +386,27 @@ int hammerMap(double x, double y, vec3_t ray)
    return 1;
 }
 
-int hammerFocal()
+int hammerInit()
 {
-   hammerWidth = 2*sqrt(2)*sin(HALF_FOV/2)/sqrt(1+cos(HALF_FOV/2));
+   if (*framesize == width)
+   {
+      if (fov > 2*M_PI)
+         return 0;
+      double hammerWidth = 2*sqrt(2)*sin(HALF_FOV/2)/sqrt(1+cos(HALF_FOV/2));
+      scale = hammerWidth / HALF_FRAME;
+   }
+   else if (*framesize == height)
+   {
+      if (fov > M_PI)
+         return 0;
+      double hammerHeight = sqrt(2)*sin(HALF_FOV)/sqrt(1+cos(HALF_FOV));
+      scale = hammerHeight / HALF_FRAME;
+   }
+   else
+   {
+      // TODO: find an equation for the diagonal...
+      return 0;
+   }
    return 1;
 }
 
@@ -412,21 +414,20 @@ int hammerFocal()
              END LENS DEFINITIONS
 *************************************************/
 
-#define LENS(name, desc) { name##Map, name##Focal, #name, desc }
+#define LENS(name, desc) { name##Map, name##Init, #name, desc }
 
 static lens_t lenses[] = {
-   LENS(azGnomonic, "Azimuthal - Gnomonic"),
-   LENS(azEquidistant, "Azimuthal - Equidistant"),
-   LENS(azEqualArea, "Azimuthal - Equal Area"),
-   LENS(hammer, "Azimuthal - Equal Area Ellipse"),
-   LENS(azStereographic, "Azimuthal - Stereographic"),
-   LENS(azOrthogonal, "Azimuthal - Orthogonal"),
-   LENS(water, "Water"),
-   LENS(cylGnomonic, "Cylindrical - Gnomonic"),
-   LENS(cylEquidistant, "Cylindrical - Equidistant"),
-   LENS(cylConformal, "Cylindrical - Conformal"),
-   LENS(cylConformalShrink, "Cylindrical - Conformal Shrink"),
-   LENS(cylStereographic, "Cylindrical - Stereographic"),
+   LENS(azGnomonic, "Rectilinear"),
+   LENS(azEquidistant, "Equidistant Fisheye"),
+   LENS(azEqualArea, "Equisolid Angle Fisheye"),
+   LENS(hammer, "Hammer-Aitoff"),
+   LENS(azStereographic, "Stereographic"),
+   LENS(azOrthogonal, "Orthogonal"),
+   LENS(cylGnomonic, "Cylinder"),
+   LENS(cylEquidistant, "Equirectangular"),
+   LENS(cylConformal, "Mercator"),
+   LENS(cylConformalShrink, "Miller"),
+   LENS(cylStereographic, "Panini"),
 };
 
 void PrintLensType()
@@ -464,7 +465,7 @@ void L_Help()
    Con_Printf("cube <0|1>: display cubemap\n");
    Con_Printf("colorcube <0|1>: paint cubemap\n");
    Con_Printf("\n---------\n");
-   Con_Printf("Motion sick?  Try lens 4 or 11\n");
+   Con_Printf("Motion sick?  Try Stereographic or Panini\n");
 }
 
 int clamp(int value, int min, int max)
@@ -539,6 +540,9 @@ void create_lensmap(B **lensmap, B *cubemap)
    for(x = 0;x<width;x++,lensmap++) {
     double x0 = x-width/2;
     double y0 = -(y-height/2);
+
+    x0 *= scale;
+    y0 *= scale;
 
     // map the current window coordinate to a ray vector
     vec3_t ray = { 0, 0, 1};
