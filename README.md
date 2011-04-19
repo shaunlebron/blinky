@@ -38,6 +38,7 @@ This is a fork of [TyrQuake](http://disenchant.net/engine.html) integrated with 
 * 11: Gumby Sphere: 
 * 12: Hammer
 * 13: Mollweide
+* 14: Eckert IV
 
 #### Motion Sickness:
 Some lenses may induce nausea! I find that the **stereographic** lenses do not, as they are the only true perspective projections here.  I recommend an fov of 180-200 using Stereographic, Panini, or Gumby

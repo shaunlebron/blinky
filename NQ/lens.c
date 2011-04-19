@@ -447,15 +447,15 @@ int hammerInit()
    {
       if (fov > 2*M_PI)
          return 0;
-      double hammerWidth = 2*sqrt(2)*sin(HALF_FOV/2)/sqrt(1+cos(HALF_FOV/2));
-      scale = hammerWidth / HALF_FRAME;
+      double w = 2*sqrt(2)*sin(HALF_FOV/2)/sqrt(1+cos(HALF_FOV/2));
+      scale = w / HALF_FRAME;
    }
    else if (*framesize == height)
    {
       if (fov > M_PI)
          return 0;
-      double hammerHeight = sqrt(2)*sin(HALF_FOV)/sqrt(1+cos(HALF_FOV));
-      scale = hammerHeight / HALF_FRAME;
+      double h = sqrt(2)*sin(HALF_FOV)/sqrt(1+cos(HALF_FOV));
+      scale = h / HALF_FRAME;
    }
    else
    {
@@ -497,16 +497,86 @@ int mollweideInit()
       if (fov > 2*M_PI)
          return 0;
       double t = computeMollweideTheta(0);
-      double mollweideWidth = 2*sqrt(2)/M_PI*HALF_FOV*cos(t);
-      scale = mollweideWidth / HALF_FRAME;
+      double w = 2*sqrt(2)/M_PI*HALF_FOV*cos(t);
+      scale = w / HALF_FRAME;
    }
    else if (*framesize == height)
    {
       if (fov > M_PI)
          return 0;
       double t = computeMollweideTheta(HALF_FOV);
-      double mollweideHeight = sqrt(2)*sin(t);
-      scale = mollweideHeight / HALF_FRAME;
+      double h = sqrt(2)*sin(t);
+      scale = h / HALF_FRAME;
+   }
+   else
+   {
+      // TODO: find an equation for the diagonal...
+      return 0;
+   }
+   return 1;
+}
+
+static double eckertIvMaxY;
+static double eckertIvLastY;
+static double eckertIvMaxX;
+
+double computeEckertIvTheta(double lat)
+{
+   double t = lat/2;
+   double dt;
+   do
+   {
+      dt = -(t + sin(t)*cos(t) + 2*sin(t) - (2+M_PI/2)*sin(lat))/(2*cos(t)*(1+cos(t)));
+      t += dt;
+   }
+   while (dt > 0.001);
+   return t;
+}
+
+int eckertIvMap(double x, double y, vec3_t ray)
+{
+   if (fabs(y) > eckertIvMaxY)
+      return 0;
+
+   double t = asin(y/2*sqrt((4+M_PI)/M_PI));
+   double lat = asin((t+sin(t)*cos(t)+2*sin(t))/(2+M_PI/2));
+
+   if (y != eckertIvLastY)
+   {
+      double t2 = computeEckertIvTheta(fabs(lat));
+      eckertIvMaxX = 2/sqrt(M_PI*(4+M_PI))*M_PI*(1+cos(t2));
+      eckertIvLastY = y;
+   }
+
+   if (fabs(x) > eckertIvMaxX)
+      return 0;
+
+   double lon = sqrt(M_PI*(4+M_PI))*x/(2*(1+cos(t)));
+
+   CalcCylinderRay;
+   return 1;
+}
+
+int eckertIvInit()
+{
+   double t = computeEckertIvTheta(M_PI/2);
+   eckertIvMaxY = 2*sqrt(M_PI/(4+M_PI))*sin(t);
+
+   if (*framesize == width)
+   {
+      if (fov > 2*M_PI)
+         return 0;
+      t = computeEckertIvTheta(0);
+      double w = 2/sqrt(M_PI*(4+M_PI))*HALF_FOV*(1+cos(t));
+      scale = w / HALF_FRAME;
+   }
+   else if (*framesize == height)
+   {
+      if (fov > M_PI)
+         return 0;
+      t = computeEckertIvTheta(HALF_FOV);
+      double h = 2*sqrt(M_PI/(4+M_PI))*sin(t);
+      scale = h / HALF_FRAME;
    }
    else
    {
@@ -535,8 +605,9 @@ static lens_t lenses[] = {
    LENS(panini, "Panini"),
    LENS(gumbyCylinder, "Gumby Cylinder"),
    LENS(gumbySphere, "Gumby Sphere"),
-   LENS(hammer, "Hammer-Aitoff"),
+   LENS(hammer, "Hammer"),
    LENS(mollweide, "Mollweide"),
+   LENS(eckertIv, "Eckert IV"),
 };
 
 void PrintLensType()
