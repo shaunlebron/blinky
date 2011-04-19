@@ -170,11 +170,20 @@ typedef struct
    const char* desc;
 } lens_t;
 
+void getRayLonLat(vec3_t ray, double *lon, double *lat)
+{
+   VectorNormalize(ray);
+   double x=ray[0], y=ray[1], z=ray[2];
+   *lon = atan2(x,z);
+   *lat = atan2(y,sqrt(x*x+z*z));
+}
+
+
 /***************************************************
              START LENS DEFINITIONS
 *************************************************/
 
-int azEquidistantMap(double x, double y, vec3_t ray)
+int equidistantFisheyeMap(double x, double y, vec3_t ray)
 {
    // r = f*theta
 
@@ -188,13 +197,13 @@ int azEquidistantMap(double x, double y, vec3_t ray)
    return 1;
 }
 
-int azEquidistantInit()
+int equidistantFisheyeInit()
 {
    scale = HALF_FOV / HALF_FRAME;
    return 1;
 }
 
-int azEqualAreaMap(double x, double y, vec3_t ray)
+int equisolidAngleFisheyeMap(double x, double y, vec3_t ray)
 {
    // r = 2*f*sin(theta/2)
 
@@ -210,7 +219,7 @@ int azEqualAreaMap(double x, double y, vec3_t ray)
 }
 
 
-int azEqualAreaInit()
+int equisolidAngleFisheyeInit()
 {
    if (HALF_FOV > M_PI)
       return 0;
@@ -242,7 +251,7 @@ int azStereographicInit()
    return 1;
 }
 
-int azGnomonicMap(double x, double y, vec3_t ray)
+int rectilinearMap(double x, double y, vec3_t ray)
 {
    // r = f*tan(theta)
 
@@ -253,7 +262,7 @@ int azGnomonicMap(double x, double y, vec3_t ray)
    return 1;
 }
 
-int azGnomonicInit()
+int rectilinearInit()
 {
    if (HALF_FOV > M_PI/2)
       return 0;
@@ -286,7 +295,7 @@ int azOrthogonalInit()
    return 1;
 }
 
-int cylEquidistantMap(double x, double y, vec3_t ray)
+int equirectangularMap(double x, double y, vec3_t ray)
 {
    double lon = x;
    double lat = y;
@@ -296,14 +305,14 @@ int cylEquidistantMap(double x, double y, vec3_t ray)
    return 1;
 }
 
-int cylEquidistantInit()
+int equirectangularInit()
 {
    scale = fov/(2*HALF_FRAME);
    return 1;
 }
 
 static double mercatorHeight;
-int cylConformalMap(double x, double y, vec3_t ray)
+int mercatorMap(double x, double y, vec3_t ray)
 {
    if (fabs(y) > mercatorHeight)
       return 0;
@@ -316,14 +325,14 @@ int cylConformalMap(double x, double y, vec3_t ray)
    return 1;
 }
 
-int cylConformalInit()
+int mercatorInit()
 {
    scale = fov/(2*HALF_FRAME);
    mercatorHeight = log(tan(M_PI/4 + M_PI/2/2));
    return 1;
 }
 
-int cylGnomonicMap(double x, double y, vec3_t ray)
+int cylinderMap(double x, double y, vec3_t ray)
 {
    double lon = x;
    double lat = atan(y);
@@ -333,14 +342,14 @@ int cylGnomonicMap(double x, double y, vec3_t ray)
    return 1;
 }
 
-int cylGnomonicInit()
+int cylinderInit()
 {
    scale = fov/(2*HALF_FRAME);
    return 1;
 }
 
 static double millerHeight;
-int cylConformalShrinkMap(double x, double y, vec3_t ray)
+int millerMap(double x, double y, vec3_t ray)
 {
    if (fabs(y) > millerHeight)
       return 0;
@@ -353,14 +362,14 @@ int cylConformalShrinkMap(double x, double y, vec3_t ray)
    return 1;
 }
 
-int cylConformalShrinkInit()
+int millerInit()
 {
    scale = fov/(2*HALF_FRAME);
    millerHeight = 5/4*log(tan(M_PI/4 + 2*(M_PI/2)/5));
    return 1;
 }
 
-int cylStereographicMap(double x, double y, vec3_t ray)
+int paniniMap(double x, double y, vec3_t ray)
 {
    double t = 4/(x*x+4);
    ray[0] = x*t;
@@ -369,26 +378,16 @@ int cylStereographicMap(double x, double y, vec3_t ray)
    return 1;
 }
 
-int cylStereographicInit()
+int paniniInit()
 {
-   double r = HALF_FRAME / tan(HALF_FOV/2) / 2;
-   scale = 1/r;
+   scale = 2*tan(HALF_FOV/2) / HALF_FRAME;
    return 1;
 }
-
-void getRayLonLat(vec3_t ray, double *lon, double *lat)
-{
-   VectorNormalize(ray);
-   double x=ray[0], y=ray[1], z=ray[2];
-   *lon = atan2(x,z);
-   *lat = atan2(y,sqrt(x*x+z*z));
-}
-
 
 static double gumbyScale;
 int gumbyCylinderMap(double x, double y, vec3_t ray)
 {
-   cylStereographicMap(x,y,ray);
+   paniniMap(x,y,ray);
    double lon,lat;
    getRayLonLat(ray,&lon,&lat);
    lat /= gumbyScale;
@@ -425,6 +424,7 @@ int gumbySphereInit()
    if (HALF_FOV > M_PI)
       return 0;
 
+   gumbyScale = 0.75;
    scale = 2*tan(HALF_FOV/2*gumbyScale) / HALF_FRAME;
    return 1;
 }
@@ -465,6 +465,57 @@ int hammerInit()
    return 1;
 }
 
+int mollweideMap(double x, double y, vec3_t ray)
+{
+   if (x*x/8+y*y/2 > 1)
+      return 0;
+
+   double t = asin(y/sqrt(2));
+   double lon = M_PI*x/(2*sqrt(2)*cos(t));
+   double lat = asin((2*t+sin(2*t))/M_PI);
+   CalcCylinderRay;
+   return 1;
+}
+
+double computeMollweideTheta(double lat)
+{
+   double t = lat;
+   double dt;
+   do
+   {
+      dt = -(t + sin(t) - M_PI*sin(lat))/(1+cos(t));
+      t += dt;
+   }
+   while (dt > 0.001);
+   return t/2;
+}
+
+int mollweideInit()
+{
+   if (*framesize == width)
+   {
+      if (fov > 2*M_PI)
+         return 0;
+      double t = computeMollweideTheta(0);
+      double mollweideWidth = 2*sqrt(2)/M_PI*HALF_FOV*cos(t);
+      scale = mollweideWidth / HALF_FRAME;
+   }
+   else if (*framesize == height)
+   {
+      if (fov > M_PI)
+         return 0;
+      double t = computeMollweideTheta(HALF_FOV);
+      double mollweideHeight = sqrt(2)*sin(t);
+      scale = mollweideHeight / HALF_FRAME;
+   }
+   else
+   {
+      // TODO: find an equation for the diagonal...
+      return 0;
+   }
+   return 1;
+}
+
 /***************************************************
              END LENS DEFINITIONS
 *************************************************/
@@ -472,19 +523,20 @@ int hammerInit()
 #define LENS(name, desc) { name##Map, name##Init, #name, desc }
 
 static lens_t lenses[] = {
-   LENS(azGnomonic, "Rectilinear"),
-   LENS(azEquidistant, "Equidistant Fisheye"),
-   LENS(azEqualArea, "Equisolid Angle Fisheye"),
-   LENS(hammer, "Hammer-Aitoff"),
+   LENS(rectilinear, "Rectilinear"),
+   LENS(equidistantFisheye, "Equidistant Fisheye"),
+   LENS(equisolidAngleFisheye, "Equisolid-Angle Fisheye"),
    LENS(azStereographic, "Stereographic"),
    LENS(azOrthogonal, "Orthogonal"),
-   LENS(cylGnomonic, "Cylinder"),
-   LENS(cylEquidistant, "Equirectangular"),
-   LENS(cylConformal, "Mercator"),
-   LENS(cylConformalShrink, "Miller"),
-   LENS(cylStereographic, "Panini"),
+   LENS(cylinder, "Cylinder"),
+   LENS(equirectangular, "Equirectangular"),
+   LENS(mercator, "Mercator"),
+   LENS(miller, "Miller"),
+   LENS(panini, "Panini"),
    LENS(gumbyCylinder, "Gumby Cylinder"),
-   LENS(gumbySphere, "Gumby Sphere")
+   LENS(gumbySphere, "Gumby Sphere"),
+   LENS(hammer, "Hammer-Aitoff"),
+   LENS(mollweide, "Mollweide"),
 };
 
 void PrintLensType()

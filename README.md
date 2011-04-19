@@ -27,16 +27,17 @@ This is a fork of [TyrQuake](http://disenchant.net/engine.html) integrated with 
 * 0: Rectilinear: (all games use this)
 * 1: Equidistant Fisheye: (original fisheye)
 * 2: Equisolid-Angle Fisheye: (mirror ball)
-* 3: Hammer:
-* 4: Stereographic:
-* 5: Orthogonal:
-* 6: Cylinder: 
-* 7: Equirectangular:
-* 8: Mercator:
-* 9: Miller:
-* 10: Panini:
-* 11: Gumby Cylinder:
-* 12: Gumby Sphere: 
+* 3: Stereographic:
+* 4: Orthogonal:
+* 5: Cylinder: 
+* 6: Equirectangular:
+* 7: Mercator:
+* 8: Miller:
+* 9: Panini:
+* 10: Gumby Cylinder:
+* 11: Gumby Sphere: 
+* 12: Hammer
+* 13: Mollweide
 
 #### Motion Sickness:
 Some lenses may induce nausea! I find that the **stereographic** lenses do not, as they are the only true perspective projections here.  I recommend an fov of 180-200 using Stereographic, Panini, or Gumby
