@@ -18,11 +18,9 @@ cvar_t l_hfov = {"hfov", "90", true};
 cvar_t l_vfov = {"vfov", "-1", true};
 cvar_t l_dfov = {"dfov", "-1", true};
 cvar_t l_lens = {"lens", "0", true};
-cvar_t l_cube = {"cube", "0", true};
 cvar_t l_cube_rows = {"cube_rows", "3"};
 cvar_t l_cube_cols = {"cube_cols", "4"};
 cvar_t l_cube_order = {"cube_order", "9499" "3012" "9599"};
-cvar_t l_colorcube = {"colorcube", "0"};
 
 typedef unsigned char B;
 static B *cubemap = NULL;  
@@ -49,11 +47,11 @@ static int lens;
 static int* framesize;
 static double scale;
 static int faceDisplay[] = {0,0,0,0,0,0};
-static int cube;
+static int cube = 0;
+static int colorcube = 0;
 static int cube_rows;
 static int cube_cols;
 static char cube_order[MAX_CUBE_ORDER];
-static int colorcube;
 
 // retrieves a pointer to a pixel in the video buffer
 #define VBUFFER(x,y) (vid.buffer + (x) + (y)*vid.rowbytes)
@@ -127,6 +125,18 @@ void L_DecFov()
    Cvar_SetValue("hfov", value - 45);
 }
 
+void L_Cube()
+{
+   cube = cube ? 0 : 1;
+   Con_Printf("Cube is %s\n", cube ? "ON" : "OFF");
+}
+
+void L_ColorCube()
+{
+   colorcube = colorcube ? 0 : 1;
+   Con_Printf("Colored Cube is %s\n", colorcube ? "ON" : "OFF");
+}
+
 void L_Init(void)
 {
     Cmd_AddCommand("lenses", L_Help);
@@ -136,15 +146,15 @@ void L_Init(void)
     Cmd_AddCommand("prevlens", L_PrevLens);
     Cmd_AddCommand("incfov", L_IncFov);
     Cmd_AddCommand("decfov", L_DecFov);
+    Cmd_AddCommand("cube", L_Cube);
+    Cmd_AddCommand("colorcube", L_ColorCube);
 	 Cvar_RegisterVariable (&l_hfov);
 	 Cvar_RegisterVariable (&l_vfov);
 	 Cvar_RegisterVariable (&l_dfov);
     Cvar_RegisterVariable (&l_lens);
-    Cvar_RegisterVariable (&l_cube);
     Cvar_RegisterVariable (&l_cube_rows);
     Cvar_RegisterVariable (&l_cube_cols);
     Cvar_RegisterVariable (&l_cube_order);
-    Cvar_RegisterVariable (&l_colorcube);
 }
 
 // FISHEYE HELPERS
@@ -642,8 +652,8 @@ void L_Help()
    for (i=0; i<sizeof(lenses)/sizeof(lens_t); ++i)
       Con_Printf("   %d: %s\n", i, lenses[i].desc);
    Con_Printf("\n---------\n");
-   Con_Printf("cube <0|1>: display cubemap\n");
-   Con_Printf("colorcube <0|1>: paint cubemap\n");
+   Con_Printf("cube: toggle cubemap\n");
+   Con_Printf("colorcube: toggle paint cubemap\n");
    Con_Printf("\n---------\n");
    Con_Printf("Motion sick?  Try Stereographic or Panini\n");
 }
@@ -837,11 +847,9 @@ void L_RenderView()
   static int pcolorcube = -1;
 
   // update cube settings
-  cube = (int)l_cube.value;
   cube_rows = (int)l_cube_rows.value;
   cube_cols = (int)l_cube_cols.value;
   strcpy(cube_order, l_cube_order.string);
-  colorcube = (int)l_colorcube.value;
   int cubechange = cube != pcube || cube_rows!=pcube_rows || cube_cols!=pcube_cols || strcmp(cube_order,pcube_order);
 
   // update screen size
