@@ -176,8 +176,9 @@ void L_Init(void)
 
 typedef struct
 {
-   int (*map)(double x, double y, vec3_t ray);
-   int (*focal)();
+   int (*mapForward)(vec3_t ray, double *x, double *y);
+   int (*mapInverse)(double x, double y, vec3_t ray);
+   int (*init)();
    const char* name;
    const char* desc;
 } lens_t;
@@ -195,7 +196,7 @@ void getRayLonLat(vec3_t ray, double *lon, double *lat)
              START LENS DEFINITIONS
 *************************************************/
 
-int equidistantFisheyeMap(double x, double y, vec3_t ray)
+int equidistantFisheyeMapInverse(double x, double y, vec3_t ray)
 {
    // r = f*theta
 
@@ -215,7 +216,7 @@ int equidistantFisheyeInit()
    return 1;
 }
 
-int equisolidAngleFisheyeMap(double x, double y, vec3_t ray)
+int equisolidAngleFisheyeMapInverse(double x, double y, vec3_t ray)
 {
    // r = 2*f*sin(theta/2)
 
@@ -240,7 +241,7 @@ int equisolidAngleFisheyeInit()
    return 1;
 }
 
-int azStereographicMap(double x, double y, vec3_t ray)
+int azStereographicMapInverse(double x, double y, vec3_t ray)
 {
    // r = 2f*tan(theta/2)
 
@@ -263,7 +264,7 @@ int azStereographicInit()
    return 1;
 }
 
-int rectilinearMap(double x, double y, vec3_t ray)
+int rectilinearMapInverse(double x, double y, vec3_t ray)
 {
    // r = f*tan(theta)
 
@@ -283,7 +284,7 @@ int rectilinearInit()
    return 1;
 }
 
-int azOrthogonalMap(double x, double y, vec3_t ray)
+int azOrthogonalMapInverse(double x, double y, vec3_t ray)
 {
    // r = f*sin(theta)
    
@@ -307,7 +308,7 @@ int azOrthogonalInit()
    return 1;
 }
 
-int equirectangularMap(double x, double y, vec3_t ray)
+int equirectangularMapInverse(double x, double y, vec3_t ray)
 {
    double lon = x;
    double lat = y;
@@ -324,7 +325,7 @@ int equirectangularInit()
 }
 
 static double mercatorHeight;
-int mercatorMap(double x, double y, vec3_t ray)
+int mercatorMapInverse(double x, double y, vec3_t ray)
 {
    if (fabs(y) > mercatorHeight)
       return 0;
@@ -344,7 +345,7 @@ int mercatorInit()
    return 1;
 }
 
-int cylinderMap(double x, double y, vec3_t ray)
+int cylinderMapInverse(double x, double y, vec3_t ray)
 {
    double lon = x;
    double lat = atan(y);
@@ -361,7 +362,7 @@ int cylinderInit()
 }
 
 static double millerHeight;
-int millerMap(double x, double y, vec3_t ray)
+int millerMapInverse(double x, double y, vec3_t ray)
 {
    if (fabs(y) > millerHeight)
       return 0;
@@ -381,7 +382,7 @@ int millerInit()
    return 1;
 }
 
-int paniniMap(double x, double y, vec3_t ray)
+int paniniMapInverse(double x, double y, vec3_t ray)
 {
    double t = 4/(x*x+4);
    ray[0] = x*t;
@@ -397,9 +398,9 @@ int paniniInit()
 }
 
 static double gumbyScale;
-int gumbyCylinderMap(double x, double y, vec3_t ray)
+int gumbyCylinderMapInverse(double x, double y, vec3_t ray)
 {
-   paniniMap(x,y,ray);
+   paniniMapInverse(x,y,ray);
    double lon,lat;
    getRayLonLat(ray,&lon,&lat);
    lat /= gumbyScale;
@@ -416,7 +417,7 @@ int gumbyCylinderInit()
    return 1;
 }
 
-int gumbySphereMap(double x, double y, vec3_t ray)
+int gumbySphereMapInverse(double x, double y, vec3_t ray)
 {
    // r = 2f*tan(theta/2)
 
@@ -441,7 +442,7 @@ int gumbySphereInit()
    return 1;
 }
 
-int hammerMap(double x, double y, vec3_t ray)
+int hammerMapInverse(double x, double y, vec3_t ray)
 {
    if (x*x/8+y*y/2 > 1)
       return 0;
@@ -477,7 +478,7 @@ int hammerInit()
    return 1;
 }
 
-int mollweideMap(double x, double y, vec3_t ray)
+int mollweideMapInverse(double x, double y, vec3_t ray)
 {
    if (x*x/8+y*y/2 > 1)
       return 0;
@@ -545,7 +546,7 @@ double computeEckertIvTheta(double lat)
    return t;
 }
 
-int eckertIvMap(double x, double y, vec3_t ray)
+int eckertIvMapInverse(double x, double y, vec3_t ray)
 {
    if (fabs(y) > eckertIvMaxY)
       return 0;
@@ -598,28 +599,79 @@ int eckertIvInit()
    return 1;
 }
 
+static double winkelLat0;
+void winkelTripelGetXY(double lon, double lat, double *x, double *y)
+{
+   double clat = cos(lat);
+   double temp = clat*cos(lon*0.5);
+   double D = acos(temp);
+   double C = 1 - temp*temp;
+   temp = D/sqrt(C);
+
+   *x = 0.5 * (2*temp*clat*sin(lon*0.5)+lon*cos(winkelLat0));
+   *y = 0.5 * (temp*sin(lat) + lat);
+}
+
+int winkelTripelMapForward(vec3_t ray, double *x, double *y)
+{
+   double lon,lat;
+   getRayLonLat(ray, &lon, &lat);
+   winkelTripelGetXY(lon, lat, x, y);
+   return 1;
+}
+
+int winkelTripelInit()
+{
+   // standard parallel chosen by Winkel(50 degrees 28')
+   winkelLat0 = acos(2.0/M_PI);
+
+   double w,h;
+   if (*framesize == width)
+   {
+      if (fov > 2*M_PI)
+         return 0;
+      winkelTripelGetXY(HALF_FOV,0,&w,&h);
+      scale = w / HALF_FRAME;
+   }
+   else if (*framesize == height)
+   {
+      if (fov > M_PI)
+         return 0;
+      winkelTripelGetXY(0,HALF_FOV,&w,&h);
+      scale = h / HALF_FRAME;
+   }
+   else
+   {
+      // TODO: find an equation for the diagonal...
+      return 0;
+   }
+   return 1;
+}
+
 /***************************************************
              END LENS DEFINITIONS
 *************************************************/
 
-#define LENS(name, desc) { name##Map, name##Init, #name, desc }
+#define LENS_FWD(name, desc) { name##MapForward, 0, name##Init, #name, desc }
+#define LENS_INV(name, desc) { 0, name##MapInverse, name##Init, #name, desc }
 
 static lens_t lenses[] = {
-   LENS(rectilinear, "Rectilinear"),
-   LENS(equidistantFisheye, "Equidistant Fisheye"),
-   LENS(equisolidAngleFisheye, "Equisolid-Angle Fisheye"),
-   LENS(azStereographic, "Stereographic"),
-   LENS(azOrthogonal, "Orthogonal"),
-   LENS(cylinder, "Cylinder"),
-   LENS(equirectangular, "Equirectangular"),
-   LENS(mercator, "Mercator"),
-   LENS(miller, "Miller"),
-   LENS(panini, "Panini"),
-   LENS(gumbyCylinder, "Gumby Cylinder"),
-   LENS(gumbySphere, "Gumby Sphere"),
-   LENS(hammer, "Hammer"),
-   LENS(mollweide, "Mollweide"),
-   LENS(eckertIv, "Eckert IV"),
+   LENS_INV(rectilinear, "Rectilinear"),
+   LENS_INV(equidistantFisheye, "Equidistant Fisheye"),
+   LENS_INV(equisolidAngleFisheye, "Equisolid-Angle Fisheye"),
+   LENS_INV(azStereographic, "Stereographic"),
+   LENS_INV(azOrthogonal, "Orthogonal"),
+   LENS_INV(cylinder, "Cylinder"),
+   LENS_INV(equirectangular, "Equirectangular"),
+   LENS_INV(mercator, "Mercator"),
+   LENS_INV(miller, "Miller"),
+   LENS_INV(panini, "Panini"),
+   LENS_INV(gumbyCylinder, "Gumby Cylinder"),
+   LENS_INV(gumbySphere, "Gumby Sphere"),
+   LENS_INV(hammer, "Hammer"),
+   LENS_INV(mollweide, "Mollweide"),
+   LENS_INV(eckertIv, "Eckert IV"),
+   LENS_FWD(winkelTripel, "Winkel Tripel"),
 };
 
 void PrintLensType()
@@ -706,26 +758,9 @@ void create_cubefold(B **lensmap, B *cubemap)
    }
 }
 
-void create_lensmap(B **lensmap, B *cubemap)
+void create_lensmap_inverse(B **lensmap, B *cubemap)
 {
-  if (cube)
-  {
-     // set all faces to display
-     memset(faceDisplay,1,6*sizeof(int));
-
-     // create lookup table for unfolded cubemap
-     create_cubefold(lensmap,cubemap);
-     return;
-  }
-
   int side_count[] = {0,0,0,0,0,0};
-
-  // lens' focal length impossible to compute from desired FOV
-  if (!lenses[lens].focal())
-  {
-     Con_Printf("This lens cannot handle the current FOV.\n");
-     return;
-  }
 
   int x, y;
   for(y = 0;y<height;y++) 
@@ -741,14 +776,11 @@ void create_lensmap(B **lensmap, B *cubemap)
     if (x==width/2 && y == height/2)
     {
     }
-    else if (!lenses[lens].map(x0,y0,ray))
+    else if (!lenses[lens].mapInverse(x0,y0,ray))
     {
        // pixel is outside projection
        continue;
     }
-
-    // FIXME: strange negative y anomaly
-    ray[1] *= -1;
 
     // determine which side of the box we need
     double sx = ray[0], sy = ray[1], sz = ray[2];
@@ -761,7 +793,7 @@ void create_lensmap(B **lensmap, B *cubemap)
       if (abs_x > abs_z) { side = ((sx > 0.0) ? BOX_RIGHT : BOX_LEFT);   }
       else               { side = ((sz > 0.0) ? BOX_FRONT : BOX_BEHIND); }
     } else {
-      if (abs_y > abs_z) { side = ((sy > 0.0) ? BOX_BOTTOM : BOX_TOP); }
+      if (abs_y > abs_z) { side = ((sy > 0.0) ? BOX_TOP : BOX_BOTTOM); }
       else               { side = ((sz > 0.0) ? BOX_FRONT : BOX_BEHIND); }
     }
 
@@ -769,12 +801,12 @@ void create_lensmap(B **lensmap, B *cubemap)
 
     // scale up our vector [x,y,z] to the box
     switch(side) {
-      case BOX_FRONT:  xs = T( sx /  sz); ys = T( sy /  sz); break;
-      case BOX_BEHIND: xs = T(-sx / -sz); ys = T( sy / -sz); break;
-      case BOX_LEFT:   xs = T( sz / -sx); ys = T( sy / -sx); break;
-      case BOX_RIGHT:  xs = T(-sz /  sx); ys = T( sy /  sx); break;
-      case BOX_BOTTOM: xs = T( sx /  sy); ys = T( sz / -sy); break;
-      case BOX_TOP:    xs = T(-sx /  sy); ys = T( sz / -sy); break;
+      case BOX_FRONT:  xs = T( sx /  sz); ys = T( -sy /  sz); break;
+      case BOX_BEHIND: xs = T(-sx / -sz); ys = T( -sy / -sz); break;
+      case BOX_LEFT:   xs = T( sz / -sx); ys = T( -sy / -sx); break;
+      case BOX_RIGHT:  xs = T(-sz /  sx); ys = T( -sy /  sx); break;
+      case BOX_BOTTOM: xs = T( sx /  -sy); ys = T( -sz / -sy); break;
+      case BOX_TOP:    xs = T(sx /  sy); ys = T( sz / sy); break;
     }
     side_count[side]++;
 
@@ -793,7 +825,128 @@ void create_lensmap(B **lensmap, B *cubemap)
      faceDisplay[x] = (side_count[x] > 1);
   }
   //Con_Printf("rendering %d views\n",views);
+}
 
+void create_lensmap_forward(B **lensmap, B *cubemap)
+{
+   // create a ray
+   // give to map
+   // divide coordinates by scale
+   // negate y
+   // x += width/2
+   // y += height/2
+   // clamp x and y
+   int side_count[] = {0,0,0,0,0,0};
+   int x,y;
+   int side;
+   double nz = cubesize*0.5;
+   for (side=0; side<6; ++side)
+   {
+      for (y=0; y<cubesize; ++y)
+      {
+         double ny = -(y-cubesize*0.5);
+         for (x=0; x<cubesize; ++x)
+         {
+            double nx = x-cubesize*0.5;
+            vec3_t ray;
+            if (side == BOX_FRONT)
+            {
+               ray[0] = nx;
+               ray[1] = ny;
+               ray[2] = nz;
+            }
+            else if (side == BOX_BEHIND)
+            {
+               ray[0] = -nx;
+               ray[1] = ny;
+               ray[2] = -nz;
+            }
+            else if (side == BOX_LEFT)
+            {
+               ray[0] = -nz;
+               ray[1] = ny;
+               ray[2] = nx;
+            }
+            else if (side == BOX_RIGHT)
+            {
+               ray[0] = nz;
+               ray[1] = ny;
+               ray[2] = -nx;
+            }
+            else if (side == BOX_TOP)
+            {
+               ray[0] = nx;
+               ray[1] = nz;
+               ray[2] = -ny;
+            }
+            else if (side == BOX_BOTTOM)
+            {
+               ray[0] = nx;
+               ray[1] = -nz;
+               ray[2] = ny;
+            }
+
+            double x0,y0;
+            if (!lenses[lens].mapForward(ray, &x0, &y0))
+            {
+               continue;
+            }
+
+            double invscale = 1/scale;
+            x0 *= invscale;
+            y0 *= invscale;
+
+            y0 *= -1;
+            
+            x0 += width*0.5;
+            y0 += height*0.5;
+
+            int lx = (int)x0;
+            int ly = (int)y0;
+
+            if (lx < 0 || lx >= width || ly < 0 || ly >= height)
+               continue;
+
+            side_count[side]++;
+
+            *LENSMAP(lx,ly) = CUBEFACE(side,x,y);
+         }
+      }
+   }
+
+   //Con_Printf("cubemap side usage count:\n");
+   for(x=0; x<6; ++x)
+   {
+      //Con_Printf("   %d: %d\n",x,side_count[x]);
+      faceDisplay[x] = (side_count[x] > 1);
+   }
+}
+
+void create_lensmap(B **lensmap, B *cubemap)
+{
+  if (cube)
+  {
+     // set all faces to display
+     memset(faceDisplay,1,6*sizeof(int));
+
+     // create lookup table for unfolded cubemap
+     create_cubefold(lensmap,cubemap);
+     return;
+  }
+
+  // test if this lens can support the current fov
+  if (!lenses[lens].init())
+  {
+     Con_Printf("This lens cannot handle the current FOV.\n");
+     return;
+  }
+
+  if (lenses[lens].mapForward)
+     create_lensmap_forward(lensmap,cubemap);
+  else if (lenses[lens].mapInverse)
+     create_lensmap_inverse(lensmap,cubemap);
+  else
+     Con_Printf("This lens does not have any mapping.\n");
 }
 
 void render_lensmap(B **lensmap)
