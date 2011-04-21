@@ -57,23 +57,30 @@ D_WarpScreen(void)
     w = r_refdef.vrect.width;
     h = r_refdef.vrect.height;
 
-    wratio = w / (float)scr_vrect.width;
-    hratio = h / (float)scr_vrect.height;
+    // FISHEYE BEGIN EDIT
+    // NOTE: reference the correct size of the rendered cubeface, not the resulting lens size
+    // NOTE: replace all instances of scr_vrect.width and height with rsize (render size)
+    int rsize = scr_vrect.width;
+    if (scr_vrect.height < rsize)
+       rsize = scr_vrect.height;
+
+    wratio = w / (float)rsize;
+    hratio = h / (float)rsize;
 
     // FIXME - use Zmalloc or similar?
     // FIXME - rowptr and column are constant for same vidmode?
     // FIXME - do they cycle?
-    rowptr = (byte **)malloc((scr_vrect.height + TURB_SCREEN_AMP * 2)
+    rowptr = (byte **)malloc((rsize + TURB_SCREEN_AMP * 2)
 			     * sizeof(byte *));
-    for (v = 0; v < scr_vrect.height + TURB_SCREEN_AMP * 2; v++) {
+    for (v = 0; v < rsize + TURB_SCREEN_AMP * 2; v++) {
 	rowptr[v] = d_viewbuffer + (r_refdef.vrect.y * screenwidth) +
 	    (screenwidth * (int)((float)v * hratio * h /
 				 (h + TURB_SCREEN_AMP * 2)));
     }
 
-    column = (int *)malloc((scr_vrect.width + TURB_SCREEN_AMP * 2)
+    column = (int *)malloc((rsize + TURB_SCREEN_AMP * 2)
 			   * sizeof(int));
-    for (u = 0; u < scr_vrect.width + TURB_SCREEN_AMP * 2; u++) {
+    for (u = 0; u < rsize + TURB_SCREEN_AMP * 2; u++) {
 	column[u] = r_refdef.vrect.x +
 	    (int)((float)u * wratio * w / (w + TURB_SCREEN_AMP * 2));
     }
@@ -81,10 +88,10 @@ D_WarpScreen(void)
     turb = intsintable + ((int)(cl.time * TURB_SPEED) & (TURB_CYCLE - 1));
     dest = vid.buffer + scr_vrect.y * vid.rowbytes + scr_vrect.x;
 
-    for (v = 0; v < scr_vrect.height; v++, dest += vid.rowbytes) {
+    for (v = 0; v < rsize; v++, dest += vid.rowbytes) {
 	col = &column[turb[v & (TURB_CYCLE - 1)]];
 	row = &rowptr[v];
-	for (u = 0; u < scr_vrect.width; u += 4) {
+	for (u = 0; u < rsize; u += 4) {
 	    dest[u + 0] = row[turb[(u + 0) & (TURB_CYCLE - 1)]][col[u + 0]];
 	    dest[u + 1] = row[turb[(u + 1) & (TURB_CYCLE - 1)]][col[u + 1]];
 	    dest[u + 2] = row[turb[(u + 2) & (TURB_CYCLE - 1)]][col[u + 2]];

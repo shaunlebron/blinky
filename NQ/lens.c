@@ -10,6 +10,7 @@
 #include "lens.h"
 #include "mathlib.h"
 #include "quakedef.h"
+#include "r_local.h"
 #include "screen.h"
 #include "sys.h"
 #include "view.h"
