@@ -390,6 +390,16 @@ R_ViewChanged(vrect_t *pvrect, int lineadj, float aspect)
 
     R_SetVrect(pvrect, &r_refdef.vrect, lineadj);
 
+
+    // FISHEYE BEGIN EDIT
+    int minsize = r_refdef.vrect.width;
+    if (r_refdef.vrect.height < minsize)
+       minsize = r_refdef.vrect.height;
+
+    r_refdef.vrect.width = r_refdef.vrect.height = minsize;
+    
+    // FISHEYE END EDIT
+
     r_refdef.horizontalFieldOfView = 2.0 * tan(r_refdef.fov_x / 360 * M_PI);
     r_refdef.fvrectx = (float)r_refdef.vrect.x;
     r_refdef.fvrectx_adj = (float)r_refdef.vrect.x - 0.5;

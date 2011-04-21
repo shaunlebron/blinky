@@ -42,6 +42,7 @@ static B **lensmap = NULL;
 
 static int left, top;
 static int width, height, diag;
+static int cubesize;
 static double fov;
 static int lens;
 static int* framesize;
@@ -57,7 +58,7 @@ static char cube_order[MAX_CUBE_ORDER];
 #define VBUFFER(x,y) (vid.buffer + (x) + (y)*vid.rowbytes)
 
 // retrieves a pointer to a pixel in a designated cubemap face
-#define CUBEFACE(side,x,y) (cubemap + (side)*width*height + (x) + (y)*width)
+#define CUBEFACE(side,x,y) (cubemap + (side)*cubesize*cubesize + (x) + (y)*cubesize)
 
 // retrieves a pointer to a pixel in the lensmap
 #define LENSMAP(x,y) (lensmap + (x) + (y)*width)
@@ -89,7 +90,7 @@ void L_CaptureCubeMap()
    extern void WritePCXfile(char *filename, byte *data, int width, int height, int rowbytes, byte *palette);
 
 #define SET_FILE_FACE(face) sprintf(filename,"cubemaps/cube%02d_" face ".pcx",i);
-#define WRITE_FILE(n) WritePCXfile(filename,cubemap+width*height*n,width,height,width,host_basepal);
+#define WRITE_FILE(n) WritePCXfile(filename,cubemap+cubesize*cubesize*n,cubesize,cubesize,cubesize,host_basepal);
 
    SET_FILE_FACE("front"); WRITE_FILE(BOX_FRONT);
    SET_FILE_FACE("right"); WRITE_FILE(BOX_RIGHT);
@@ -696,8 +697,8 @@ void create_cubefold(B **lensmap, B *cubemap)
             {
                int lx = clamp(colx+x,0,width-1);
                int ly = clamp(rowy+y,0,height-1);
-               int fx = clamp(width*x/size,0,width-1);
-               int fy = clamp(height*y/size,0,height-1);
+               int fx = clamp(cubesize*x/size,0,cubesize-1);
+               int fy = clamp(cubesize*y/size,0,cubesize-1);
                *LENSMAP(lx,ly) = CUBEFACE(face,fx,fy);
             }
       }
@@ -777,14 +778,8 @@ void create_lensmap(B **lensmap, B *cubemap)
     side_count[side]++;
 
     // convert to face coordinates
-    int px = (int)(xs*width);
-    int py = (int)(ys*height);
-
-    // clamp coordinates
-    if (px < 0) px = 0;
-    if (px >= width) px = width - 1;
-    if (py < 0) py = 0;
-    if (py >= height) py = height - 1;
+    int px = clamp((int)(xs*cubesize),0,cubesize-1);
+    int py = clamp((int)(ys*cubesize),0,cubesize-1);
 
     // map lens pixel to cubeface pixel
     *lensmap = CUBEFACE(side,px,py);
@@ -794,7 +789,7 @@ void create_lensmap(B **lensmap, B *cubemap)
   for(x=0; x<6; ++x)
   {
      //Con_Printf("   %d: %d\n",x,side_count[x]);
-     faceDisplay[x] = (side_count[x] > width);
+     faceDisplay[x] = (side_count[x] > 1);
   }
   //Con_Printf("rendering %d views\n",views);
 
@@ -823,12 +818,12 @@ void render_cubeface(B* cubeface, vec3_t forward, vec3_t right, vec3_t up)
   // copy from vid buffer to cubeface, row by row
   B *vbuffer = VBUFFER(left,top);
   int y;
-  for(y = 0;y<height;y++) {
-     memcpy(cubeface, vbuffer, width);
+  for(y = 0;y<cubesize;y++) {
+     memcpy(cubeface, vbuffer, cubesize);
      
      // advance to the next row
      vbuffer += vid.rowbytes;
-     cubeface += width;
+     cubeface += cubesize;
   }
 }
 
@@ -857,6 +852,7 @@ void L_RenderView()
   top = scr_vrect.y;
   width = scr_vrect.width; 
   height = scr_vrect.height;
+  cubesize = (width < height) ? width : height;
   diag = sqrt(width*width+height*height);
   int area = width*height;
   int sizechange = pwidth!=width || pheight!=height;
@@ -911,7 +907,7 @@ void L_RenderView()
     if(cubemap) free(cubemap);
     if(lensmap) free(lensmap);
 
-    cubemap = (B*)malloc(area*6*sizeof(B));
+    cubemap = (B*)malloc(cubesize*cubesize*6*sizeof(B));
     lensmap = (B**)malloc(area*sizeof(B*));
     if(!cubemap || !lensmap) exit(1); // the rude way
   }
@@ -938,8 +934,8 @@ void L_RenderView()
         B colors[6] = {242,243,244,245,250,255};
         for (i=0; i<6; ++i)
         {
-           B* face = cubemap+area*i;
-           memset(face,colors[i],area);
+           B* face = cubemap+cubesize*cubesize*i;
+           memset(face,colors[i],cubesize*cubesize);
         }
      }
   }
@@ -947,7 +943,7 @@ void L_RenderView()
   {
      for (i=0; i<6; ++i)
         if (faceDisplay[i]) {
-           B* face = cubemap+area*i;
+           B* face = cubemap+cubesize*cubesize*i;
            switch(i) {
              //                                     FORWARD  RIGHT   UP
              case BOX_BEHIND: render_cubeface(face, back,    left,   up);    break;
