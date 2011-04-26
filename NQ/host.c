@@ -901,6 +901,7 @@ Host_Shutdown(void)
     CDAudio_Shutdown();
     NET_Shutdown();
     S_Shutdown();
+    L_Shutdown();
     IN_Shutdown();
 
     if (cls.state != ca_dedicated) {
