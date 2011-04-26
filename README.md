@@ -11,9 +11,7 @@ This is a fork of [TyrQuake](http://disenchant.net/engine.html) integrated with 
 
 #### Commands
     lenses : shows help
-    lens <#> : choose a lens (listed below)
-    nextlens
-    prevlens
+    lens <name> : choose a lens (listed in /lenses)
     hfov <horizontal degrees>
     vfov <vertical degrees>
     dfov <diagonal degrees>
@@ -22,24 +20,6 @@ This is a fork of [TyrQuake](http://disenchant.net/engine.html) integrated with 
     cube_cols <#> : number of columns in cubemap table display
     cube_order "########" : the faces to display in the table, in row order, use 9 for empty
     colorcube : paint the cubemap
-
-#### Lens Projections:
-* 0: Rectilinear: (all games use this)
-* 1: Equidistant Fisheye: (original fisheye)
-* 2: Equisolid-Angle Fisheye: (mirror ball)
-* 3: Stereographic:
-* 4: Orthogonal:
-* 5: Cylinder: 
-* 6: Equirectangular:
-* 7: Mercator:
-* 8: Miller:
-* 9: Panini:
-* 10: Gumby Cylinder:
-* 11: Gumby Sphere: 
-* 12: Hammer
-* 13: Mollweide
-* 14: Eckert IV
-* 15: Winkel Tripel
 
 #### Motion Sickness:
 Some lenses may induce nausea! I find that the **stereographic** lenses do not, as they are the only true perspective projections here.  I recommend an fov of 180-200 using Stereographic, Panini, or Gumby
