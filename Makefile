@@ -127,7 +127,7 @@ NQ_W32_COMMON_LIBS = wsock32 winmm dxguid
 NQ_W32_SW_LIBS = mgllt ddraw
 NQ_W32_GL_LIBS = opengl32 comctl32
 
-NQ_UNIX_COMMON_LIBS = m X11 Xext Xxf86dga Xxf86vm lua5.1 dl
+NQ_UNIX_COMMON_LIBS = m X11 Xext Xxf86dga Xxf86vm lua dl
 NQ_UNIX_GL_LIBS = GL
 
 NQ_W32_SW_LFLAGS  := $(patsubst %,-l%,$(NQ_W32_SW_LIBS) $(NQ_W32_COMMON_LIBS))

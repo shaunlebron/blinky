@@ -15,9 +15,9 @@
 #include "sys.h"
 #include "view.h"
 
-#include <lua5.1/lua.h>
-#include <lua5.1/lauxlib.h>
-#include <lua5.1/lualib.h>
+#include <lua.h>
+#include <lauxlib.h>
+#include <lualib.h>
 
 lua_State *lua;
 
@@ -62,6 +62,7 @@ static int cube_cols;
 static char cube_order[MAX_CUBE_ORDER];
 
 static int map;
+static int map_index;
 static int valid_lens;
 
 // retrieves a pointer to a pixel in the video buffer
@@ -128,10 +129,30 @@ void L_ColorCube(void)
    Con_Printf("Colored Cube is %s\n", colorcube ? "ON" : "OFF");
 }
 
+void L_InitLua(void)
+{
+    // create Lua state
+    lua = luaL_newstate();
+
+    // open Lua standard libraries
+    luaL_openlibs(lua);
+
+    // initialize LuaJIT (alternate Lua interpreter)
+    luaopen_jit(lua);
+
+    // initialize LuaJIT optimizer (for faster Lua)
+    char *cmd = "require(\"jit.opt\").start()";
+    int error = luaL_loadbuffer(lua, cmd, strlen(cmd), "line") ||
+       lua_pcall(lua, 0, 0, 0);
+    if (error) {
+       fprintf(stderr, "%s", lua_tostring(lua, -1));
+       lua_pop(lua, 1);  /* pop error message from the stack */
+    }
+}
+
 void L_Init(void)
 {
-    lua = luaL_newstate();
-    luaL_openlibs(lua);
+    L_InitLua();
 
     Cmd_AddCommand("lenses", L_Help);
     Cmd_AddCommand("savecube", L_CaptureCubeMap);
@@ -171,52 +192,43 @@ void L_Help(void)
 int lua_lens_inverse(double x, double y, vec3_t ray)
 {
    // call inverse
-   lua_getglobal(lua, "inverse");
+   lua_rawgeti(lua, LUA_REGISTRYINDEX, map_index);
    lua_pushnumber(lua, x);
    lua_pushnumber(lua, y);
-   lua_call(lua, 2, 1);
+   lua_call(lua, 2, LUA_MULTRET);
 
-   if (!lua_istable(lua, -1))
-   {
+   if (lua_isnil(lua, -1)) {
       lua_pop(lua,1);
       return 0;
    }
    
-   lua_rawgeti(lua, -1, 1);
-   ray[0] = lua_tonumber(lua, -1);
-   
-   lua_rawgeti(lua, -2, 2);
-   ray[1] = lua_tonumber(lua, -1);
-
-   lua_rawgeti(lua, -3, 3);
+   ray[0] = lua_tonumber(lua, -3);
+   ray[1] = lua_tonumber(lua, -2);
    ray[2] = lua_tonumber(lua, -1);
-   lua_pop(lua,4);
+   lua_pop(lua,3);
 
    return 1;
 }
 
 int lua_lens_forward(vec3_t ray, double *x, double *y)
 {
+   //TODO: Test this
+
    // call forward
    lua_getglobal(lua,"forward");
    lua_pushnumber(lua,ray[0]);
    lua_pushnumber(lua,ray[1]);
    lua_pushnumber(lua,ray[2]);
-   lua_call(lua, 3, 1);
+   lua_call(lua, 3, LUA_MULTRET);
 
-   if (!lua_istable(lua, -1))
-   {
+   if (lua_isnil(lua, -1)) {
       lua_pop(lua,1);
       return 0;
    }
 
-   lua_rawgeti(lua, -1, 1);
-   *x = lua_tonumber(lua, -1);
-
-   lua_rawgeti(lua, -2, 2);
+   *x = lua_tonumber(lua, -2);
    *y = lua_tonumber(lua, -1);
-
-   lua_pop(lua,3);
+   lua_pop(lua,2);
 
    return 1;
 }
@@ -367,61 +379,97 @@ void create_lensmap_inverse(B **lensmap, B *cubemap)
 {
   int side_count[] = {0,0,0,0,0,0};
 
+   lua_getglobal(lua, "inverse");
+   map_index = luaL_ref(lua, LUA_REGISTRYINDEX);
+
   int x, y;
-  for(y = 0;y<height;y++) 
-   for(x = 0;x<width;x++,lensmap++) {
-    double x0 = x-width/2;
-    double y0 = -(y-height/2);
+  int halfh = height/2, halfw = width/2;
+  int i;
 
-    x0 *= scale;
-    y0 *= scale;
+  for(y = 0;y<halfh;++y) {
 
-    // map the current window coordinate to a ray vector
-    vec3_t ray = { 0, 0, 1};
-    if (x==width/2 && y == height/2)
-    {
-       // FIXME: this is a workaround for strange dead pixel in the center
-    }
-    else if (!lua_lens_inverse(x0,y0,ray))
-    {
-       // pixel is outside projection
-       continue;
-    }
+     double y0 = -(y-halfh);
+     y0 *= scale;
 
-    // determine which side of the box we need
-    double sx = ray[0], sy = ray[1], sz = ray[2];
-    double abs_x = fabs(sx);
-    double abs_y = fabs(sy);
-    double abs_z = fabs(sz);			
-    int side;
-    double xs=0, ys=0;
-    if (abs_x > abs_y) {
-      if (abs_x > abs_z) { side = ((sx > 0.0) ? BOX_RIGHT : BOX_LEFT);   }
-      else               { side = ((sz > 0.0) ? BOX_FRONT : BOX_BEHIND); }
-    } else {
-      if (abs_y > abs_z) { side = ((sy > 0.0) ? BOX_TOP : BOX_BOTTOM); }
-      else               { side = ((sz > 0.0) ? BOX_FRONT : BOX_BEHIND); }
-    }
+     for(x = 0;x<halfw;++x) {
 
-    #define T(x) (((x)/2) + 0.5)
+        double x0 = x-halfw;
+        x0 *= scale;
 
-    // scale up our vector [x,y,z] to the box
-    switch(side) {
-      case BOX_FRONT:  xs = T( sx /  sz); ys = T( -sy /  sz); break;
-      case BOX_BEHIND: xs = T(-sx / -sz); ys = T( -sy / -sz); break;
-      case BOX_LEFT:   xs = T( sz / -sx); ys = T( -sy / -sx); break;
-      case BOX_RIGHT:  xs = T(-sz /  sx); ys = T( -sy /  sx); break;
-      case BOX_BOTTOM: xs = T( sx /  -sy); ys = T( -sz / -sy); break;
-      case BOX_TOP:    xs = T(sx /  sy); ys = T( sz / sy); break;
-    }
-    side_count[side]++;
+        // map the current window coordinate to a ray vector
+        vec3_t ray = { 0, 0, 1};
+        if (x==halfw && y == halfh)
+        {
+           // FIXME: this is a workaround for strange dead pixel in the center
+        }
+        else if (!lua_lens_inverse(x0,y0,ray))
+        {
+           // pixel is outside projection
+           continue;
+        }
 
-    // convert to face coordinates
-    int px = clamp((int)(xs*cubesize),0,cubesize-1);
-    int py = clamp((int)(ys*cubesize),0,cubesize-1);
+        int lx,ly;
+        double sx,sy,sz=ray[2];
 
-    // map lens pixel to cubeface pixel
-    *lensmap = CUBEFACE(side,px,py);
+        // optimize by exploiting symmetry of the lens
+        // only render 1/4 of the screen and deduce the rest
+        for (i=0; i<4; ++i)
+        {
+           switch(i)
+           {
+              case 0: 
+                 lx = x; ly = y; 
+                 sx = ray[0]; sy = ray[1];
+                 break;
+              case 1: 
+                 lx = width-x-1; ly = y; 
+                 sx = -ray[0]; sy = ray[1];
+                 break;
+              case 2: 
+                 lx = x; ly = height-y-1; 
+                 sx = ray[0]; sy = -ray[1];
+                 break;
+              case 3: 
+                 lx = width-x-1; ly = height-y-1;
+                 sx = -ray[0]; sy = -ray[1];
+                 break;
+           }
+
+           // determine which side of the box we need
+           double abs_x = fabs(sx);
+           double abs_y = fabs(sy);
+           double abs_z = fabs(sz);			
+           int side;
+           double xs=0, ys=0;
+           if (abs_x > abs_y) {
+              if (abs_x > abs_z) { side = ((sx > 0.0) ? BOX_RIGHT : BOX_LEFT);   }
+              else               { side = ((sz > 0.0) ? BOX_FRONT : BOX_BEHIND); }
+           } else {
+              if (abs_y > abs_z) { side = ((sy > 0.0) ? BOX_TOP : BOX_BOTTOM); }
+              else               { side = ((sz > 0.0) ? BOX_FRONT : BOX_BEHIND); }
+           }
+
+#define T(x) (((x)*0.5) + 0.5)
+
+           // scale up our vector [x,y,z] to the box
+           switch(side) {
+              case BOX_FRONT:  xs = T( sx /  sz); ys = T( -sy /  sz); break;
+              case BOX_BEHIND: xs = T(-sx / -sz); ys = T( -sy / -sz); break;
+              case BOX_LEFT:   xs = T( sz / -sx); ys = T( -sy / -sx); break;
+              case BOX_RIGHT:  xs = T(-sz /  sx); ys = T( -sy /  sx); break;
+              case BOX_BOTTOM: xs = T( sx /  -sy); ys = T( -sz / -sy); break;
+              case BOX_TOP:    xs = T(sx /  sy); ys = T( sz / sy); break;
+           }
+           side_count[side]++;
+
+           // convert to face coordinates
+           int px = clamp((int)(xs*cubesize),0,cubesize-1);
+           int py = clamp((int)(ys*cubesize),0,cubesize-1);
+
+           // map lens pixel to cubeface pixel
+           *LENSMAP(lx,ly) = CUBEFACE(side,px,py);
+        }
+     }
   }
 
   //Con_Printf("cubemap side usage count:\n");
@@ -430,6 +478,7 @@ void create_lensmap_inverse(B **lensmap, B *cubemap)
      //Con_Printf("   %d: %d\n",x,side_count[x]);
      faceDisplay[x] = (side_count[x] > 1);
   }
+
   //Con_Printf("rendering %d views\n",views);
 }
 
