@@ -1,34 +1,16 @@
-map = 0
+map = "xy_to_latlon"
+maxFovHeight = math.pi
 
-function inverse(x,y)
+function xy_to_latlon(x,y)
    local lon = x
    local lat = y
    if math.abs(lat) > math.pi*0.5 or math.abs(lon) > math.pi then
-      return 0
+      return nil
    end
 
-   local clat = math.cos(lat)
-
-   return {
-      math.sin(lon)*clat,
-      math.sin(lat),
-      math.cos(lon)*clat}
+   return lat, lon
 end
 
 function init(fov,width,height,frame)
-
-   if frame == width then
-      if fov > math.pi*2 then
-         return 0
-      end
-      scale = fov / frame;
-   elseif frame == height then
-      if fov > math.pi then
-         return 0
-      end
-      scale = fov / frame;
-   else
-      return 0
-   end
-   return 1
+   return fov / frame;
 end

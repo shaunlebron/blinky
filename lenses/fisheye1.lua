@@ -1,28 +1,13 @@
-map = 0
+map = "r_to_theta"
 
-function inverse(x,y)
+function r_to_theta(r)
    -- r = f*theta
-
-   local r = math.sqrt(x*x+y*y)
-   local el = r;
-
-   if el > math.pi then
-      return 0
+   if r > math.pi then
+      return nil
    end
-
-   local rr = 1/r
-   local s = math.sin(el)
-   local c = math.cos(el)
-   
-   return {x*rr*s, y*rr*s, c}
+   return r
 end
 
 function init(fov,width,height,frame)
-
-   if fov > 2*math.pi then 
-      return 0
-   end
-
-   scale = fov / frame;
-   return 1
+   return fov / frame;
 end
