@@ -7,6 +7,10 @@ function r_to_theta(r)
    return atan(r)
 end
 
+function theta_to_r(theta)
+   return tan(theta)
+end
+
 function init(fov,width,height,frame)
-   return tan(fov*0.5) / (frame*0.5)
+   return theta_to_r(fov*0.5) / (frame*0.5)
 end

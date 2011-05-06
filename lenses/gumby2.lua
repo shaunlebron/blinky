@@ -10,6 +10,10 @@ function r_to_theta(r)
    return el * gumbyScaleInv
 end
 
+function theta_to_r(theta)
+   return 2*tan(theta*0.5*gumbyScale)
+end
+
 function init(fov,width,height,frame)
-   return 2*tan(fov*0.25*gumbyScale) / (frame*0.5);
+   return theta_to_r(fov*0.5) / (frame*0.5);
 end

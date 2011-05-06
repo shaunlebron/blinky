@@ -34,18 +34,25 @@ function xy_to_latlon(x,y)
    return lat,lon
 end
 
+function latlon_to_xy(lat,lon)
+   local t = solveTheta(lat)
+   local x = 2/sqrt(pi*(4+pi))*lon*(1+cos(t))
+   local y = 2*sqrt(pi/(4+pi))*sin(t)
+   return x,y
+end
+
 function init(fov, width, height, frame)
    local t = solveTheta(pi*0.5)
    maxy = 2*sqrt(pi/(4+pi))*sin(t)
 
+   local x,y
+
    if frame == width then
-      t = solveTheta(0)
-      local w = 2/sqrt(pi*(4+pi))*(fov*0.5)*(1+cos(t))
-      return w / (frame*0.5)
+      x,y = latlon_to_xy(0,fov*0.5)
+      return x / (frame*0.5)
    elseif frame == height then
-      t = solveTheta(fov*0.5)
-      local h = 2*sqrt(pi/(4+pi))*sin(t)
-      return h / (frame*0.5)
+      x,y = latlon_to_xy(fov*0.5,0)
+      return y / (frame*0.5)
    else
       return nil
    end

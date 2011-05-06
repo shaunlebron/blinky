@@ -9,6 +9,7 @@ function xy_to_latlon(x,y)
    local rx = x*t
    local ry = y*t
    local rz = 2*t-1
+
    local lon = atan2(rx,rz)
    local lat = atan2(ry,sqrt(rx*rx+rz*rz))
 

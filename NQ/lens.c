@@ -659,6 +659,26 @@ void create_lensmap_inverse()
       faceDisplay[x] = (side_count[x] > 1);
 }
 
+void fill_forward_holes()
+{
+   int hsym = mapSymmetry & H_SYMMETRY;
+   int vsym = mapSymmetry & V_SYMMETRY;
+
+   if (hsym && vsym)
+   {
+      for (int x=0; x<=width/2; ++x)
+      {
+         for (int y=0; y<height/2; ++y)
+         {
+            if (*LENSMAP(x,y) == 0)
+            {
+               // TODO: insert hole filling algorithm
+            }
+         }
+      }
+   }
+}
+
 void create_lensmap_forward()
 {
    memset(side_count, 0, sizeof(side_count));

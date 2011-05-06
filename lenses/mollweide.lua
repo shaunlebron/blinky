@@ -24,15 +24,21 @@ function solveTheta(lat)
    return t/2
 end
 
+function latlon_to_xy(lat,lon)
+   local t = solveTheta(lat)
+   local x = 2*sqrt(2)/pi*lon*cos(t)
+   local y = sqrt(2)*sin(t)
+   return x,y
+end
+
 function init(fov,width,height,frame)
+   local x,y
    if frame == width then
-      local t = solveTheta(0)
-      local w = 2*root2/pi*(fov*0.5)*cos(t)
-      return w / (frame*0.5)
+      x,y = latlon_to_xy(0,fov*0.5)
+      return x / (frame*0.5)
    elseif frame == height then
-      local t = solveTheta(fov*0.5)
-      local h = root2*sin(t)
-      return h / (frame*0.5)
+      x,y = latlon_to_xy(fov*0.5,0)
+      return y / (frame*0.5)
    else
       return nil
    end

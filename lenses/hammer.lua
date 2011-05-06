@@ -13,15 +13,19 @@ function xy_to_latlon(x,y)
 end
 
 function latlon_to_xy(lat,lon)
+   local x = 2*sqrt(2)*cos(lat)*sin(lon*0.5) / sqrt(1+cos(lat)*cos(lon*0.5))
+   local y = sqrt(2)*sin(lat) / sqrt(1+cos(lat)*cos(lon*0.5))
+   return x,y
 end
 
 function init(fov,width,height,frame)
+   local x,y
    if frame == width then
-      local w = 2*sqrt(2)*sin(fov*0.25) / sqrt(1+cos(fov*0.25))
-      return w / (frame*0.5)
+      x,y = latlon_to_xy(0,fov*0.5)
+      return x / (frame*0.5)
    elseif frame == height then
-      local h = sqrt(2)*sin(fov*0.5) / sqrt(1+cos(fov*0.5))
-      return h / (frame*0.5)
+      x,y = latlon_to_xy(fov*0.5,0)
+      return y / (frame*0.5)
    else
       return nil
    end
