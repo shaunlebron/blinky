@@ -7,11 +7,24 @@ This is a fork of [TyrQuake](http://disenchant.net/engine.html) integrated with 
 * camera rolling
 * viewsize adjustment with status bar
 * variety of wide-angle lenses
+* custom lens support with Lua scripts
 * unfolded cubemap display
+
+#### Custom Lenses
+You can make your own lens by creating a Lua script file in the /lenses folder of your quake directory.  Your lens must map screen coordinates to orientation coordinates, or vice versa.  
+
+Screen Coordinates:
+* x,y: (0,0) at the center, +x right, +y down
+* r: distance from the center of the screen
+
+Orientation Coordinates:
+* x,y,z: (0,0,1) straight ahead, +x right, +y up, +z back
+* lat,lon: latitude, longitude
+* theta: angle from center
 
 #### Commands
     lenses : shows help
-    lens <name> : choose a lens (listed in /lenses)
+    lens <name> : choose a lens (<name>.lua in /lenses)
     hfov <horizontal degrees>
     vfov <vertical degrees>
     dfov <diagonal degrees>

@@ -2,7 +2,7 @@ map = "r_to_theta"
 
 function r_to_theta(r)
    -- r = f*theta
-   if r > math.pi then
+   if r > pi then
       return nil
    end
    return r

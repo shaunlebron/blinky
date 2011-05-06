@@ -1,12 +1,12 @@
 map = "xy_to_latlon"
-maxFovHeight = math.pi
+maxFovHeight = pi
 
 function xy_to_latlon(x,y)
    local lon = x
-   if math.abs(lon) > math.pi then
+   if abs(lon) > pi then
       return nil
    end
-   local lat = math.atan(math.sinh(y))
+   local lat = atan(sinh(y))
    return lat, lon
 end
 

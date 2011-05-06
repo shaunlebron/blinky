@@ -1,7 +1,7 @@
 map = "xy_to_latlon"
 gumbyScale = 0.75
 gumbyScaleInv = 1.0/gumbyScale
-maxFovHeight = math.pi
+maxFovHeight = pi
 
 function xy_to_latlon(x,y)
 
@@ -9,8 +9,8 @@ function xy_to_latlon(x,y)
    local rx = x*t
    local ry = y*t
    local rz = 2*t-1
-   local lon = math.atan2(rx,rz)
-   local lat = math.atan2(ry,math.sqrt(rx*rx+rz*rz))
+   local lon = atan2(rx,rz)
+   local lat = atan2(ry,sqrt(rx*rx+rz*rz))
 
    lat = lat*gumbyScaleInv
    lon = lon*gumbyScaleInv
@@ -19,6 +19,6 @@ function xy_to_latlon(x,y)
 end
 
 function init(fov,width,height,frame)
-   local r = (frame*0.5) / math.tan((fov*0.5)/2*gumbyScale)/2
+   local r = (frame*0.5) / tan((fov*0.5)/2*gumbyScale)/2
    return 1/r
 end

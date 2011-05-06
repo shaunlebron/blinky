@@ -200,7 +200,32 @@ void L_InitLua(void)
 
    // initialize LuaJIT optimizer 
    char *cmd = "require(\"jit.opt\").start()";
-   int error = luaL_loadbuffer(lua, cmd, strlen(cmd), "line") ||
+   int error = luaL_loadbuffer(lua, cmd, strlen(cmd), "jit.opt") ||
+      lua_pcall(lua, 0, 0, 0);
+   if (error) {
+      fprintf(stderr, "%s", lua_tostring(lua, -1));
+      lua_pop(lua, 1);  /* pop error message from the stack */
+   }
+
+   char *aliases = 
+      "cos = math.cos\n"
+      "sin = math.sin\n"
+      "tan = math.tan\n"
+      "asin = math.asin\n"
+      "acos = math.acos\n"
+      "atan = math.atan\n"
+      "atan2 = math.atan2\n"
+      "sinh = math.sinh\n"
+      "cosh = math.cosh\n"
+      "tanh = math.tanh\n"
+      "log = math.log\n"
+      "log10 = math.log10\n"
+      "abs = math.abs\n"
+      "sqrt = math.sqrt\n"
+      "exp = math.exp\n"
+      "pi = math.pi\n"
+      "pow = math.pow\n";
+   error = luaL_loadbuffer(lua, aliases, strlen(aliases), "aliases") ||
       lua_pcall(lua, 0, 0, 0);
    if (error) {
       fprintf(stderr, "%s", lua_tostring(lua, -1));
@@ -388,11 +413,21 @@ int lua_lens_init(void)
       return 0;
    }
 
+   if (!lua_isnumber(lua,-1))
+   {
+      lua_pop(lua,1);
+      Con_Printf("init did not return a number\n");
+      return 0;
+   }
+
    // get scale
    scale = lua_tonumber(lua, -1);
    lua_pop(lua,1);
    if (scale <= 0)
+   {
+      Con_Printf("init returned a scale of %f, which is  <= 0\n", scale);
       return 0;
+   }
 
    // check FOV limits
    if (width == *framesize && fov > maxFovWidth) {
@@ -485,12 +520,12 @@ int lua_lens_load(void)
    mapSymmetry = 0;
 
    lua_getglobal(lua, "verticalSymmetry");
-   if (lua_isboolean(lua,-1) ? 1 : lua_toboolean(lua,-1))
+   if (lua_isboolean(lua,-1) ? lua_toboolean(lua,-1) : 1)
       mapSymmetry |= V_SYMMETRY;
    lua_pop(lua,1);
 
    lua_getglobal(lua, "horizontalSymmetry");
-   if (lua_isboolean(lua,-1) ? 1 : lua_toboolean(lua,-1))
+   if (lua_isboolean(lua,-1) ? lua_toboolean(lua,-1) : 1)
       mapSymmetry |= H_SYMMETRY;
    lua_pop(lua,1);
 
@@ -626,61 +661,46 @@ void create_lensmap_inverse()
 
 void create_lensmap_forward()
 {
-   // TODO: implement symmetry exploit
-   int side_count[] = {0,0,0,0,0,0};
+   memset(side_count, 0, sizeof(side_count));
    int x,y;
    int side;
    double nz = cubesize*0.5;
 
+   int hsym = mapSymmetry & H_SYMMETRY;
+   int vsym = mapSymmetry & V_SYMMETRY;
+
    for (side=0; side<6; ++side)
    {
-      for (y=0; y<cubesize; ++y)
+      int minx = 0;
+      int miny = 0;
+      int maxx = cubesize-1;
+      int maxy = cubesize-1;
+
+      if (hsym) {
+         if (side == BOX_RIGHT) continue;
+         if (side != BOX_LEFT) maxx = cubesize/2;
+      }
+      if (vsym) {
+         if (side == BOX_BOTTOM) continue;
+         if (side != BOX_TOP) maxy = cubesize/2;
+      }
+
+      for (y=miny; y<=maxy; ++y)
       {
          double ny = -(y-cubesize*0.5);
-         for (x=0; x<cubesize; ++x)
+         for (x=minx; x<=maxx; ++x)
          {
             double nx = x-cubesize*0.5;
             vec3_t ray;
-            if (side == BOX_FRONT)
-            {
-               ray[0] = nx;
-               ray[1] = ny;
-               ray[2] = nz;
-            }
-            else if (side == BOX_BEHIND)
-            {
-               ray[0] = -nx;
-               ray[1] = ny;
-               ray[2] = -nz;
-            }
-            else if (side == BOX_LEFT)
-            {
-               ray[0] = -nz;
-               ray[1] = ny;
-               ray[2] = nx;
-            }
-            else if (side == BOX_RIGHT)
-            {
-               ray[0] = nz;
-               ray[1] = ny;
-               ray[2] = -nx;
-            }
-            else if (side == BOX_TOP)
-            {
-               ray[0] = nx;
-               ray[1] = nz;
-               ray[2] = -ny;
-            }
-            else if (side == BOX_BOTTOM)
-            {
-               ray[0] = nx;
-               ray[1] = -nz;
-               ray[2] = ny;
-            }
+            if (side == BOX_FRONT) { ray[0] = nx; ray[1] = ny; ray[2] = nz; }
+            else if (side == BOX_BEHIND) { ray[0] = -nx; ray[1] = ny; ray[2] = -nz; }
+            else if (side == BOX_LEFT) { ray[0] = -nz; ray[1] = ny; ray[2] = nx; }
+            else if (side == BOX_RIGHT) { ray[0] = nz; ray[1] = ny; ray[2] = -nx; }
+            else if (side == BOX_TOP) { ray[0] = nx; ray[1] = nz; ray[2] = -ny; }
+            else if (side == BOX_BOTTOM) { ray[0] = nx; ray[1] = -nz; ray[2] = ny; }
 
             double x0,y0;
-            if (!mapForward(ray, &x0, &y0))
-            {
+            if (!mapForward(ray, &x0, &y0)) {
                continue;
             }
 
@@ -700,16 +720,28 @@ void create_lensmap_forward()
                continue;
 
             side_count[side]++;
-
             *LENSMAP(lx,ly) = CUBEFACE(side,x,y);
+
+            if (hsym) {
+               int oppside = (side == BOX_LEFT) ? BOX_RIGHT : side;
+               side_count[oppside]++;
+               *LENSMAP(width-1-lx,ly) = CUBEFACE(oppside,cubesize-1-x,y);
+            }
+            if (vsym) {
+               int oppside = (side == BOX_TOP) ? BOX_BOTTOM : side;
+               side_count[oppside]++;
+               *LENSMAP(lx,height-1-ly) = CUBEFACE(oppside,x,cubesize-1-y);
+            }
+            if (hsym && vsym) {
+               int oppside = (side == BOX_TOP) ? BOX_BOTTOM : ((side == BOX_LEFT) ? BOX_RIGHT : side);
+               side_count[oppside]++;
+               *LENSMAP(width-1-lx,height-1-ly) = CUBEFACE(oppside,cubesize-1-x,cubesize-1-y);
+            }
          }
       }
    }
 
-   //Con_Printf("cubemap side usage count:\n");
-   for(x=0; x<6; ++x)
-   {
-      //Con_Printf("   %d: %d\n",x,side_count[x]);
+   for(x=0; x<6; ++x) {
       faceDisplay[x] = (side_count[x] > 1);
    }
 }

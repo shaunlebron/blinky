@@ -1,5 +1,5 @@
 map = "xy_to_ray"
-maxFovHeight = math.pi
+maxFovHeight = pi
 
 function xy_to_ray(x,y)
    local t = 4/(x*x+4)
@@ -7,5 +7,5 @@ function xy_to_ray(x,y)
 end
 
 function init(fov,width,height,frame)
-   return 2*math.tan(fov*0.25) / (frame*0.5)
+   return 2*tan(fov*0.25) / (frame*0.5)
 end
