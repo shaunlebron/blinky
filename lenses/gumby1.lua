@@ -1,3 +1,4 @@
+d = 1
 gumbyScale = 0.75
 gumbyScaleInv = 1.0/gumbyScale
 

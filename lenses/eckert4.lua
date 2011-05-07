@@ -4,10 +4,12 @@ maxy = 0
 function solveTheta(lat)
    local t = lat/2;
    local dt = 0
-   repeat
+   for i=1,20 do
+   --repeat
       dt = -(t + sin(t)*cos(t) + 2*sin(t) - (2+pi*0.5)*sin(lat))/(2*cos(t)*(1+cos(t)))
       t = t+dt
-   until dt < 0.001
+   --until dt < 0.001
+   end
    return t
 end
 
