@@ -553,6 +553,8 @@ void lua_lens_clear(void)
    CLEARVAR("theta_to_r");
    CLEARVAR("xy_to_ray");
    CLEARVAR("ray_to_xy");
+   CLEARVAR("xy_isvalid");
+   CLEARVAR("r_isvalid");
 }
 
 int lua_func_exists(const char* name)
