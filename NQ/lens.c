@@ -1,11 +1,11 @@
 /*
    TO DO
-   - allow omision of map, look for inverse, then forward
-   - set FOV limits depending on map function
-   - call new init that doesn't return a value
-   - use forward functions for determing FOV scale
-   - allow dfov for azimuthal projections only
-   - call xy_isvalid or r_isvalid before mapInverse
+   X allow omision of map, look for inverse, then forward
+   X set FOV limits depending on map function
+   X call new init (if exists) that doesn't return a value
+   X use forward functions for determing FOV scale
+   X allow dfov for azimuthal projections only
+   X call xy_isvalid or r_isvalid before mapInverse
 
    - publish Con_Printf to Lua
    - allow manual adjustment of map scale without specifying FOV
@@ -117,7 +117,11 @@ typedef int (*mapForwardFunc)(vec3_t ray, double *x, double *y);
 static mapForwardFunc mapForward;
 
 // lua reference map index (for storing a reference to the map function)
-static int map_index;
+static int mapForwardIndex;
+static int mapInverseIndex;
+
+static int xyValidIndex;
+static int rValidIndex;
 
 // side count used to determine which cube faces to render
 static int side_count[6];
@@ -127,6 +131,11 @@ static int mapSymmetry;
 #define NO_SYMMETRY 0
 #define H_SYMMETRY 1
 #define V_SYMMETRY 2
+
+static int mapType;
+#define MAP_NONE 0
+#define MAP_FORWARD 1
+#define MAP_INVERSE 2
 
 // retrieves a pointer to a pixel in the video buffer
 #define VBUFFER(x,y) (vid.buffer + (x) + (y)*vid.rowbytes)
@@ -273,11 +282,44 @@ void L_Shutdown(void)
 
 /******** BEGIN LUA ******************/
 
+int xy_isvalid(double x, double y)
+{
+   if (xyValidIndex == -1) {
+      return 1;
+   }
+
+   lua_rawgeti(lua, LUA_REGISTRYINDEX, xyValidIndex);
+   lua_pushnumber(lua,x);
+   lua_pushnumber(lua,y);
+   lua_call(lua, 2, 1);
+
+   int valid = lua_toboolean(lua,-1);
+   lua_pop(lua,1);
+   return valid;
+}
+
+int r_isvalid(double r)
+{
+   if (rValidIndex == -1)
+      return 1;
+
+   lua_rawgeti(lua, LUA_REGISTRYINDEX, rValidIndex);
+   lua_pushnumber(lua,r);
+   lua_call(lua, 1, 1);
+
+   int valid = lua_toboolean(lua,-1);
+   lua_pop(lua,1);
+   return valid;
+}
+
 // Inverse Map Functions
 
 int xy_to_ray(double x, double y, vec3_t ray)
 {
-   lua_rawgeti(lua, LUA_REGISTRYINDEX, map_index);
+   if (!xy_isvalid(x,y))
+      return 0;
+
+   lua_rawgeti(lua, LUA_REGISTRYINDEX, mapInverseIndex);
    lua_pushnumber(lua, x);
    lua_pushnumber(lua, y);
    lua_call(lua, 2, LUA_MULTRET);
@@ -298,8 +340,10 @@ int xy_to_ray(double x, double y, vec3_t ray)
 int r_to_theta(double x, double y, vec3_t ray)
 {
    double r = sqrt(x*x+y*y);
+   if (!r_isvalid(r))
+      return 0;
 
-   lua_rawgeti(lua, LUA_REGISTRYINDEX, map_index);
+   lua_rawgeti(lua, LUA_REGISTRYINDEX, mapInverseIndex);
    lua_pushnumber(lua, r);
    lua_call(lua, 1, LUA_MULTRET);
 
@@ -323,7 +367,10 @@ int r_to_theta(double x, double y, vec3_t ray)
 
 int xy_to_latlon(double x, double y, vec3_t ray)
 {
-   lua_rawgeti(lua, LUA_REGISTRYINDEX, map_index);
+   if (!xy_isvalid(x,y))
+      return 0;
+
+   lua_rawgeti(lua, LUA_REGISTRYINDEX, mapInverseIndex);
    lua_pushnumber(lua, x);
    lua_pushnumber(lua, y);
    lua_call(lua, 2, LUA_MULTRET);
@@ -350,7 +397,7 @@ int xy_to_latlon(double x, double y, vec3_t ray)
 
 int ray_to_xy(vec3_t ray, double *x, double *y)
 {
-   lua_rawgeti(lua, LUA_REGISTRYINDEX, map_index);
+   lua_rawgeti(lua, LUA_REGISTRYINDEX, mapForwardIndex);
    lua_pushnumber(lua,ray[0]);
    lua_pushnumber(lua,ray[1]);
    lua_pushnumber(lua,ray[2]);
@@ -368,13 +415,26 @@ int ray_to_xy(vec3_t ray, double *x, double *y)
    return 1;
 }
 
-int latlon_to_xy(vec3_t ray, double *x, double *y)
+int lua_theta_to_r(double theta, double *r)
 {
-   double rx=ray[0], ry=ray[1], rz=ray[2];
-   double lon = atan2(rx, rz);
-   double lat = atan2(ry, sqrt(rx*rx+rz*rz));
+   lua_rawgeti(lua, LUA_REGISTRYINDEX, mapForwardIndex);
+   lua_pushnumber(lua, theta);
+   lua_call(lua, 1, LUA_MULTRET);
 
-   lua_rawgeti(lua, LUA_REGISTRYINDEX, map_index);
+   if (!lua_isnumber(lua, -1))
+   {
+      lua_pop(lua,1);
+      return 0;
+   }
+
+   *r = lua_tonumber(lua,-1);
+   lua_pop(lua,1);
+   return 1;
+}
+
+int lua_latlon_to_xy(double lat, double lon, double *x, double *y)
+{
+   lua_rawgeti(lua, LUA_REGISTRYINDEX, mapForwardIndex);
    lua_pushnumber(lua,lat);
    lua_pushnumber(lua,lon);
    lua_call(lua, 2, LUA_MULTRET);
@@ -387,8 +447,17 @@ int latlon_to_xy(vec3_t ray, double *x, double *y)
    *x = lua_tonumber(lua, -2);
    *y = lua_tonumber(lua, -1);
    lua_pop(lua,2);
-
    return 1;
+}
+
+
+int latlon_to_xy(vec3_t ray, double *x, double *y)
+{
+   double rx=ray[0], ry=ray[1], rz=ray[2];
+   double lon = atan2(rx, rz);
+   double lat = atan2(ry, sqrt(rx*rx+rz*rz));
+
+   return lua_latlon_to_xy(lat,lon,x,y);
 }
 
 int theta_to_r(vec3_t ray, double *x, double *y)
@@ -396,17 +465,11 @@ int theta_to_r(vec3_t ray, double *x, double *y)
    double len = sqrt(ray[0]*ray[0]+ray[1]*ray[1]+ray[2]*ray[2]);
    double theta = acos(ray[2]/len);
 
-   lua_rawgeti(lua, LUA_REGISTRYINDEX, map_index);
-   lua_pushnumber(lua, theta);
-   lua_call(lua, 1, LUA_MULTRET);
-
-   if (!lua_isnumber(lua, -1))
-   {
-      lua_pop(lua,1);
+   double r;
+   if (!lua_theta_to_r(theta,&r)) {
       return 0;
    }
 
-   double r = lua_tonumber(lua,-1);
    double c = r/sqrt(ray[0]*ray[0]+ray[1]*ray[1]);
    *x = ray[0]*c;
    *y = ray[1]*c;
@@ -415,33 +478,13 @@ int theta_to_r(vec3_t ray, double *x, double *y)
 
 int lua_lens_init(void)
 {
-   // call init
+   // call init if exists
    lua_getglobal(lua, "init");
-   lua_pushnumber(lua, fov);
-   lua_pushinteger(lua, width);
-   lua_pushinteger(lua, height);
-   lua_pushinteger(lua, *framesize);
-   if (lua_pcall(lua, 4, 1, 0) != 0)
-   {
-      Con_Printf("could not call init \nERROR: %s\n", lua_tostring(lua,-1));
-      lua_pop(lua,1);
-      return 0;
-   }
-
-   if (!lua_isnumber(lua,-1))
-   {
-      lua_pop(lua,1);
-      Con_Printf("init did not return a number\n");
-      return 0;
-   }
-
-   // get scale
-   scale = lua_tonumber(lua, -1);
-   lua_pop(lua,1);
-   if (scale <= 0)
-   {
-      Con_Printf("init returned a scale of %f, which is  <= 0\n", scale);
-      return 0;
+   if (lua_isfunction(lua,-1)) {
+      if (lua_pcall(lua, 0, 0, 0) != 0) {
+         Con_Printf("could not call init \nERROR: %s\n", lua_tostring(lua,-1));
+         return 0;
+      }
    }
 
    // check FOV limits
@@ -451,6 +494,43 @@ int lua_lens_init(void)
    }
    else if (height == *framesize && fov > maxFovHeight) {
       Con_Printf("Vertical FOV must be less than %f\n", maxFovHeight);
+      return 0;
+   }
+
+   // get FOV scale
+   scale = -1;
+   if (mapForward == theta_to_r) {
+      double r;
+      if (lua_theta_to_r(fov*0.5, &r)) scale = r / (*framesize * 0.5);
+      else {
+         Con_Printf("theta_to_r did not return a valid r value for determining FOV scale\n");
+         return 0;
+      }
+   }
+   else if (mapForward == latlon_to_xy) {
+      double x,y;
+      if (*framesize == width) {
+         if (lua_latlon_to_xy(0,fov*0.5,&x,&y)) scale = x / (*framesize * 0.5);
+         else return 0;
+      }
+      else if (*framesize == height) {
+         if (lua_latlon_to_xy(fov*0.5,0,&x,&y)) scale = y / (*framesize * 0.5);
+         else return 0;
+      }
+      else {
+         Con_Printf("latlon_to_xy does not support diagonal FOVs\n");
+         return 0;
+      }
+   }
+   else if (mapForward == ray_to_xy) {
+      Con_Printf("ray_to_xy currently not supported for FOV scaling\n");
+      return 0;
+   }
+
+   // validate scale
+   if (scale <= 0)
+   {
+      Con_Printf("init returned a scale of %f, which is  <= 0\n", scale);
       return 0;
    }
 
@@ -475,8 +555,17 @@ void lua_lens_clear(void)
    CLEARVAR("ray_to_xy");
 }
 
+int lua_func_exists(const char* name)
+{
+   lua_getglobal(lua, name);
+   int exists = lua_isfunction(lua,-1);
+   lua_pop(lua,1);
+   return exists;
+}
+
 int lua_lens_load(void)
 {
+   // clear Lua variables
    lua_lens_clear();
 
    // set full filename
@@ -484,50 +573,128 @@ int lua_lens_load(void)
    sprintf(filename,"%s/../lenses/%s.lua",com_gamedir,lens);
 
    // check if loaded correctly
-   if (luaL_dofile(lua, filename) != 0)
-   {
+   if (luaL_dofile(lua, filename) != 0) {
       Con_Printf("could not load %s\nERROR: %s\n", lens, lua_tostring(lua,-1));
       lua_pop(lua, 1);
       return 0;
    }
 
-   // get appropriate map function
+   // clear current maps
+   mapType = MAP_NONE;
    mapInverse = 0;
    mapForward = 0;
+
+#define SETFWD(map) \
+   mapForward = map; \
+   lua_getglobal(lua,#map); \
+   mapForwardIndex = luaL_ref(lua, LUA_REGISTRYINDEX);\
+
+#define SETFWD_ACTIVE(map) \
+   SETFWD(map) \
+   mapType = MAP_FORWARD;
+
+#define SETINV(map) \
+   mapInverse = map; \
+   lua_getglobal(lua,#map); \
+   mapInverseIndex = luaL_ref(lua, LUA_REGISTRYINDEX);\
+
+#define SETINV_ACTIVE(map) \
+   SETINV(map) \
+   mapType = MAP_INVERSE;
+
+   // get map function preference if provided
    lua_getglobal(lua, "map");
    if (lua_isstring(lua, -1))
    {
+      // get desired map function name
       const char* funcname = lua_tostring(lua, -1);
-      if (!strcmp(funcname, "xy_to_latlon")) { mapInverse = xy_to_latlon; }
-      else if (!strcmp(funcname, "latlon_to_xy")) { mapForward = latlon_to_xy; }
-      else if (!strcmp(funcname, "r_to_theta")) { mapInverse = r_to_theta; }
-      else if (!strcmp(funcname, "theta_to_r")) { mapForward = theta_to_r; }
-      else if (!strcmp(funcname, "xy_to_ray")) { mapInverse = xy_to_ray; }
-      else if (!strcmp(funcname, "ray_to_xy")) { mapForward = ray_to_xy; }
+
+      // check for valid map function name
+      if (!strcmp(funcname, "xy_to_latlon"))       { SETINV_ACTIVE(xy_to_latlon); }
+      else if (!strcmp(funcname, "latlon_to_xy"))  { SETFWD_ACTIVE(latlon_to_xy); }
+      else if (!strcmp(funcname, "r_to_theta"))    { SETINV_ACTIVE(r_to_theta);   }
+      else if (!strcmp(funcname, "theta_to_r"))    { SETFWD_ACTIVE(theta_to_r);   }
+      else if (!strcmp(funcname, "xy_to_ray"))     { SETINV_ACTIVE(xy_to_ray);    }
+      else if (!strcmp(funcname, "ray_to_xy"))     { SETFWD_ACTIVE(ray_to_xy);    }
       else {
          Con_Printf("Unsupported map function: %s\n", funcname);
          lua_pop(lua, 1);
          return 0;
       }
+
+      // check if the desired map function is provided
       lua_getglobal(lua, funcname);
-      map_index = luaL_ref(lua, LUA_REGISTRYINDEX);
+      if (!lua_isfunction(lua,-1)) {
+         Con_Printf("%s is not found\n", funcname);
+         lua_pop(lua,1);
+         return 0;
+      }
+
       lua_pop(lua,1);
    }
    else
    {
-      Con_Printf("Invalid map function\n");
-      lua_pop(lua, 1);
-      return 0;
+      // deduce the map function if preference is not provided
+
+      // search for provided map functions, choosing based on priority
+      if (lua_func_exists( "r_to_theta"))          { SETINV_ACTIVE(r_to_theta);   }
+      else if (lua_func_exists( "xy_to_latlon"))   { SETINV_ACTIVE(xy_to_latlon); }
+      else if (lua_func_exists( "xy_to_ray"))      { SETINV_ACTIVE(xy_to_ray);    }
+      else if (lua_func_exists( "theta_to_r"))     { SETFWD_ACTIVE(theta_to_r);   }
+      else if (lua_func_exists( "latlon_to_xy"))   { SETFWD_ACTIVE(latlon_to_xy); }
+      else if (lua_func_exists( "ray_to_xy"))      { SETFWD_ACTIVE(ray_to_xy);    }
+      else {
+         Con_Printf("No map function provided\n");
+         lua_pop(lua, 1);
+         return 0;
+      }
+      lua_pop(lua,1);
    }
 
-   // FOV limits
+   // resolve a forward map function if not already defined
+   if (!mapForward)
+   {
+      if (lua_func_exists("theta_to_r"))        { SETFWD(theta_to_r);   }
+      else if (lua_func_exists("latlon_to_xy")) { SETFWD(latlon_to_xy); }
+      else if (lua_func_exists("ray_to_xy"))    { SETFWD(ray_to_xy);    }
+   }
 
+   // set inverse coordinate checks
+   rValidIndex = xyValidIndex = -1;
+   if (mapInverse)
+   {
+      if (mapInverse == r_to_theta) {
+         if (lua_func_exists("r_isvalid")) {
+            lua_getglobal(lua, "r_isvalid");
+            rValidIndex = luaL_ref(lua, LUA_REGISTRYINDEX);
+         }
+      }
+      else {
+         if (lua_func_exists("xy_isvalid")) {
+            lua_getglobal(lua, "xy_isvalid");
+            xyValidIndex = luaL_ref(lua, LUA_REGISTRYINDEX);
+         }
+      }
+   }
+
+   // default FOV limits
+   maxFovWidth = maxFovHeight = 2*M_PI;
+   if (mapForward == latlon_to_xy) {
+      maxFovHeight = M_PI;
+   }
+
+   // get FOV width if preference
    lua_getglobal(lua, "maxFovWidth");
-   maxFovWidth = lua_isnumber(lua,-1) ? lua_tonumber(lua,-1) : 2*M_PI;
+   if (lua_isnumber(lua,-1)) {
+      maxFovWidth = lua_tonumber(lua,-1);
+   }
    lua_pop(lua,1);
 
+   // get FOV height if preference
    lua_getglobal(lua, "maxFovHeight");
-   maxFovHeight = lua_isnumber(lua,-1) ? lua_tonumber(lua,-1) : 2*M_PI;
+   if (lua_isnumber(lua,-1)) {
+      maxFovHeight = lua_tonumber(lua,-1);
+   }
    lua_pop(lua,1);
 
    // Map Symmetry options
@@ -679,11 +846,12 @@ void fill_forward_holes()
    int hsym = mapSymmetry & H_SYMMETRY;
    int vsym = mapSymmetry & V_SYMMETRY;
 
+   int x,y;
    if (hsym && vsym)
    {
-      for (int x=0; x<=width/2; ++x)
+      for (x=0; x<=width/2; ++x)
       {
-         for (int y=0; y<height/2; ++y)
+         for (y=0; y<height/2; ++y)
          {
             if (*LENSMAP(x,y) == 0)
             {
@@ -804,9 +972,9 @@ void create_lensmap()
       return;
    }
 
-   if (mapForward)
+   if (mapType == MAP_FORWARD)
       create_lensmap_forward();
-   else if (mapInverse)
+   else if (mapType == MAP_INVERSE)
       create_lensmap_inverse();
 }
 
