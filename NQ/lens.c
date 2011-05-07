@@ -1,3 +1,18 @@
+/*
+   TO DO
+   - allow omision of map, look for inverse, then forward
+   - set FOV limits depending on map function
+   - call new init that doesn't return a value
+   - use forward functions for determing FOV scale
+   - allow dfov for azimuthal projections only
+   - call xy_isvalid or r_isvalid before mapInverse
+
+   - publish Con_Printf to Lua
+   - allow manual adjustment of map scale without specifying FOV
+   - allow the viewing of the map scale due to the current FOV
+
+   - add Lua interactive mode
+   */
 // lens.c -- player lens viewing
 
 #include "bspfile.h"
