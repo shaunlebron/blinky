@@ -1,5 +1,3 @@
-map = "xy_to_latlon"
-maxFovHeight = pi
 maxx = 0
 maxy = 0
 
@@ -14,23 +12,9 @@ function solveTheta(lat)
 end
 
 function xy_to_latlon(x,y)
-   if abs(y) > maxy then
-      return nil
-   end
    local t = asin(y/2*sqrt((4+pi)/pi))
    local lat = asin((t+sin(t)*cos(t)+2*sin(t))/(2+pi*0.5))
-   if y ~= lasty then
-      local t2 = solveTheta(abs(lat))
-      maxx = 2/sqrt(pi*(4+pi))*pi*(1+cos(t2))
-      lasty = y
-   end
-
-   if abs(x) > maxx then
-      return nil
-   end
-
    local lon = sqrt(pi*(4+pi))*x/(2*(1+cos(t)))
-
    return lat,lon
 end
 
@@ -41,19 +25,18 @@ function latlon_to_xy(lat,lon)
    return x,y
 end
 
-function init(fov, width, height, frame)
+function init()
    local t = solveTheta(pi*0.5)
    maxy = 2*sqrt(pi/(4+pi))*sin(t)
-
-   local x,y
-
-   if frame == width then
-      x,y = latlon_to_xy(0,fov*0.5)
-      return x / (frame*0.5)
-   elseif frame == height then
-      x,y = latlon_to_xy(fov*0.5,0)
-      return y / (frame*0.5)
-   else
-      return nil
-   end
 end
+
+function xy_isvalid(x,y)
+   if y ~= lasty then
+      local lat,lon = xy_to_latlon(x,y)
+      local t = solveTheta(abs(lat))
+      maxx = 2/sqrt(pi*(4+pi))*pi*(1+cos(t))
+      lasty = y
+   end
+   return abs(y) <= maxy and abs(x) <= maxx
+end
+

@@ -1,25 +1,23 @@
-map = "xy_to_latlon"
 gumbyScale = 0.75
 gumbyScaleInv = 1.0/gumbyScale
-maxFovHeight = pi
 
 function xy_to_latlon(x,y)
-
-   local t = 4/(x*x+4)
-   local rx = x*t
-   local ry = y*t
-   local rz = 2*t-1
-
-   local lon = atan2(rx,rz)
-   local lat = atan2(ry,sqrt(rx*rx+rz*rz))
-
-   lat = lat*gumbyScaleInv
+   local k = x*x/((d+1)*(d+1))
+   local dscr = k*k*d*d - (k+1)*(k*d*d-1)
+   local clon = (-k*d+sqrt(dscr))/(k+1)
+   local S = (d+1)/(d+clon)
+   local lon = atan2(x,S*clon)
+   local lat = atan2(y,S)
    lon = lon*gumbyScaleInv
-
-   return lat, lon
+   lat = lat*gumbyScaleInv
+   return lat,lon
 end
 
-function init(fov,width,height,frame)
-   local r = (frame*0.5) / tan((fov*0.5)/2*gumbyScale)/2
-   return 1/r
+function latlon_to_xy(lat,lon)
+   lon = lon*gumbyScale
+   lat = lat*gumbyScale
+   local S = (d+1)/(d+cos(lon))
+   local x = S*sin(lon)
+   local y = S*tan(lat)
+   return x,y
 end
