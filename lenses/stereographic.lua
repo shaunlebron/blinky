@@ -1,5 +1,5 @@
 function r_to_theta(r)
-   return 2*atan(r,2)
+   return 2*atan(r*0.5)
 end
 
 function theta_to_r(theta)
