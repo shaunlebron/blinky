@@ -1,7 +1,9 @@
+angleScale = 0.5
+
 function r_to_theta(r)
-   return 2*atan(r*0.5)
+   return atan(r)/angleScale
 end
 
 function theta_to_r(theta)
-   return 2*tan(theta*0.5)
+   return tan(theta*angleScale)
 end
