@@ -1,12 +1,5 @@
 /*
    TO DO
-   X allow omision of map, look for inverse, then forward
-   X set FOV limits depending on map function
-   X call new init (if exists) that doesn't return a value
-   X use forward functions for determing FOV scale
-   X allow dfov for azimuthal projections only
-   X call xy_isvalid or r_isvalid before mapInverse
-
    - publish Con_Printf to Lua
    - allow manual adjustment of map scale without specifying FOV
    - allow the viewing of the map scale due to the current FOV
@@ -41,23 +34,10 @@ cvar_t l_hfov = {"hfov", "90", true};
 cvar_t l_vfov = {"vfov", "-1", true};
 cvar_t l_dfov = {"dfov", "-1", true};
 cvar_t l_lens = {"lens", "rectilinear", true};
-cvar_t l_cube_rows = {"cube_rows", "3"};
-cvar_t l_cube_cols = {"cube_cols", "4"};
-cvar_t l_cube_order = {"cube_order", "9499" "3012" "9599"};
 
 typedef unsigned char B;
 static B *cubemap = NULL;  
 static B **lensmap = NULL;
-
-#define BOX_FRONT  0
-#define BOX_RIGHT  1
-#define BOX_BEHIND 2
-#define BOX_LEFT   3
-#define BOX_TOP    4
-#define BOX_BOTTOM 5
-
-#define MAX_CUBE_ORDER 20
-#define MAX_LENS_LEN 50
 
 // top left coordinates of the screen in the vid buffer
 static int left, top;
@@ -72,6 +52,7 @@ static int cubesize;
 static double fov;
 
 // name of the current lens
+#define MAX_LENS_LEN 50
 static char lens[MAX_LENS_LEN];
 
 // pointer to the screen dimension (width,height or diag) attached to the desired fov
@@ -84,20 +65,8 @@ static double scale;
 // used to only draw the cube faces in use
 static int faceDisplay[] = {0,0,0,0,0,0};
 
-// cubemap display flag
-static int cube = 0;
-
 // cubemap color display flag
 static int colorcube = 0;
-
-// number of rows in the cubemap display
-static int cube_rows;
-
-// number of columns in cubemap display
-static int cube_cols;
-
-// order of the cubemap faces in the cubemap table in row major order
-static char cube_order[MAX_CUBE_ORDER];
 
 // maximum FOV width of the current lens
 static double maxFovWidth;
@@ -107,14 +76,6 @@ static double maxFovHeight;
 
 // indicates if the current lens is valid
 static int valid_lens;
-
-// inverse map function
-typedef int (*mapInverseFunc)(double x, double y, vec3_t ray);
-static mapInverseFunc mapInverse;
-
-// forward map function
-typedef int (*mapForwardFunc)(vec3_t ray, double *x, double *y);
-static mapForwardFunc mapForward;
 
 // lua reference map index (for storing a reference to the map function)
 static int mapForwardIndex;
@@ -137,6 +98,21 @@ static int mapType;
 #define MAP_FORWARD 1
 #define MAP_INVERSE 2
 
+static int mapCoord;
+#define COORD_NONE      0
+#define COORD_RADIAL    1
+#define COORD_SPHERICAL 2
+#define COORD_EUCLIDEAN 3
+#define COORD_CUBEMAP   4
+
+// cube faces
+#define BOX_FRONT  0
+#define BOX_RIGHT  1
+#define BOX_BEHIND 2
+#define BOX_LEFT   3
+#define BOX_TOP    4
+#define BOX_BOTTOM 5
+
 // retrieves a pointer to a pixel in the video buffer
 #define VBUFFER(x,y) (vid.buffer + (x) + (y)*vid.rowbytes)
 
@@ -154,7 +130,6 @@ void L_Help(void)
    Con_Printf("dfov <degrees>: Specify FOV in diagonal degrees\n");
    Con_Printf("lens <name>: Change the lens\n");
    Con_Printf("\n---------\n");
-   Con_Printf("cube: toggle cubemap\n");
    Con_Printf("colorcube: toggle paint cubemap\n");
    Con_Printf("\n---------\n");
    Con_Printf("Motion sick?  Try Stereographic or Panini\n");
@@ -197,12 +172,6 @@ void L_CaptureCubeMap(void)
 void L_ShowFovDeprecate(void)
 {
    Con_Printf("Please use hfov instead\n");
-}
-
-void L_Cube(void)
-{
-   cube = cube ? 0 : 1;
-   Con_Printf("Cube is %s\n", cube ? "ON" : "OFF");
 }
 
 void L_ColorCube(void)
@@ -248,7 +217,15 @@ void L_InitLua(void)
       "sqrt = math.sqrt\n"
       "exp = math.exp\n"
       "pi = math.pi\n"
-      "pow = math.pow\n";
+      "pow = math.pow\n"
+
+      "FRONT = 0\n"
+      "RIGHT = 1\n"
+      "BEHIND = 2\n"
+      "LEFT = 3\n"
+      "TOP = 4\n"
+      "BOTTOM = 5\n";
+
    error = luaL_loadbuffer(lua, aliases, strlen(aliases), "aliases") ||
       lua_pcall(lua, 0, 0, 0);
    if (error) {
@@ -264,15 +241,11 @@ void L_Init(void)
    Cmd_AddCommand("lenses", L_Help);
    Cmd_AddCommand("savecube", L_CaptureCubeMap);
    Cmd_AddCommand("fov", L_ShowFovDeprecate);
-   Cmd_AddCommand("cube", L_Cube);
    Cmd_AddCommand("colorcube", L_ColorCube);
    Cvar_RegisterVariable (&l_hfov);
    Cvar_RegisterVariable (&l_vfov);
    Cvar_RegisterVariable (&l_dfov);
    Cvar_RegisterVariable (&l_lens);
-   Cvar_RegisterVariable (&l_cube_rows);
-   Cvar_RegisterVariable (&l_cube_cols);
-   Cvar_RegisterVariable (&l_cube_order);
 }
 
 void L_Shutdown(void)
@@ -282,7 +255,7 @@ void L_Shutdown(void)
 
 /******** BEGIN LUA ******************/
 
-int xy_isvalid(double x, double y)
+int lua_xy_isvalid(double x, double y)
 {
    if (xyValidIndex == -1) {
       return 1;
@@ -298,7 +271,7 @@ int xy_isvalid(double x, double y)
    return valid;
 }
 
-int r_isvalid(double r)
+int lua_r_isvalid(double r)
 {
    if (rValidIndex == -1)
       return 1;
@@ -314,9 +287,9 @@ int r_isvalid(double r)
 
 // Inverse Map Functions
 
-int xy_to_ray(double x, double y, vec3_t ray)
+int lua_xy_to_ray(double x, double y, vec3_t ray)
 {
-   if (!xy_isvalid(x,y))
+   if (!lua_xy_isvalid(x,y))
       return 0;
 
    lua_rawgeti(lua, LUA_REGISTRYINDEX, mapInverseIndex);
@@ -337,10 +310,9 @@ int xy_to_ray(double x, double y, vec3_t ray)
    return 1;
 }
 
-int r_to_theta(double x, double y, vec3_t ray)
+int lua_r_to_theta(double r, double *theta)
 {
-   double r = sqrt(x*x+y*y);
-   if (!r_isvalid(r))
+   if (!lua_r_isvalid(r))
       return 0;
 
    lua_rawgeti(lua, LUA_REGISTRYINDEX, mapInverseIndex);
@@ -352,22 +324,15 @@ int r_to_theta(double x, double y, vec3_t ray)
       return 0;
    }
 
-   double el = lua_tonumber(lua,-1);
+   *theta = lua_tonumber(lua,-1);
    lua_pop(lua,1);
-
-   double s = sin(el);
-   double c = cos(el);
-
-   ray[0] = x/r * s;
-   ray[1] = y/r * s;
-   ray[2] = c;
 
    return 1;
 }
 
-int xy_to_latlon(double x, double y, vec3_t ray)
+int lua_xy_to_latlon(double x, double y, double *lat, double *lon)
 {
-   if (!xy_isvalid(x,y))
+   if (!lua_xy_isvalid(x,y))
       return 0;
 
    lua_rawgeti(lua, LUA_REGISTRYINDEX, mapInverseIndex);
@@ -380,22 +345,25 @@ int xy_to_latlon(double x, double y, vec3_t ray)
       return 0;
    }
 
-   double lat = lua_tonumber(lua, -2);
-   double lon = lua_tonumber(lua, -1);
+   *lat = lua_tonumber(lua, -2);
+   *lon = lua_tonumber(lua, -1);
    lua_pop(lua,2);
-
-   double clat = cos(lat);
-
-   ray[0] = sin(lon)*clat;
-   ray[1] = sin(lat);
-   ray[2] = cos(lon)*clat;
 
    return 1;
 }
 
+int lua_xy_to_cubemap(double x, double y, int *side, double *u, double *v)
+{
+   if (!lua_xy_isvalid(x,y))
+      return 0;
+
+   // TODO: implement function call
+   return 0;
+}
+
 // Forward Map Functions
 
-int ray_to_xy(vec3_t ray, double *x, double *y)
+int lua_ray_to_xy(vec3_t ray, double *x, double *y)
 {
    lua_rawgeti(lua, LUA_REGISTRYINDEX, mapForwardIndex);
    lua_pushnumber(lua,ray[0]);
@@ -412,23 +380,6 @@ int ray_to_xy(vec3_t ray, double *x, double *y)
    *y = lua_tonumber(lua, -1);
    lua_pop(lua,2);
 
-   return 1;
-}
-
-int lua_theta_to_r(double theta, double *r)
-{
-   lua_rawgeti(lua, LUA_REGISTRYINDEX, mapForwardIndex);
-   lua_pushnumber(lua, theta);
-   lua_call(lua, 1, LUA_MULTRET);
-
-   if (!lua_isnumber(lua, -1))
-   {
-      lua_pop(lua,1);
-      return 0;
-   }
-
-   *r = lua_tonumber(lua,-1);
-   lua_pop(lua,1);
    return 1;
 }
 
@@ -450,30 +401,27 @@ int lua_latlon_to_xy(double lat, double lon, double *x, double *y)
    return 1;
 }
 
-
-int latlon_to_xy(vec3_t ray, double *x, double *y)
+int lua_theta_to_r(double theta, double *r)
 {
-   double rx=ray[0], ry=ray[1], rz=ray[2];
-   double lon = atan2(rx, rz);
-   double lat = atan2(ry, sqrt(rx*rx+rz*rz));
+   lua_rawgeti(lua, LUA_REGISTRYINDEX, mapForwardIndex);
+   lua_pushnumber(lua, theta);
+   lua_call(lua, 1, LUA_MULTRET);
 
-   return lua_latlon_to_xy(lat,lon,x,y);
-}
-
-int theta_to_r(vec3_t ray, double *x, double *y)
-{
-   double len = sqrt(ray[0]*ray[0]+ray[1]*ray[1]+ray[2]*ray[2]);
-   double theta = acos(ray[2]/len);
-
-   double r;
-   if (!lua_theta_to_r(theta,&r)) {
+   if (!lua_isnumber(lua, -1))
+   {
+      lua_pop(lua,1);
       return 0;
    }
 
-   double c = r/sqrt(ray[0]*ray[0]+ray[1]*ray[1]);
-   *x = ray[0]*c;
-   *y = ray[1]*c;
+   *r = lua_tonumber(lua,-1);
+   lua_pop(lua,1);
    return 1;
+}
+
+int lua_cubemap_to_xy(int side, double u, double v, double *x, double *y)
+{
+   // TODO: implement
+   return 0;
 }
 
 int lua_lens_init(void)
@@ -497,35 +445,50 @@ int lua_lens_init(void)
       return 0;
    }
 
-   // get FOV scale
+   // get lens scale
    scale = -1;
-   if (mapForward == theta_to_r) {
-      double r;
-      if (lua_theta_to_r(fov*0.5, &r)) scale = r / (*framesize * 0.5);
-      else {
-         Con_Printf("theta_to_r did not return a valid r value for determining FOV scale\n");
+
+   // try to scale based on FOV
+   if (mapForwardIndex != -1) {
+      if (mapCoord == COORD_RADIAL) {
+         double r;
+         if (lua_theta_to_r(fov*0.5, &r)) scale = r / (*framesize * 0.5);
+         else {
+            Con_Printf("theta_to_r did not return a valid r value for determining FOV scale\n");
+            return 0;
+         }
+      }
+      else if (mapCoord == COORD_SPHERICAL) {
+         double x,y;
+         if (*framesize == width) {
+            if (lua_latlon_to_xy(0,fov*0.5,&x,&y)) scale = x / (*framesize * 0.5);
+            else return 0;
+         }
+         else if (*framesize == height) {
+            if (lua_latlon_to_xy(fov*0.5,0,&x,&y)) scale = y / (*framesize * 0.5);
+            else return 0;
+         }
+         else {
+            Con_Printf("latlon_to_xy does not support diagonal FOVs\n");
+            return 0;
+         }
+      }
+      else if (mapCoord == COORD_EUCLIDEAN) {
+         Con_Printf("ray_to_xy currently not supported for FOV scaling\n");
+         return 0;
+      }
+      else if (mapCoord == COORD_CUBEMAP) {
+         Con_Printf("cubemap_to_xy currently not supported for FOV scaling\n");
          return 0;
       }
    }
-   else if (mapForward == latlon_to_xy) {
-      double x,y;
-      if (*framesize == width) {
-         if (lua_latlon_to_xy(0,fov*0.5,&x,&y)) scale = x / (*framesize * 0.5);
-         else return 0;
-      }
-      else if (*framesize == height) {
-         if (lua_latlon_to_xy(fov*0.5,0,&x,&y)) scale = y / (*framesize * 0.5);
-         else return 0;
-      }
-      else {
-         Con_Printf("latlon_to_xy does not support diagonal FOVs\n");
-         return 0;
-      }
+   else
+   {
+      Con_Printf("Forward Index is -1\n");
    }
-   else if (mapForward == ray_to_xy) {
-      Con_Printf("ray_to_xy currently not supported for FOV scaling\n");
-      return 0;
-   }
+
+   // try to scale based on fitWidth or fitHeight
+   // TODO: implement fit code
 
    // validate scale
    if (scale <= 0)
@@ -583,25 +546,25 @@ int lua_lens_load(void)
 
    // clear current maps
    mapType = MAP_NONE;
-   mapInverse = 0;
-   mapForward = 0;
+   mapForwardIndex = mapInverseIndex = -1;
+   mapCoord = COORD_NONE;
 
 #define SETFWD(map) \
-   mapForward = map; \
    lua_getglobal(lua,#map); \
    mapForwardIndex = luaL_ref(lua, LUA_REGISTRYINDEX);\
 
-#define SETFWD_ACTIVE(map) \
-   SETFWD(map) \
-   mapType = MAP_FORWARD;
-
 #define SETINV(map) \
-   mapInverse = map; \
    lua_getglobal(lua,#map); \
    mapInverseIndex = luaL_ref(lua, LUA_REGISTRYINDEX);\
 
-#define SETINV_ACTIVE(map) \
-   SETINV(map) \
+#define SETFWD_ACTIVE(map,coord) \
+   mapCoord = coord; \
+   SETFWD(map); \
+   mapType = MAP_FORWARD;
+
+#define SETINV_ACTIVE(map,coord) \
+   mapCoord = coord; \
+   SETINV(map); \
    mapType = MAP_INVERSE;
 
    // get map function preference if provided
@@ -612,12 +575,14 @@ int lua_lens_load(void)
       const char* funcname = lua_tostring(lua, -1);
 
       // check for valid map function name
-      if (!strcmp(funcname, "xy_to_latlon"))       { SETINV_ACTIVE(xy_to_latlon); }
-      else if (!strcmp(funcname, "latlon_to_xy"))  { SETFWD_ACTIVE(latlon_to_xy); }
-      else if (!strcmp(funcname, "r_to_theta"))    { SETINV_ACTIVE(r_to_theta);   }
-      else if (!strcmp(funcname, "theta_to_r"))    { SETFWD_ACTIVE(theta_to_r);   }
-      else if (!strcmp(funcname, "xy_to_ray"))     { SETINV_ACTIVE(xy_to_ray);    }
-      else if (!strcmp(funcname, "ray_to_xy"))     { SETFWD_ACTIVE(ray_to_xy);    }
+      if (!strcmp(funcname, "xy_to_latlon"))       { SETINV_ACTIVE(xy_to_latlon, COORD_SPHERICAL); }
+      else if (!strcmp(funcname, "latlon_to_xy"))  { SETFWD_ACTIVE(latlon_to_xy, COORD_SPHERICAL); }
+      else if (!strcmp(funcname, "r_to_theta"))    { SETINV_ACTIVE(r_to_theta,   COORD_RADIAL);   }
+      else if (!strcmp(funcname, "theta_to_r"))    { SETFWD_ACTIVE(theta_to_r,   COORD_RADIAL);   }
+      else if (!strcmp(funcname, "xy_to_ray"))     { SETINV_ACTIVE(xy_to_ray,    COORD_EUCLIDEAN);    }
+      else if (!strcmp(funcname, "ray_to_xy"))     { SETFWD_ACTIVE(ray_to_xy,    COORD_EUCLIDEAN);    }
+      else if (!strcmp(funcname, "xy_to_cubemap")) { SETINV_ACTIVE(xy_to_cubemap,COORD_CUBEMAP); }
+      else if (!strcmp(funcname, "cubemap_to_xy")) { SETFWD_ACTIVE(cubemap_to_xy,COORD_CUBEMAP); }
       else {
          Con_Printf("Unsupported map function: %s\n", funcname);
          lua_pop(lua, 1);
@@ -639,12 +604,14 @@ int lua_lens_load(void)
       // deduce the map function if preference is not provided
 
       // search for provided map functions, choosing based on priority
-      if (lua_func_exists( "r_to_theta"))          { SETINV_ACTIVE(r_to_theta);   }
-      else if (lua_func_exists( "xy_to_latlon"))   { SETINV_ACTIVE(xy_to_latlon); }
-      else if (lua_func_exists( "xy_to_ray"))      { SETINV_ACTIVE(xy_to_ray);    }
-      else if (lua_func_exists( "theta_to_r"))     { SETFWD_ACTIVE(theta_to_r);   }
-      else if (lua_func_exists( "latlon_to_xy"))   { SETFWD_ACTIVE(latlon_to_xy); }
-      else if (lua_func_exists( "ray_to_xy"))      { SETFWD_ACTIVE(ray_to_xy);    }
+      if (lua_func_exists( "r_to_theta"))          { SETINV_ACTIVE(r_to_theta,    COORD_RADIAL);   }
+      else if (lua_func_exists( "xy_to_latlon"))   { SETINV_ACTIVE(xy_to_latlon,  COORD_SPHERICAL); }
+      else if (lua_func_exists( "xy_to_ray"))      { SETINV_ACTIVE(xy_to_ray,     COORD_EUCLIDEAN);    }
+      else if (lua_func_exists( "theta_to_r"))     { SETFWD_ACTIVE(theta_to_r,    COORD_RADIAL);   }
+      else if (lua_func_exists( "latlon_to_xy"))   { SETFWD_ACTIVE(latlon_to_xy,  COORD_SPHERICAL); }
+      else if (lua_func_exists( "ray_to_xy"))      { SETFWD_ACTIVE(ray_to_xy,     COORD_EUCLIDEAN);    }
+      else if (lua_func_exists( "xy_to_cubemap"))  { SETINV_ACTIVE(xy_to_cubemap, COORD_CUBEMAP); }
+      else if (lua_func_exists( "cubemap_to_xy"))  { SETFWD_ACTIVE(cubemap_to_xy, COORD_CUBEMAP); }
       else {
          Con_Printf("No map function provided\n");
          lua_pop(lua, 1);
@@ -654,24 +621,28 @@ int lua_lens_load(void)
    }
 
    // resolve a forward map function if not already defined
-   if (!mapForward)
+   if (mapForwardIndex == -1)
    {
-      if (lua_func_exists("theta_to_r"))        { SETFWD(theta_to_r);   }
-      else if (lua_func_exists("latlon_to_xy")) { SETFWD(latlon_to_xy); }
-      else if (lua_func_exists("ray_to_xy"))    { SETFWD(ray_to_xy);    }
+      if (mapCoord == COORD_RADIAL && lua_func_exists("theta_to_r"))        { SETFWD(theta_to_r);   }
+      else if (mapCoord == COORD_SPHERICAL && lua_func_exists("latlon_to_xy")) { SETFWD(latlon_to_xy); }
+      else if (mapCoord == COORD_EUCLIDEAN && lua_func_exists("ray_to_xy"))    { SETFWD(ray_to_xy);    }
+      else if (mapCoord == COORD_CUBEMAP && lua_func_exists("cubemap_to_xy")){ SETFWD(cubemap_to_xy); }
+      else {
+         // TODO: notify if no matching forward function found (meaning no FOV scaling can be done)
+      }
    }
 
    // set inverse coordinate checks
    rValidIndex = xyValidIndex = -1;
-   if (mapInverse)
+   if (mapInverseIndex != -1)
    {
-      if (mapInverse == r_to_theta) {
+      if (mapCoord == COORD_RADIAL) {
          if (lua_func_exists("r_isvalid")) {
             lua_getglobal(lua, "r_isvalid");
             rValidIndex = luaL_ref(lua, LUA_REGISTRYINDEX);
          }
       }
-      else {
+      else if (mapCoord != COORD_NONE) { // all other maps currently use x,y
          if (lua_func_exists("xy_isvalid")) {
             lua_getglobal(lua, "xy_isvalid");
             xyValidIndex = luaL_ref(lua, LUA_REGISTRYINDEX);
@@ -681,7 +652,7 @@ int lua_lens_load(void)
 
    // default FOV limits
    maxFovWidth = maxFovHeight = 2*M_PI;
-   if (mapForward == latlon_to_xy) {
+   if (mapCoord == COORD_SPHERICAL) {
       maxFovHeight = M_PI;
    }
 
@@ -728,42 +699,7 @@ int clamp(int value, int min, int max)
    return value;
 }
 
-void create_cubefold()
-{
-   // get size of each square cell
-   int xsize = width / cube_cols;
-   int ysize = height / cube_rows;
-   int size = (xsize < ysize) ? xsize : ysize;
-
-   // get top left position of the first row and first column
-   int left = (width - size*cube_cols)/2;
-   int top = (height - size*cube_rows)/2;
-
-   int r,c;
-   for (r=0; r<cube_rows; ++r)
-   {
-      int rowy = top + size*r;
-      for (c=0; c<cube_cols; ++c)
-      {
-         int colx = left + size*c;
-         int face = (int)(cube_order[c+r*cube_cols] - '0');
-         if (face > 5)
-            continue;
-
-         int x,y;
-         for (y=0;y<size;++y)
-            for (x=0;x<size;++x)
-            {
-               int lx = clamp(colx+x,0,width-1);
-               int ly = clamp(rowy+y,0,height-1);
-               int fx = clamp(cubesize*x/size,0,cubesize-1);
-               int fy = clamp(cubesize*y/size,0,cubesize-1);
-               *LENSMAP(lx,ly) = CUBEFACE(face,fx,fy);
-            }
-      }
-   }
-}
-
+// set the (lx,ly) pixel on the lensmap to the (sx,sy,sz) view vector
 void setLensPixelToRay(int lx, int ly, double sx, double sy, double sz)
 {
    // determine which side of the box we need
@@ -813,61 +749,75 @@ void create_lensmap_inverse()
    int maxx = hsym ? halfw : width;
    int maxy = vsym ? halfh : height;
 
-   int x, y;
+   int lx,ly;
 
-   for(y = 0;y<maxy;++y) {
-      double y0 = -(y-halfh);
-      y0 *= scale;
-      for(x = 0;x<maxx;++x) {
-         double x0 = x-halfw;
-         x0 *= scale;
+   for(ly = 0;ly<maxy;++ly) {
+      double y = -(ly-halfh);
+      y *= scale;
+      for(lx = 0;lx<maxx;++lx) {
+         double x = lx-halfw;
+         x *= scale;
 
          // map the current window coordinate to a ray vector
          vec3_t ray = { 0, 0, 1};
-         if (x==halfw && y == halfh) {
+         if (lx==halfw && ly == halfh) {
             // FIXME: this is a workaround for strange dead pixel in the center
          }
-         else if (!mapInverse(x0,y0,ray)) {
-            // pixel is outside projection
+         else if (mapCoord == COORD_RADIAL)
+         {
+            double r = sqrt(x*x+y*y);
+            double theta;
+            if (!lua_r_to_theta(r, &theta))
+               continue;
+            double s = sin(theta);
+            ray[0] = x/r * s;
+            ray[1] = y/r * s;
+            ray[2] = cos(theta);
+         }
+         else if (mapCoord == COORD_SPHERICAL)
+         {
+            double lat,lon;
+            if (!lua_xy_to_latlon(x,y,&lat,&lon))
+               continue;
+
+            double clat = cos(lat);
+            ray[0] = sin(lon)*clat;
+            ray[1] = sin(lat);
+            ray[2] = cos(lon)*clat;
+         }
+         else if (mapCoord == COORD_EUCLIDEAN)
+         {
+            if (!lua_xy_to_ray(x,y,ray))
+               continue;
+         }
+         else if (mapCoord == COORD_CUBEMAP)
+         {
+            int side;
+            double u,v;
+            if (!lua_xy_to_cubemap(lx,ly,&side,&u,&v))
+               continue;
+
+            // convert (side,u,v) to lx,ly
+            // skip setLensPixelToRay
             continue;
          }
 
-         setLensPixelToRay(x,y,ray[0],ray[1],ray[2]);
-         if (hsym) setLensPixelToRay(width-1-x,y,-ray[0],ray[1],ray[2]);
-         if (vsym) setLensPixelToRay(x,height-1-y,ray[0],-ray[1],ray[2]);
-         if (vsym && hsym) setLensPixelToRay(width-1-x,height-1-y,-ray[0],-ray[1],ray[2]);
+         setLensPixelToRay(lx,ly,ray[0],ray[1],ray[2]);
+         if (hsym) setLensPixelToRay(width-1-lx,ly,-ray[0],ray[1],ray[2]);
+         if (vsym) setLensPixelToRay(lx,height-1-ly,ray[0],-ray[1],ray[2]);
+         if (vsym && hsym) setLensPixelToRay(width-1-lx,height-1-ly,-ray[0],-ray[1],ray[2]);
       }
    }
 
-   for(x=0; x<6; ++x)
-      faceDisplay[x] = (side_count[x] > 1);
-}
-
-void fill_forward_holes()
-{
-   int hsym = mapSymmetry & H_SYMMETRY;
-   int vsym = mapSymmetry & V_SYMMETRY;
-
-   int x,y;
-   if (hsym && vsym)
-   {
-      for (x=0; x<=width/2; ++x)
-      {
-         for (y=0; y<height/2; ++y)
-         {
-            if (*LENSMAP(x,y) == 0)
-            {
-               // TODO: insert hole filling algorithm
-            }
-         }
-      }
-   }
+   int i;
+   for(i=0; i<6; ++i)
+      faceDisplay[i] = (side_count[i] > 1);
 }
 
 void create_lensmap_forward()
 {
    memset(side_count, 0, sizeof(side_count));
-   int x,y;
+   int cx, cy;
    int side;
    double nz = cubesize*0.5;
 
@@ -890,12 +840,12 @@ void create_lensmap_forward()
          if (side != BOX_TOP) maxy = cubesize/2;
       }
 
-      for (y=miny; y<=maxy; ++y)
+      for (cy=miny; cy<=maxy; ++cy)
       {
-         double ny = -(y-cubesize*0.5);
-         for (x=minx; x<=maxx; ++x)
+         double ny = -(cy-cubesize*0.5);
+         for (cx=minx; cx<=maxx; ++cx)
          {
-            double nx = x-cubesize*0.5;
+            double nx = cx-cubesize*0.5;
             vec3_t ray;
             if (side == BOX_FRONT) { ray[0] = nx; ray[1] = ny; ray[2] = nz; }
             else if (side == BOX_BEHIND) { ray[0] = -nx; ray[1] = ny; ray[2] = -nz; }
@@ -904,65 +854,80 @@ void create_lensmap_forward()
             else if (side == BOX_TOP) { ray[0] = nx; ray[1] = nz; ray[2] = -ny; }
             else if (side == BOX_BOTTOM) { ray[0] = nx; ray[1] = -nz; ray[2] = ny; }
 
-            double x0,y0;
-            if (!mapForward(ray, &x0, &y0)) {
-               continue;
+            double x,y;
+            if (mapCoord == COORD_RADIAL)
+            {
+               double theta = acos(ray[2]/sqrt(ray[0]*ray[0]+ray[1]*ray[1]+ray[2]*ray[2]));
+               double r;
+               if (!lua_theta_to_r(theta, &r))
+                  continue;
+
+               double c = r/sqrt(ray[0]*ray[0]+ray[1]*ray[1]);
+               x = ray[0]*c;
+               y = ray[1]*c;
+            }
+            else if (mapCoord == COORD_SPHERICAL)
+            {
+               double lon = atan2(ray[0], ray[2]);
+               double lat = atan2(ray[1], sqrt(ray[0]*ray[0]+ray[2]*ray[2]));
+               if (!lua_latlon_to_xy(lat, lon, &x, &y))
+                  continue;
+            }
+            else if (mapCoord == COORD_EUCLIDEAN)
+            {
+               if (!lua_ray_to_xy(ray, &x, &y))
+                  continue;
+            }
+            else if (mapCoord == COORD_CUBEMAP)
+            {
+               double u = (double)cx / (cubesize-1);
+               double v = (double)cy / (cubesize-1);
+               if (!lua_cubemap_to_xy(side, u, v, &x, &y))
+                  continue;
             }
 
-            double invscale = 1/scale;
-            x0 *= invscale;
-            y0 *= invscale;
+            x /= scale;
+            y /= scale;
+            y *= -1;
+            x += width*0.5;
+            y += height*0.5;
 
-            y0 *= -1;
-
-            x0 += width*0.5;
-            y0 += height*0.5;
-
-            int lx = (int)x0;
-            int ly = (int)y0;
+            int lx = (int)x;
+            int ly = (int)y;
 
             if (lx < 0 || lx >= width || ly < 0 || ly >= height)
                continue;
 
             side_count[side]++;
-            *LENSMAP(lx,ly) = CUBEFACE(side,x,y);
+            *LENSMAP(lx,ly) = CUBEFACE(side,cx,cy);
 
             if (hsym) {
                int oppside = (side == BOX_LEFT) ? BOX_RIGHT : side;
                side_count[oppside]++;
-               *LENSMAP(width-1-lx,ly) = CUBEFACE(oppside,cubesize-1-x,y);
+               *LENSMAP(width-1-lx,ly) = CUBEFACE(oppside,cubesize-1-cx,cy);
             }
             if (vsym) {
                int oppside = (side == BOX_TOP) ? BOX_BOTTOM : side;
                side_count[oppside]++;
-               *LENSMAP(lx,height-1-ly) = CUBEFACE(oppside,x,cubesize-1-y);
+               *LENSMAP(lx,height-1-ly) = CUBEFACE(oppside,cx,cubesize-1-cy);
             }
             if (hsym && vsym) {
                int oppside = (side == BOX_TOP) ? BOX_BOTTOM : ((side == BOX_LEFT) ? BOX_RIGHT : side);
                side_count[oppside]++;
-               *LENSMAP(width-1-lx,height-1-ly) = CUBEFACE(oppside,cubesize-1-x,cubesize-1-y);
+               *LENSMAP(width-1-lx,height-1-ly) = CUBEFACE(oppside,cubesize-1-cx,cubesize-1-cy);
             }
          }
       }
    }
 
-   for(x=0; x<6; ++x) {
-      faceDisplay[x] = (side_count[x] > 1);
+   int i;
+   for(i=0; i<6; ++i) {
+      faceDisplay[i] = (side_count[i] > 1);
    }
 }
 
 void create_lensmap()
 {
-   if (cube)
-   {
-      // set all faces to display
-      memset(faceDisplay,1,6*sizeof(int));
-
-      // create lookup table for unfolded cubemap
-      create_cubefold();
-      return;
-   }
-
    // render nothing if current lens is invalid
    if (!valid_lens)
       return;
@@ -980,6 +945,7 @@ void create_lensmap()
       create_lensmap_inverse();
 }
 
+// draw the lensmap to the vidbuffer
 void render_lensmap()
 {
    B **lmap = lensmap;
@@ -990,6 +956,7 @@ void render_lensmap()
             *VBUFFER(x+left, y+top) = **lmap;
 }
 
+// render a specific face on the cubemap
 void render_cubeface(B* cubeface, vec3_t forward, vec3_t right, vec3_t up) 
 {
    // set camera orientation
@@ -1021,17 +988,7 @@ void L_RenderView()
    static double phfov = -1;
    static double pvfov = -1;
    static double pdfov = -1;
-   static int pcube = -1;
-   static int pcube_rows = -1;
-   static int pcube_cols = -1;
-   static char pcube_order[MAX_CUBE_ORDER];
    static int pcolorcube = -1;
-
-   // update cube settings
-   cube_rows = (int)l_cube_rows.value;
-   cube_cols = (int)l_cube_cols.value;
-   strcpy(cube_order, l_cube_order.string);
-   int cubechange = cube != pcube || cube_rows!=pcube_rows || cube_cols!=pcube_cols || strcmp(cube_order,pcube_order);
 
    // update screen size
    left = scr_vrect.x;
@@ -1097,7 +1054,7 @@ void L_RenderView()
    }
 
    // recalculate lens
-   if (sizechange || fovchange || lenschange || cubechange) {
+   if (sizechange || fovchange || lenschange) {
       memset(lensmap, 0, area*sizeof(B*));
       create_lensmap();
    }
@@ -1151,10 +1108,6 @@ void L_RenderView()
    phfov = l_hfov.value;
    pvfov = l_vfov.value;
    pdfov = l_dfov.value;
-   pcube = cube;
-   pcube_rows = cube_rows;
-   pcube_cols = cube_cols;
-   strcpy(pcube_order, cube_order);
    pcolorcube = colorcube;
 }
 
