@@ -1,5 +1,3 @@
-maxx = 0
-maxy = 0
 
 function solveTheta(lat)
    local t = lat/2;
@@ -27,11 +25,6 @@ function latlon_to_xy(lat,lon)
    return x,y
 end
 
-function init()
-   local t = solveTheta(pi*0.5)
-   maxy = 2*sqrt(pi/(4+pi))*sin(t)
-end
-
 function xy_isvalid(x,y)
    if y ~= lasty then
       local lat,lon = xy_to_latlon(x,y)
@@ -42,3 +35,14 @@ function xy_isvalid(x,y)
    return abs(y) <= maxy and abs(x) <= maxx
 end
 
+local t = solveTheta(pi*0.5)
+maxy = 2*sqrt(pi/(4+pi))*sin(t)
+
+hsym = true
+vsym = true
+max_hfov = 360
+max_vfov = 180
+
+t = solveTheta(0)
+hfit_size = 2/sqrt(pi*(4+pi))*pi*(1+cos(t))*2
+vfit_size = 2*maxy

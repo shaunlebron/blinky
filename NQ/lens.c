@@ -35,6 +35,12 @@ cvar_t l_vfov = {"vfov", "-1", true};
 cvar_t l_dfov = {"dfov", "-1", true};
 cvar_t l_lens = {"lens", "rectilinear", true};
 
+cvar_t l_fitmode = {"fitmode", "0", true};
+#define FIT_NONE  0
+#define FIT_H     1
+#define FIT_V     2
+#define FIT_BOTH  3
+
 typedef unsigned char B;
 static B *cubemap = NULL;  
 static B **lensmap = NULL;
@@ -50,6 +56,15 @@ static int cubesize;
 
 // desired FOV in radians
 static double fov;
+
+// fit sizes
+static double hfit_size;
+static double vfit_size;
+
+// fit mode
+static int fit;
+static int hfit;
+static int vfit;
 
 // name of the current lens
 #define MAX_LENS_LEN 50
@@ -69,10 +84,10 @@ static int faceDisplay[] = {0,0,0,0,0,0};
 static int colorcube = 0;
 
 // maximum FOV width of the current lens
-static double maxFovWidth;
+static double max_vfov;
 
 // maximum FOV height of the current lens
-static double maxFovHeight;
+static double max_hfov;
 
 // indicates if the current lens is valid
 static int valid_lens;
@@ -88,7 +103,7 @@ static int rValidIndex;
 static int side_count[6];
 
 // MAP SYMMETRIES
-static int mapSymmetry;
+static int hsym,vsym;
 #define NO_SYMMETRY 0
 #define H_SYMMETRY 1
 #define V_SYMMETRY 2
@@ -234,6 +249,21 @@ void L_InitLua(void)
    }
 }
 
+void L_HFit(void)
+{
+   Cvar_SetValue("fitmode", FIT_H);
+}
+
+void L_VFit(void)
+{
+   Cvar_SetValue("fitmode", FIT_V);
+}
+
+void L_Fit(void)
+{
+   Cvar_SetValue("fitmode", FIT_BOTH);
+}
+
 void L_Init(void)
 {
    L_InitLua();
@@ -242,10 +272,15 @@ void L_Init(void)
    Cmd_AddCommand("savecube", L_CaptureCubeMap);
    Cmd_AddCommand("fov", L_ShowFovDeprecate);
    Cmd_AddCommand("colorcube", L_ColorCube);
+   Cmd_AddCommand("hfit", L_HFit);
+   Cmd_AddCommand("vfit", L_VFit);
+   Cmd_AddCommand("fit", L_Fit);
    Cvar_RegisterVariable (&l_hfov);
    Cvar_RegisterVariable (&l_vfov);
    Cvar_RegisterVariable (&l_dfov);
    Cvar_RegisterVariable (&l_lens);
+   Cvar_RegisterVariable (&l_fitmode);
+
 }
 
 void L_Shutdown(void)
@@ -357,8 +392,21 @@ int lua_xy_to_cubemap(double x, double y, int *side, double *u, double *v)
    if (!lua_xy_isvalid(x,y))
       return 0;
 
-   // TODO: implement function call
-   return 0;
+   lua_rawgeti(lua, LUA_REGISTRYINDEX, mapInverseIndex);
+   lua_pushnumber(lua, x);
+   lua_pushnumber(lua, y);
+   lua_call(lua, 2, LUA_MULTRET);
+
+   if (!lua_isnumber(lua, -1)) {
+      lua_pop(lua,1);
+      return 0;
+   }
+
+   *side = lua_tointeger(lua, -3);
+   *u = lua_tonumber(lua, -2);
+   *v = lua_tonumber(lua, -1);
+   lua_pop(lua,3);
+   return 1;
 }
 
 // Forward Map Functions
@@ -420,8 +468,22 @@ int lua_theta_to_r(double theta, double *r)
 
 int lua_cubemap_to_xy(int side, double u, double v, double *x, double *y)
 {
-   // TODO: implement
-   return 0;
+   lua_rawgeti(lua, LUA_REGISTRYINDEX, mapForwardIndex);
+   lua_pushinteger(lua, side);
+   lua_pushnumber(lua, u);
+   lua_pushnumber(lua, v);
+   lua_call(lua, 3, LUA_MULTRET);
+
+   if (!lua_isnumber(lua, -1))
+   {
+      lua_pop(lua,1);
+      return 0;
+   }
+
+   *x = lua_tonumber(lua,-2);
+   *y = lua_tonumber(lua,-1);
+   lua_pop(lua,2);
+   return 1;
 }
 
 int lua_lens_init(void)
@@ -435,64 +497,106 @@ int lua_lens_init(void)
       }
    }
 
-   // check FOV limits
-   if (width == *framesize && fov > maxFovWidth) {
-      Con_Printf("Horizontal FOV must be less than %f\n", maxFovWidth);
-      return 0;
-   }
-   else if (height == *framesize && fov > maxFovHeight) {
-      Con_Printf("Vertical FOV must be less than %f\n", maxFovHeight);
-      return 0;
-   }
-
-   // get lens scale
+   // clear lens scale
    scale = -1;
 
-   // try to scale based on FOV
-   if (mapForwardIndex != -1) {
-      if (mapCoord == COORD_RADIAL) {
-         double r;
-         if (lua_theta_to_r(fov*0.5, &r)) scale = r / (*framesize * 0.5);
-         else {
-            Con_Printf("theta_to_r did not return a valid r value for determining FOV scale\n");
+   if (l_fitmode.value == FIT_NONE) // use FOV for scaling since no fit mode is selected
+   {
+      // check FOV limits
+      if (max_hfov <= 0 || max_vfov <= 0)
+      {
+         Con_Printf("Please specify a positive max_hfov and max_vfov in your lens script\n");
+         return 0;
+      }
+
+      if (width == *framesize && fov > max_hfov) {
+         Con_Printf("Horizontal FOV must be less than %f\n", max_hfov * 180 / M_PI);
+         return 0;
+      }
+      else if (height == *framesize && fov > max_vfov) {
+         Con_Printf("Vertical FOV must be less than %f\n", max_vfov * 180/ M_PI);
+         return 0;
+      }
+
+      // try to scale based on FOV using the forward map
+      if (mapForwardIndex != -1) {
+         if (mapCoord == COORD_RADIAL) {
+            double r;
+            if (lua_theta_to_r(fov*0.5, &r)) scale = r / (*framesize * 0.5);
+            else {
+               Con_Printf("theta_to_r did not return a valid r value for determining FOV scale\n");
+               return 0;
+            }
+         }
+         else if (mapCoord == COORD_SPHERICAL) {
+            double x,y;
+            if (*framesize == width) {
+               if (lua_latlon_to_xy(0,fov*0.5,&x,&y)) scale = x / (*framesize * 0.5);
+               else return 0;
+            }
+            else if (*framesize == height) {
+               if (lua_latlon_to_xy(fov*0.5,0,&x,&y)) scale = y / (*framesize * 0.5);
+               else return 0;
+            }
+            else {
+               Con_Printf("latlon_to_xy does not support diagonal FOVs\n");
+               return 0;
+            }
+         }
+         else if (mapCoord == COORD_EUCLIDEAN) {
+            Con_Printf("ray_to_xy currently not supported for FOV scaling\n");
+            return 0;
+         }
+         else if (mapCoord == COORD_CUBEMAP) {
+            Con_Printf("cubemap_to_xy currently not supported for FOV scaling\n");
             return 0;
          }
       }
-      else if (mapCoord == COORD_SPHERICAL) {
-         double x,y;
-         if (*framesize == width) {
-            if (lua_latlon_to_xy(0,fov*0.5,&x,&y)) scale = x / (*framesize * 0.5);
-            else return 0;
-         }
-         else if (*framesize == height) {
-            if (lua_latlon_to_xy(fov*0.5,0,&x,&y)) scale = y / (*framesize * 0.5);
-            else return 0;
-         }
-         else {
-            Con_Printf("latlon_to_xy does not support diagonal FOVs\n");
-            return 0;
-         }
-      }
-      else if (mapCoord == COORD_EUCLIDEAN) {
-         Con_Printf("ray_to_xy currently not supported for FOV scaling\n");
-         return 0;
-      }
-      else if (mapCoord == COORD_CUBEMAP) {
-         Con_Printf("cubemap_to_xy currently not supported for FOV scaling\n");
-         return 0;
+      else
+      {
+         Con_Printf("Please specify a forward mapping function in your script for FOV scaling\n");
       }
    }
    else
    {
-      Con_Printf("Forward Index is -1\n");
+      if (hfit) {
+         if (hfit_size <= 0)
+         {
+            Con_Printf("Cannot use hfit unless a positive hfit_size is in your script\n");
+            return 0;
+         }
+         scale = hfit_size / width;
+      }
+      else if (vfit) {
+         if (vfit_size <= 0)
+         {
+            Con_Printf("Cannot use vfit unless a positive vfit_size is in your script\n");
+            return 0;
+         }
+         scale = vfit_size / height;
+      }
+      else if (fit) {
+         if (hfit_size <= 0 && vfit_size > 0) {
+            scale = vfit_size / height;
+         }
+         else if (vfit_size <=0 && hfit_size > 0) {
+            scale = hfit_size / width;
+         }
+         else if (vfit_size <= 0 && hfit_size <= 0) {
+            Con_Printf("Please specify a positive vfit_size or hfit_size in your script\n");
+            return 0;
+         }
+         else if (hfit_size / vfit_size > (double)width / height) {
+            scale = hfit_size / width;
+         }
+         else {
+            scale = vfit_size / height;
+         }
+      }
    }
 
-   // try to scale based on fitWidth or fitHeight
-   // TODO: implement fit code
-
    // validate scale
-   if (scale <= 0)
-   {
+   if (scale <= 0) {
       Con_Printf("init returned a scale of %f, which is  <= 0\n", scale);
       return 0;
    }
@@ -505,17 +609,20 @@ void lua_lens_clear(void)
 #define CLEARVAR(var) lua_pushnil(lua); lua_setglobal(lua, var);
    CLEARVAR("init");
    CLEARVAR("map");
-   CLEARVAR("maxFovWidth");
-   CLEARVAR("maxFovHeight");
-   CLEARVAR("horizontalSymmetry");
-   CLEARVAR("verticalSymmetry");
-   CLEARVAR("verticalSymmetry");
+   CLEARVAR("max_hfov");
+   CLEARVAR("max_vfov");
+   CLEARVAR("hsym");
+   CLEARVAR("vsym");
+   CLEARVAR("hfit_size");
+   CLEARVAR("vfit_size");
    CLEARVAR("xy_to_latlon");
    CLEARVAR("latlon_to_xy");
    CLEARVAR("r_to_theta");
    CLEARVAR("theta_to_r");
    CLEARVAR("xy_to_ray");
    CLEARVAR("ray_to_xy");
+   CLEARVAR("xy_to_cubemap");
+   CLEARVAR("cubemap_to_xy");
    CLEARVAR("xy_isvalid");
    CLEARVAR("r_isvalid");
 }
@@ -650,38 +757,30 @@ int lua_lens_load(void)
       }
    }
 
-   // default FOV limits
-   maxFovWidth = maxFovHeight = 2*M_PI;
-   if (mapCoord == COORD_SPHERICAL) {
-      maxFovHeight = M_PI;
-   }
-
-   // get FOV width if preference
-   lua_getglobal(lua, "maxFovWidth");
-   if (lua_isnumber(lua,-1)) {
-      maxFovWidth = lua_tonumber(lua,-1);
-   }
+   lua_getglobal(lua, "max_hfov");
+   max_hfov = lua_isnumber(lua,-1) ? lua_tonumber(lua,-1) : 0;
+   max_hfov *= M_PI / 180;
    lua_pop(lua,1);
 
-   // get FOV height if preference
-   lua_getglobal(lua, "maxFovHeight");
-   if (lua_isnumber(lua,-1)) {
-      maxFovHeight = lua_tonumber(lua,-1);
-   }
+   lua_getglobal(lua, "max_vfov");
+   max_vfov = lua_isnumber(lua,-1) ? lua_tonumber(lua,-1) : 0;
+   max_vfov *= M_PI / 180;
    lua_pop(lua,1);
 
-   // Map Symmetry options
-
-   mapSymmetry = 0;
-
-   lua_getglobal(lua, "verticalSymmetry");
-   if (lua_isboolean(lua,-1) ? lua_toboolean(lua,-1) : 1)
-      mapSymmetry |= V_SYMMETRY;
+   lua_getglobal(lua, "vsym");
+   vsym = lua_isboolean(lua,-1) ? lua_toboolean(lua,-1) : 0;
    lua_pop(lua,1);
 
-   lua_getglobal(lua, "horizontalSymmetry");
-   if (lua_isboolean(lua,-1) ? lua_toboolean(lua,-1) : 1)
-      mapSymmetry |= H_SYMMETRY;
+   lua_getglobal(lua, "hsym");
+   hsym = lua_isboolean(lua,-1) ? lua_toboolean(lua,-1) : 0;
+   lua_pop(lua,1);
+
+   lua_getglobal(lua, "hfit_size");
+   hfit_size = lua_isnumber(lua,-1) ? lua_tonumber(lua,-1) : 0;
+   lua_pop(lua,1);
+
+   lua_getglobal(lua, "vfit_size");
+   vfit_size = lua_isnumber(lua,-1) ? lua_tonumber(lua,-1) : 0;
    lua_pop(lua,1);
 
    return 1;
@@ -741,9 +840,6 @@ void create_lensmap_inverse()
 {
    memset(side_count, 0, sizeof(side_count));
 
-   int hsym = mapSymmetry & H_SYMMETRY;
-   int vsym = mapSymmetry & V_SYMMETRY;
-
    int halfw = width/2;
    int halfh = height/2;
    int maxx = hsym ? halfw : width;
@@ -760,10 +856,10 @@ void create_lensmap_inverse()
 
          // map the current window coordinate to a ray vector
          vec3_t ray = { 0, 0, 1};
-         if (lx==halfw && ly == halfh) {
+         //if (lx==halfw && ly == halfh) {
             // FIXME: this is a workaround for strange dead pixel in the center
-         }
-         else if (mapCoord == COORD_RADIAL)
+         //}
+         if (mapCoord == COORD_RADIAL)
          {
             double r = sqrt(x*x+y*y);
             double theta;
@@ -794,11 +890,13 @@ void create_lensmap_inverse()
          {
             int side;
             double u,v;
-            if (!lua_xy_to_cubemap(lx,ly,&side,&u,&v))
+            if (!lua_xy_to_cubemap(x,y,&side,&u,&v))
                continue;
 
-            // convert (side,u,v) to lx,ly
-            // skip setLensPixelToRay
+            side_count[side]++;
+            int cx = clamp((int)(u*(cubesize-1)),0,cubesize-1);
+            int cy = clamp((int)(v*(cubesize-1)),0,cubesize-1);
+            *LENSMAP(lx,ly) = CUBEFACE(side,cx,cy);
             continue;
          }
 
@@ -820,9 +918,6 @@ void create_lensmap_forward()
    int cx, cy;
    int side;
    double nz = cubesize*0.5;
-
-   int hsym = mapSymmetry & H_SYMMETRY;
-   int vsym = mapSymmetry & V_SYMMETRY;
 
    for (side=0; side<6; ++side)
    {
@@ -935,7 +1030,7 @@ void create_lensmap()
    // test if this lens can support the current fov
    if (!lua_lens_init())
    {
-      Con_Printf("This lens could not be loaded.\n");
+      Con_Printf("This lens could not be initialized.\n");
       return;
    }
 
@@ -989,6 +1084,7 @@ void L_RenderView()
    static double pvfov = -1;
    static double pdfov = -1;
    static int pcolorcube = -1;
+   static int pfitmode = -1;
 
    // update screen size
    left = scr_vrect.x;
@@ -1037,9 +1133,52 @@ void L_RenderView()
       Cvar_SetValue("hfov", -1);
       Cvar_SetValue("vfov", -1);
    }
-   else
+   else 
    {
       fovchange = 0;
+   }
+
+   // check for fit change
+   if (fovchange)
+   {
+      // assume the fit won't change in the same frame the FOV changes
+      Cvar_SetValue("fitmode", FIT_NONE);
+   }
+   else
+   {
+      if (l_fitmode.value != pfitmode) // fitmode changed
+      {
+         if (l_fitmode.value > 0 && l_fitmode.value <= 3) // fitmode valid
+         {
+            fit = hfit = vfit = 0;
+            if (l_fitmode.value == FIT_H)
+               hfit = 1;
+            else if (l_fitmode.value == FIT_V)
+               vfit = 1;
+            else if (l_fitmode.value == FIT_BOTH)
+            {
+               fit = 1;
+            }
+
+            // trigger change and clear fov's
+            fovchange = 1;
+            fov = 0;
+            framesize = 0; // null pointer
+            Cvar_SetValue("hfov", -1);
+            Cvar_SetValue("vfov", -1);
+            Cvar_SetValue("dfov", -1);
+         }
+         else
+         {
+            if (l_fitmode.value == FIT_NONE) {
+               Con_Printf("You cannot set fit mode to NONE.  Use hfov,vfov, or dfov or use hfit/vfit.\n");
+            }
+            else {
+               Con_Printf("%d is not a valid fitmode. Use (1,2,3) for (h,v,both)\n",(int)l_fitmode.value);
+            }
+            Cvar_SetValue("fitmode", pfitmode);
+         }
+      }
    }
 
    // allocate new buffers if size changes
@@ -1109,5 +1248,6 @@ void L_RenderView()
    pvfov = l_vfov.value;
    pdfov = l_dfov.value;
    pcolorcube = colorcube;
+   pfitmode = l_fitmode.value;
 }
 

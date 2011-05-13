@@ -1,4 +1,9 @@
 
+hsym = true
+vsym = true
+max_hfov = 360
+max_vfov = 180
+
 function latlon_to_xy(lat,lon)
    if lat == 0 then
       return lon, 0
@@ -27,3 +32,9 @@ function latlon_to_xy(lat,lon)
    end
    return x,y
 end
+
+local x,y = latlon_to_xy(pi/2,0)
+vfit_size = 2*y
+
+x,y = latlon_to_xy(0,pi)
+hfit_size = 2*x

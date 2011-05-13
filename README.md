@@ -17,7 +17,9 @@ All lenses are stored in the /lenses folder of your quake directory.  You can st
     lens <name> : choose a lens (<name>.lua in /lenses)
     hfov <horizontal degrees>
     vfov <vertical degrees>
-    dfov <diagonal degrees>
+    hfit : fit the lens horizontally
+    vfit : fit the lens vertically
+    fit : fit the whole lens
     colorcube : paint the cubemap
 
 #### Motion Sickness:

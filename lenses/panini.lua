@@ -1,5 +1,11 @@
 d = 1
 
+hsym = true
+vsym = true
+max_hfov = 360
+max_vfov = 180
+
+
 function xy_to_latlon(x,y)
    local k = x*x/((d+1)*(d+1))
    local dscr = k*k*d*d - (k+1)*(k*d*d-1)

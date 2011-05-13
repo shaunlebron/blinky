@@ -1,3 +1,10 @@
+hsym = true
+vsym = true
+max_hfov = 360
+max_vfov = 180
+hfit_size = 2*sqrt(2)*2
+vfit_size = sqrt(2)*2
+
 function xy_to_latlon(x,y)
    local z = sqrt(1-0.0625*x*x-0.25*y*y)
    local lon = 2*atan(z*x/(2*(2*z*z-1)))

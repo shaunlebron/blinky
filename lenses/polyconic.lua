@@ -1,4 +1,9 @@
 
+hsym = true
+vsym = true
+max_hfov = 360
+max_vfov = 180
+
 function latlon_to_xy(lat,lon)
    if lat == 0 then
       return lon,0

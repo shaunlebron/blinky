@@ -1,6 +1,13 @@
 XR = 0.819152 * pi
 YR = 1.819152
 
+hsym = true
+vsym = true
+max_hfov = 360
+max_vfov = 180
+hfit_size = XR*2
+vfit_size = YR*2
+
 function latlon_to_xy(lat,lon)
    local x = tan(0.5 * lat);
    local y = 1.819152 * x;
