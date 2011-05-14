@@ -195,6 +195,96 @@ void L_ColorCube(void)
    Con_Printf("Colored Cube is %s\n", colorcube ? "ON" : "OFF");
 }
 
+/* START CONVERSION LUA HELPER FUNCTIONS */
+
+void latlon_to_ray(double lat, double lon, vec3_t ray)
+{
+   double clat = cos(lat);
+   ray[0] = sin(lon)*clat;
+   ray[1] = sin(lat);
+   ray[2] = cos(lon)*clat;
+}
+
+int lua_latlon_to_ray(lua_State *L)
+{
+   double lat = luaL_checknumber(L,1);
+   double lon = luaL_checknumber(L,2);
+   vec3_t ray;
+   latlon_to_ray(lat,lon,ray);
+   lua_pushnumber(L, ray[0]);
+   lua_pushnumber(L, ray[1]);
+   lua_pushnumber(L, ray[2]);
+   return 3;
+}
+
+void ray_to_latlon(vec3_t ray, double *lat, double *lon)
+{
+   *lon = atan2(ray[0], ray[2]);
+   *lat = atan2(ray[1], sqrt(ray[0]*ray[0]+ray[2]*ray[2]));
+}
+
+int lua_ray_to_latlon(lua_State *L)
+{
+   double rx = luaL_checknumber(L, 1);
+   double ry = luaL_checknumber(L, 2);
+   double rz = luaL_checknumber(L, 3);
+
+   vec3_t ray = {rx,ry,rz};
+   double lat,lon;
+   ray_to_latlon(ray,&lat,&lon);
+
+   lua_pushnumber(L, lat);
+   lua_pushnumber(L, lon);
+   return 2;
+}
+
+void ray_to_cubemap(vec3_t ray, int *side, double *u, double *v)
+{
+   // determine which side of the box we need
+   double sx = ray[0], sy=ray[1], sz=ray[2];
+   double abs_x = fabs(sx);
+   double abs_y = fabs(sy);
+   double abs_z = fabs(sz);			
+   if (abs_x > abs_y) {
+      if (abs_x > abs_z) { *side = ((sx > 0.0) ? BOX_RIGHT : BOX_LEFT);   }
+      else               { *side = ((sz > 0.0) ? BOX_FRONT : BOX_BEHIND); }
+   } else {
+      if (abs_y > abs_z) { *side = ((sy > 0.0) ? BOX_TOP : BOX_BOTTOM); }
+      else               { *side = ((sz > 0.0) ? BOX_FRONT : BOX_BEHIND); }
+   }
+
+#define T(x) (((x)*0.5) + 0.5)
+
+   // get u,v coordinates
+   switch(*side) {
+      case BOX_FRONT:  *u = T( sx /  sz); *v = T( -sy /  sz); break;
+      case BOX_BEHIND: *u = T(-sx / -sz); *v = T( -sy / -sz); break;
+      case BOX_LEFT:   *u = T( sz / -sx); *v = T( -sy / -sx); break;
+      case BOX_RIGHT:  *u = T(-sz /  sx); *v = T( -sy /  sx); break;
+      case BOX_BOTTOM: *u = T( sx /  -sy); *v = T( -sz / -sy); break;
+      case BOX_TOP:    *u = T(sx /  sy); *v = T( sz / sy); break;
+   }
+}
+
+int lua_ray_to_cubemap(lua_State *L)
+{
+   double rx = luaL_checknumber(L, 1);
+   double ry = luaL_checknumber(L, 2);
+   double rz = luaL_checknumber(L, 3);
+
+   vec3_t ray = {rx,ry,rz};
+   int side;
+   double u,v;
+   ray_to_cubemap(ray,&side,&u,&v);
+
+   lua_pushinteger(L, side);
+   lua_pushnumber(L, u);
+   lua_pushnumber(L, v);
+   return 3;
+}
+
+/* END CONVERSION LUA HELPER FUNCTIONS */
+
 void L_InitLua(void)
 {
    // create Lua state
@@ -247,6 +337,15 @@ void L_InitLua(void)
       fprintf(stderr, "%s", lua_tostring(lua, -1));
       lua_pop(lua, 1);  /* pop error message from the stack */
    }
+
+   lua_pushcfunction(lua, lua_latlon_to_ray);
+   lua_setglobal(lua, "latlon_to_ray");
+
+   lua_pushcfunction(lua, lua_ray_to_latlon);
+   lua_setglobal(lua, "ray_to_latlon");
+
+   lua_pushcfunction(lua, lua_ray_to_cubemap);
+   lua_setglobal(lua, "ray_to_cubemap");
 }
 
 void L_HFit(void)
@@ -522,7 +621,9 @@ int lua_lens_init(void)
       if (mapForwardIndex != -1) {
          if (mapCoord == COORD_RADIAL) {
             double r;
-            if (lua_theta_to_r(fov*0.5, &r)) scale = r / (*framesize * 0.5);
+            if (lua_theta_to_r(fov*0.5, &r)) {
+               scale = r / (*framesize * 0.5);
+            }
             else {
                Con_Printf("theta_to_r did not return a valid r value for determining FOV scale\n");
                return 0;
@@ -531,12 +632,22 @@ int lua_lens_init(void)
          else if (mapCoord == COORD_SPHERICAL) {
             double x,y;
             if (*framesize == width) {
-               if (lua_latlon_to_xy(0,fov*0.5,&x,&y)) scale = x / (*framesize * 0.5);
-               else return 0;
+               if (lua_latlon_to_xy(0,fov*0.5,&x,&y)) {
+                  scale = x / (*framesize * 0.5);
+               }
+               else {
+                  Con_Printf("latlon_to_xy did not return a valid r value for determining FOV scale\n");
+                  return 0;
+               }
             }
             else if (*framesize == height) {
-               if (lua_latlon_to_xy(fov*0.5,0,&x,&y)) scale = y / (*framesize * 0.5);
-               else return 0;
+               if (lua_latlon_to_xy(fov*0.5,0,&x,&y)) {
+                  scale = y / (*framesize * 0.5);
+               }
+               else {
+                  Con_Printf("latlon_to_xy did not return a valid r value for determining FOV scale\n");
+                  return 0;
+               }
             }
             else {
                Con_Printf("latlon_to_xy does not support diagonal FOVs\n");
@@ -544,8 +655,32 @@ int lua_lens_init(void)
             }
          }
          else if (mapCoord == COORD_EUCLIDEAN) {
-            Con_Printf("ray_to_xy currently not supported for FOV scaling\n");
-            return 0;
+            vec3_t ray;
+            double x,y;
+            if (*framesize == width) {
+               latlon_to_ray(0,fov*0.5,ray);
+               if (lua_ray_to_xy(ray,&x,&y)) {
+                  scale = x / (*framesize * 0.5);
+               }
+               else {
+                  Con_Printf("ray_to_xy did not return a valid r value for determining FOV scale\n");
+                  return 0;
+               }
+            }
+            else if (*framesize == height) {
+               latlon_to_ray(fov*0.5,0,ray);
+               if (lua_ray_to_xy(ray,&x,&y)) {
+                  scale = y / (*framesize * 0.5);
+               }
+               else {
+                  Con_Printf("ray_to_xy did not return a valid r value for determining FOV scale\n");
+                  return 0;
+               }
+            }
+            else {
+               Con_Printf("ray_to_xy does not support diagonal FOVs\n");
+               return 0;
+            }
          }
          else if (mapCoord == COORD_CUBEMAP) {
             Con_Printf("cubemap_to_xy currently not supported for FOV scaling\n");
@@ -555,6 +690,7 @@ int lua_lens_init(void)
       else
       {
          Con_Printf("Please specify a forward mapping function in your script for FOV scaling\n");
+         return 0;
       }
    }
    else
@@ -789,6 +925,7 @@ int lua_lens_load(void)
 
 /*************** END LUA ****************/
 
+
 int clamp(int value, int min, int max)
 {
    if (value < min)
@@ -798,34 +935,22 @@ int clamp(int value, int min, int max)
    return value;
 }
 
+/*
+   +X = RIGHT
+   -X = LEFT
+   +Y = TOP
+   -Y = BOTTOM
+   +Z = FRONT
+   -Z = BEHIND
+*/
+
 // set the (lx,ly) pixel on the lensmap to the (sx,sy,sz) view vector
 void setLensPixelToRay(int lx, int ly, double sx, double sy, double sz)
 {
-   // determine which side of the box we need
-   double abs_x = fabs(sx);
-   double abs_y = fabs(sy);
-   double abs_z = fabs(sz);			
+   double xs,ys;
    int side;
-   double xs=0, ys=0;
-   if (abs_x > abs_y) {
-      if (abs_x > abs_z) { side = ((sx > 0.0) ? BOX_RIGHT : BOX_LEFT);   }
-      else               { side = ((sz > 0.0) ? BOX_FRONT : BOX_BEHIND); }
-   } else {
-      if (abs_y > abs_z) { side = ((sy > 0.0) ? BOX_TOP : BOX_BOTTOM); }
-      else               { side = ((sz > 0.0) ? BOX_FRONT : BOX_BEHIND); }
-   }
-
-#define T(x) (((x)*0.5) + 0.5)
-
-   // scale up our vector [x,y,z] to the box
-   switch(side) {
-      case BOX_FRONT:  xs = T( sx /  sz); ys = T( -sy /  sz); break;
-      case BOX_BEHIND: xs = T(-sx / -sz); ys = T( -sy / -sz); break;
-      case BOX_LEFT:   xs = T( sz / -sx); ys = T( -sy / -sx); break;
-      case BOX_RIGHT:  xs = T(-sz /  sx); ys = T( -sy /  sx); break;
-      case BOX_BOTTOM: xs = T( sx /  -sy); ys = T( -sz / -sy); break;
-      case BOX_TOP:    xs = T(sx /  sy); ys = T( sz / sy); break;
-   }
+   vec3_t ray = {sx,sy,sz};
+   ray_to_cubemap(ray,&side,&xs,&ys);
    side_count[side]++;
 
    // convert to face coordinates
@@ -875,11 +1000,7 @@ void create_lensmap_inverse()
             double lat,lon;
             if (!lua_xy_to_latlon(x,y,&lat,&lon))
                continue;
-
-            double clat = cos(lat);
-            ray[0] = sin(lon)*clat;
-            ray[1] = sin(lat);
-            ray[2] = cos(lon)*clat;
+            latlon_to_ray(lat,lon,ray);
          }
          else if (mapCoord == COORD_EUCLIDEAN)
          {
@@ -963,8 +1084,8 @@ void create_lensmap_forward()
             }
             else if (mapCoord == COORD_SPHERICAL)
             {
-               double lon = atan2(ray[0], ray[2]);
-               double lat = atan2(ray[1], sqrt(ray[0]*ray[0]+ray[2]*ray[2]));
+               double lat,lon;
+               ray_to_latlon(ray, &lat, &lon);
                if (!lua_latlon_to_xy(lat, lon, &x, &y))
                   continue;
             }
