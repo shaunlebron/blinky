@@ -26,10 +26,16 @@ function xy_to_cubemap(x,y)
    local r,v = row(y)
    local c,u = col(x)
    if r == 0 then
-      return TOP,u,v
+      if c == 1 then
+         return TOP,u,v
+      end
+      return TOP,1-u,1-v
    end
    if r == 2 then
-      return BOTTOM,u,v
+      if c == 1 then
+         return BOTTOM,u,v
+      end
+      return BOTTOM,1-u,1-v
    end
    if c == 0 then
       return LEFT,u,v
@@ -54,7 +60,7 @@ function xy_isvalid(x,y)
       return false
    end
    if r == 0 or r == 2 then
-      return c == 1
+      return c == 1 or c == 3
    end
    return true
 end

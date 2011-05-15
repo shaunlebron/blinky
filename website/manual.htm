@@ -1,0 +1,85 @@
+
+<html>
+<body>
+
+<h1>Quake Lenses</h1>
+
+<p>
+<a href="index.htm">home</a> | <a href="manual.htm">manual</a> | <a href="gallery.htm">gallery</a> | <a href="download.htm">download</a> | <a href="contact.htm">contact</a>
+</p>
+
+<p>
+Quake Lenses uses the same techniques and code from <a href="http://strlen.com/gfxengine/fisheyequake/">Fisheye Quake</a>.
+</p>
+
+<h3>Standard Projection</h3>
+<p>
+The standard projection used by all games today is the rectilinear projection.  It is simple to implement and works very well for any field of view less than 120&deg;.  It begins degenerating as it approaches a limit of 180&deg;, resulting in the total compression of the view to the center of the image.
+</p>
+
+<h3>Environment Map</h3>
+<p>
+If you are familiar with online photo panoramas or Google Street View, those are created by placing a camera on a tripod, and taking six pictures for each direction: front, behind, left, right, top, down.  Combining these pictures creates a cubemap, which effectively represents an entire scene from a fixed position.  A cubemap is one of several types of so-called environment maps.  A cube is most commonly used because it is simple and accurate.
+</p>
+<p>
+The game is able to generate a cubemap by rotating the camera in each of the six directions before rendering a 90&deg;x90&deg; standard projection.  To draw the player's view, an intermediate lookup table is used to map a pixel on the screen to a pixel on the cubemap.  The lens is responsible for the structure of the lookup table.
+</p>
+
+<h3>Lens</h3>
+<p>
+In the game, the lens is responsible for directing a ray of light from the environment to a pixel on the screen, or vice versa.  This is called a forward mapping and an inverse mapping, respectively.
+<ul>
+   <li>Forward: environment to screen coordinates</li>
+   <li>Inverse: screen to environment coordinates</li>
+</ul>
+When defining these mappings, you can choose from the following coordinate systems described in the next sections:
+<ul>
+   <li>Radial: (radius &harr; optical angle)</li>
+   <li>Spherical: (x,y &harr; latitude,longitude)</li>
+   <li>Cartesian: (x,y &harr; 3D vector)</li>
+   <li>Cubic: (x,y &harr; cubeface,u,v)</li>
+</ul>
+</p>
+
+<h3>Radial Coordinates</h3>
+<p>
+This is the simplest coordinate system commonly used to define physical camera lenses.  It describes the relationship between the radial position R on the film and the angle &theta; from the optical axis of the lens.
+</p>
+
+<h4>Screen Coordinates</h4>
+<p>
+The rest of the modes assume the same coordinate systems for the screen, but different coordinate systems for the environment.  The screen uses 2 coordinates (x,y).  The origin (0,0) is at the center of the screen.  Positive x to the right.  Positive y is up.
+</p>
+
+<h3>Spherical Coordinates</h3>
+<p>
+You can use two angles to define a 3D direction.  You may know them by any of the following standard names:
+<ul>
+   <li>(yaw, pitch)</li>
+   <li>(heading, elevation)</li>
+   <li>(azimuth &phi;, elevation &theta;)</li>
+   <li>(longitude &lambda;, latitude &phi;)</li>
+</ul>
+Latitude and Longitude are used in Quake Lenses because they have become standard for defining map projections used in cartography.  The open-source project called proj.4 provides many equations that you can directly use in Quake Lenses.  Latitude and Longitude are zero when looking straight ahead along the optical axis.  Positive longitude to right.  Positive latitude is up.
+</p>
+
+<h3>Cartesian Coordinates</h3>
+<p>
+You can also define a 3D direction using a unit vector (x,y,z).  Quake Lenses currently uses a left-handed coordinate system, as is standard in Quake.  Positive z is straight forward.  Positive x is right.  Positive y is up.
+</p>
+
+<h3>Cubic Coordinates</h3>
+<p>
+This is a non-standard coordinate system that allows you to directly refer to a point on a given cubemap face using (side,u,v).  u and v are between 0 and 1.  Positive u is right.  Positive v is down.  The side is an integer with the following enumeration:
+<ul>
+   <li>0: FRONT</li>
+   <li>1: RIGHT</li>
+   <li>2: BEHIND</li>
+   <li>3: LEFT</li>
+   <li>4: TOP</li>
+   <li>5: BOTTOM</li>
+</ul>
+</p>
+
+</body>
+</html>
