@@ -5,25 +5,24 @@
 <h1>Quake Lenses</h1>
 
 <p>
-<a href="home.htm">home</a> | <a href="howitworks.htm">how it works</a> | <a href="gallery.htm">gallery</a> | <a href="anatomy.htm">anatomy of a lens</a> | <a href="download.htm">download</a> | <a href="future.htm">future</a> | <a href="contact.htm">contact</a>
+<a href="index.htm">home</a> | <a href="howitworks.htm">how it works</a> | <a href="gallery.htm">gallery</a> | <a href="anatomy.htm">anatomy of a lens</a> | <a href="download.htm">download</a> | <a href="future.htm">future</a> | <a href="contact.htm">contact</a>
 </p>
 
-<h2>Summary</h2>
+<h3>Summary</h3>
 <p>
-Quake Lenses is a proof-of-concept for trying out new fields of view (FOVs) in 3D games.  It allows you to play Quake using a variety of different lenses, and it even allows you to make your own. 
+Quake Lenses is a sandbox for trying out new fields of view (FOVs) in 3D games.  It allows you to play Quake using a variety of different lenses, and it also allows you to make your own. 
 </p>
 <p>
-This is a late successor to <a href="http://strlen.com/gfxengine/fisheyequake/">Fisheye Quake</a>. It uses the <a href="http://disenchant.net/engine.html">TyrQuake</a> source port for its code base and embeds the <a href="http://lua.org">Lua</a> interpreter for rapid lens prototyping.
+This is a late successor to <a href="http://strlen.com/gfxengine/fisheyequake/">Fisheye Quake</a>. It uses the <a href="http://disenchant.net/engine.html">TyrQuake</a> source port for its code base and contains an embedded <a href="http://lua.org">Lua</a> interpreter for dynamically loading lenses.
 </p>
 
-<h2>Installation</h2>
+<h3>Installation</h3>
 <p>
 Quake (or the free Quake demo) is required.  Once you have it, you can download Quake Lenses <a href="download.htm">here</a>.  Extract the files into your Quake directory, and run quakelens.exe to play.
 </p>
 
-<h2>Tutorial</h2>
-
 <h3>Available Commands</h3>
+This commands can be entered into Quake via the console by pressing the tilde key (~).
 <ul>
    <li>lens <name> : change the lens</li>
    <li>hfov <degrees> : specify <acronym title="Field of View">FOV</acronym> in horizontal degrees</li>
@@ -38,22 +37,24 @@ Quake (or the free Quake demo) is required.  Once you have it, you can download 
 In the lenses folder of your quake directory, you will see a collection of files.  Each file is a Lua script used by the game to construct a lens.  If you're interested, you can <a href="tutorial.htm">create your own</a> and place it in this folder.
 </p>
 
-<h3>Using a Lens in game</h3>
+<h3>Selecting a Lens</h3>
 <p>
-First, open quakelens.exe, and start a game.  To change your lens, you must first pull down the console by pressing the tilde (~) key.  If you wish to use the "panini" lens, type <strong>lens panini</strong>. The game will then look for a file called "panini.lua" in the lenses folder and it will load it.
+First, open quakelens.exe, and start a game.  To change your lens, use the <strong>lens</strong> command.  For example, if you wish to use the "panini" lens, type <strong>lens panini</strong>. The game will then load the file called "panini.lua" from the lenses folder.
 </p>
-
-<h2>Adjusting the Lens Zoom</h2>
-There are two ways to adjust the zoom of your lens. If one doesn't work, you can try the other.
 
 <h3>FOV</h3>
 <p>
-You can zoom in/out by specifying an FOV angle. Type <strong>hfov 180</strong> if you want your screen to horizontally cover 180 degrees.  Similarly, you can type <strong>vfov 90</strong> to cover 90 degrees vertically.
+You can zoom in and out by specifying a viewing angle. Type <strong>hfov 180</strong> if you want your screen to horizontally cover 180 degrees.  Similarly, you can type <strong>vfov 90</strong> to cover 90 degrees vertically.
 </p>
 
 <h3>Fitting</h3>
 <p>
-If the lens does not produce a picture of infinite size, you can fit it to your screen by typing <strong>fit</strong>.  Alternately, if you just want the picture to fit the horizontal or vertical bounds of the screen, you can type <strong>hfit</strong> or <strong>vfit</strong>, respectively.
+If the image produced by the lens is not infinite in size, you can fit the whole image on the screen by typing <strong>fit</strong>.  Alternately, if you just want the picture to fit the horizontal or vertical bounds of the screen, you can type <strong>hfit</strong> or <strong>vfit</strong>, respectively.
+</p>
+
+<h3>Invalid Modes</h3>
+<p>
+If the lens does not support the current zoom mode, Quake Lenses will give you a blank screen, an error message on the console, and will wait for you to enter a valid zoom mode.  For example, the cube lens does not support FOV; it can only be zoomed to fit the screen.  Another common error happens if the specified FOV is too high for the current lens.
 </p>
 
 </body>
