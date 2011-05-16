@@ -1,0 +1,61 @@
+
+<html>
+<body>
+
+<h1>Quake Lenses</h1>
+
+<p>
+<a href="index.htm">home</a> | <a href="manual.htm">manual</a> | <a href="gallery.htm">gallery</a> | <a href="faq.htm">f.a.q.</a> | <a href="download.htm">download</a> | <a href="contact.htm">contact</a>
+</p>
+
+<h2>Frequently Asked Questions</h2>
+
+<h3>What's the point of this?</h3>
+<p>
+Mainly to see different ways of squeezing panoramic images on the screen.  This has been done in photography and world maps, but rarely in the context of a game.
+</p>
+
+<h3>Why are the lenses so slow to load?</h3>
+<p>
+Lua code is fast, but it's still not as fast as C code.  When the lens is being loaded, functions in the Lua script are called several million times, one for each pixel on the screen if no symmetry is flagged.  I tried embedding the LuaJIT interpreter for faster execution, but I was only able to get it working on Linux.  The source code is available for anyone who wants to try.
+</p>
+
+<h3>Why choose an old game for a project like this?</h3>
+<p>
+Fisheye Quake already had the architecture implemented to make this project possible.
+</p>
+
+<h3>Is this possible to do for modern games?</h3>
+<p>
+Yes, there are actually several ways to accomplish this. 
+</p>
+<p>Fisheye Quake was ported to OpenGL and is available in QuakeForge.  It uses an evenly-spaced grid mesh for the screen.  It then specifies cubemap texture coordinates at the vertices using the inverse mapping function.  Another implemention is in the Cube engine (also from the author of Fisheye Quake) which instead uses evenly-spaced grid meshes for the cubemap faces.  Then the cube faces are mapped to the screen using the forward mapping function. Details can be found <a href="http://idea.hosting.lv/a/gfx/">here</a>.
+</p>
+<p>
+<a href="http://stellarium.org">Stellarium</a> uses a similar tesselation method for stereographic images of the sky.  You can view a screenshot of that <a href="http://www.stellarium.org/img/screenshots/0.10-planets.jpg">here</a>.
+</p>
+<p>
+Thomas K. Sharpless, creator of the Panini Projection, says <a href="http://www.flickr.com/groups/vedutismo/discuss/72157622553943235/">here</a> that you can implement it in OpenGL using a perspective projection of a cylinder texture on a cylinder mesh.  In my opinion, this is likely the be-all and end-all of wide-angle gaming if it ever catches on.
+</p>
+<p>
+OpenGL fragment shaders can also be used for a modern lens implementation.  Using a fullscreen quad primitive, you can use a fragment shader program to map every pixel to the appropriate cubemap coordinate using the inverse mapping function.  
+</p>
+
+<h3>Do you plan on implementing this for modern games?</h3>
+<p>
+I'm actually hoping someone else will do it after looking at this.  But if I do, I'll probably try it for Quake III or a racing game or flight sim, because those types of games have people who enjoy wide FOVs.
+</p>
+
+
+<h3>What's the best lens to use?</h3>
+<p>
+In my opinion, stereographic projections are the only lenses you can use for considerable amount of time without getting motion sick.  This is because they are just off-center perspective projections of an environment map.  So when you move around the world, things around you warp fairly predictably according to perspective, which is good for preventing nausea.
+</p>
+<p>
+So I suggest using either the stereographic or the panini projection.  I prefer Panini because it keeps vertical lines straight.  I created a modified version of Panini called Gumby, which comprimises distortion in order to extend the range of Panini a little bit.  It works by compressing the image horizontally along the cylinder and then vertically to compensate.  I stick with Panini though.
+</p>
+
+<h3>Where can I get more lenses?</h3>
+<p>
+The PROJ.4 project has close to 180 projections in their source code <a href="http://trac.osgeo.org/proj/browser/branches/4.7/proj/src">here</a>.  You can convert any of them to a Lua script using latlon_to_xy or xy_to_latlon since these follow the same coordinate systems used by PROJ.4.  This is actually how I created several lenses.
+</p>

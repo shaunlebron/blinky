@@ -587,15 +587,6 @@ int lua_cubemap_to_xy(int side, double u, double v, double *x, double *y)
 
 int lua_lens_init(void)
 {
-   // call init if exists
-   lua_getglobal(lua, "init");
-   if (lua_isfunction(lua,-1)) {
-      if (lua_pcall(lua, 0, 0, 0) != 0) {
-         Con_Printf("could not call init \nERROR: %s\n", lua_tostring(lua,-1));
-         return 0;
-      }
-   }
-
    // clear lens scale
    scale = -1;
 
@@ -743,7 +734,6 @@ int lua_lens_init(void)
 void lua_lens_clear(void)
 {
 #define CLEARVAR(var) lua_pushnil(lua); lua_setglobal(lua, var);
-   CLEARVAR("init");
    CLEARVAR("map");
    CLEARVAR("max_hfov");
    CLEARVAR("max_vfov");
