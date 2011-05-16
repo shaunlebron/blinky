@@ -1,0 +1,26 @@
+body
+{
+   background: #91A3B0;
+}
+#container
+{
+   padding: 20px;
+   background: white;
+   width: 700px;
+   margin-left: auto;
+   margin-right: auto;
+   text-align:justify;
+}
+table
+{
+   margin-left: auto;
+   margin-right: auto;
+}
+h1
+{
+   display: inline;
+}
+img
+{
+   border:none;
+}
