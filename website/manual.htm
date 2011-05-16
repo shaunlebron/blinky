@@ -8,26 +8,29 @@
 <a href="index.htm">home</a> | <a href="manual.htm">manual</a> | <a href="gallery.htm">gallery</a> | <a href="faq.htm">f.a.q.</a> | <a href="download.htm">download</a> | <a href="contact.htm">contact</a>
 </p>
 
+<h3>Background</h3>
 <p>
-Quake Lenses uses the same techniques and code from <a href="http://strlen.com/gfxengine/fisheyequake/">Fisheye Quake</a>.
+There are many ways to capture a 3D scene on a 2D surface. By standard, a camera uses a rectilinear (<em>azimuthal gnomonic</em>) projection to keep straight lines straight. This uses the simple concept of a pinhole camera, where rays of light are never bent. This projection is limited to about 120 degrees practically.
+</p>
+<p>
+To allow a wider field of view on this pinhole camera construct, you can imagine placing water between the aperture and the film. When light rays enter water from air, it is refracted. This was the first fisheye camera, and they called it this because it creates an image that a fish would see when looking at the sky from the ocean. It is still limited to 180 degrees, but creates a barrel distortion which extends the practical limit of the rectilinear lens. The modern fisheye lenses of today implement the <em>azimuthal equidistant</em> and the <em>azimuthal equisolid</em> projections, which are limited to 360 degrees.
+</p>
+<p>
+The rectilinear (azimuthal gnomonic) continues to dominate 3D applications due to its ease of construction using a frustum projection matrix. Games in particular allow the adjustment of the frustrum's FOV (field of view), which can make the shortcomings of the rectilinear lens noticeable when increasing past 120 degrees.
+</p>
+<p>
+To create a view that better represents a person's ~180 degree horizontal FOV, one can imagine projecting all the light rays onto a sphere around the viewer. The resulting image on this sphere completely represents everything that the viewer can see, and it is called an environment map.  We can "unwrap" this sphere onto a flat frame using projection methods used by cartographers for the earth. 
+</p>
+<p>
+Quake Lenses uses an existing engine modification called <a href="http://strlen.com/gfxengine/fisheyequake/">Fisheye Quake</a>. This creates an environment map on a cube surrounding the viewer, called a cubemap, which can be used the same way as the aforementioned sphere. Each face of the cube is a rectilinear (azimuthal gnomonic) projection. The game is able to render these faces by pointing the camera at each of the faces respective orientations, which becomes straightforward.  This is how online photo panoramas are created, like google street view.
+</p>
+<p>
+All the alternative projections to the rectilinear are better suited to representing wide FOVs. An additional test for the quality of the lens can be done by seeing how motion in the environment is translated to the projection.  Some seem to induce motion-sickness, while the stereographic projections seem to handle motion in a manner analogous to the rectilinear lens, creating a convincing perspective that reacts predictably to motion.
 </p>
 
-<h3>Standard Projection</h3>
+<h3>Technical Lens Details</h3>
 <p>
-The standard projection used by all games today is the rectilinear projection.  It is simple to implement and works very well for any field of view less than 120&deg;.  It begins degenerating as it approaches a limit of 180&deg;, resulting in the total compression of the view to the center of the image. To see more than 180 degrees, you can create what's called an environment map.
-</p>
-
-<h3>Environment Map</h3>
-<p>
-If you are familiar with online photo panoramas or Google Street View, those are created by placing a camera on a tripod, and taking six pictures for each direction: front, behind, left, right, top, down.  Combining these pictures creates a cubemap, which effectively represents an entire scene from a fixed position.  A cubemap is one of several types of so-called environment maps.  A cube is most commonly used because it is simple and accurate.
-</p>
-<p>
-The game is able to generate a cubemap by rotating the camera in each of the six directions before rendering a 90&deg;x90&deg; standard projection.  To draw the player's view, an intermediate lookup table is used to map a pixel on the screen to a pixel on the cubemap.  The lens is responsible for the structure of the lookup table.
-</p>
-
-<h3>Lens</h3>
-<p>
-In the game, the lens is responsible for directing a ray of light from the environment to a pixel on the screen, or vice versa.  This is called a forward mapping and an inverse mapping, respectively.
+To draw the player's view, an intermediate lookup table is used to map a pixel on the screen to a pixel on the cubemap.  The lens is responsible for the structure of the lookup table.  In other words, the lens is responsible for directing a ray of light from the environment to a pixel on the screen, or vice versa.  This is called a forward mapping and an inverse mapping, respectively.
 <ul>
    <li>Forward: environment to screen coordinates</li>
    <li>Inverse: screen to environment coordinates</li>
@@ -41,7 +44,7 @@ When defining these mappings, you can choose from the following coordinate syste
 </ul>
 </p>
 
-<h3>Radial Coordinates</h3>
+<h4>Radial Coordinates</h4>
 <p>
 This is the simplest coordinate system commonly used to define physical camera lenses.  It describes the relationship between the radial position R on the film and the angle &theta; from the optical axis of the lens.
 </p>
@@ -51,7 +54,7 @@ This is the simplest coordinate system commonly used to define physical camera l
 The rest of the modes assume the same coordinate systems for the screen, but different coordinate systems for the environment.  The screen uses 2 coordinates (x,y).  The origin (0,0) is at the center of the screen.  Positive x to the right.  Positive y is up.
 </p>
 
-<h3>Spherical Coordinates</h3>
+<h4>Spherical Coordinates</h4>
 <p>
 You can use two angles to define a 3D direction.  You may know them by any of the following standard names:
 <ul>
@@ -63,12 +66,12 @@ You can use two angles to define a 3D direction.  You may know them by any of th
 Latitude and Longitude are used in Quake Lenses because they have become standard for defining map projections used in cartography.  The open-source project called proj.4 provides many equations that you can directly use in Quake Lenses.  Latitude and Longitude are zero when looking straight ahead along the optical axis.  Positive longitude to right.  Positive latitude is up.
 </p>
 
-<h3>Cartesian Coordinates</h3>
+<h4>Cartesian Coordinates</h4>
 <p>
 You can also define a 3D direction using a unit vector (x,y,z).  Quake Lenses currently uses a left-handed coordinate system, as is standard in Quake.  Positive z is straight forward.  Positive x is right.  Positive y is up.
 </p>
 
-<h3>Cubic Coordinates</h3>
+<h4>Cubic Coordinates</h4>
 <p>
 This is a non-standard coordinate system that allows you to directly refer to a point on a given cubemap face using (side,u,v).  u and v are between 0 and 1.  Positive u is right.  Positive v is down.  The side is an integer with the following enumeration:
 <ul>
@@ -81,9 +84,9 @@ This is a non-standard coordinate system that allows you to directly refer to a 
 </ul>
 </p>
 
-<h3>Lens Script</h3>
+<h3>Creating a Lua script for the Lens</h3>
 <p>
-To create a lens, you must write a Lua script.  The game will look for the following variables and functions in order to build the lookup table for the lens.  
+To create a lens, you must write a Lua script.  The game will look for the following variables and functions in order to build the lookup table for the player's view.
 </p>
 
 <p>
@@ -111,18 +114,20 @@ To create a lens, you must write a Lua script.  The game will look for the follo
    <li>xy_isvalid : inverse check</li>
    <li>r_isvalid : inverse check</li>
 </ul>
-One way to learn how to use these is to look at the examples in the /lenses folder.  The basic idea is that a function takes in a set of coordinates, and returns a new set of coordinates.  (The coordinate systems are described in the previous sections.)  For example, latlon_to_xy takes two arguments (lat,lon) and returns two arguments (x,y).  xy_to_ray takes two arguments (x,y) and returns three arguments for a ray (rx,ry,rz).  The following sections describe how to structure your lens in more detail.
+One way to learn how to use these is to look at the examples in the /lenses folder.  The basic idea is that a function takes in a set of coordinates, and returns a new set of coordinates.  (The coordinate systems are described in the previous sections.)  For example, <em>latlon_to_xy</em> takes two arguments (lat,lon) and returns two arguments (x,y).  <em>xy_to_ray</em> takes two arguments (x,y) and returns three arguments for a ray (rx,ry,rz).  The following sections describe how to structure your lens in more detail.
 </p>
 
 <h4>Scaling (Zooming)</h4>
 <p>
-A lens creates an image of varying size.  It can be 1x1 units, 20x400 units, or even infinitely large.  Due to the wide range of sizes, the game needs to know how to scale it to the screen.  Different scales result in different zoom levels.  There are currently two ways of scaling.
+A lens creates an image of varying size.  It can be anything from 1x1 units to 1000x1000 units, or even infinitely large.  Due to the wide range of sizes, the game needs to know how to scale it to the screen.  Different scales result in different zoom levels.  There are currently two ways of scaling: FOV or fitting.
 </p>
 
+<strong>FOV</strong>
 <p>
 When the user specifies an FOV, the game must use a forward map to determine the scale of the image.  It uses the theta_to_r, latlon_to_xy, or ray_to_xy to determine where the edges of the screen should be on the image.  For example, if you have an hfov of 180, you can call latlon_to_xy(0,pi/2) to get the x position of the furthest right position.  For simplicity, the game assumes a centered image, so it just multiplies this by 2 to get the width of the image.  The game then scales the image so that it fits the width of the screen.
 </p>
 
+<strong>Fitting</strong>
 <p>
 As an alternative to the FOV, you can explicity specify a maximum width and height of the image created by your lens, using hfit_size and vfit_size, respectively.  The game will then use this instead of the forward map to scale it to the screen.  The user can then type "fit" to scale the image as large as possible to fit the screen.  The user can also type "hfit" or "vfit" to only fit the image horizontally or vertically regardless of cropping.  (The "fit" command automatically determines which one to use to avoid cropping.)
 </p>
