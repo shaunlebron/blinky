@@ -30,16 +30,7 @@
 // the Lua state pointer
 lua_State *lua;
 
-cvar_t l_hfov = {"hfov", "90", true};
-cvar_t l_vfov = {"vfov", "-1", true};
-cvar_t l_dfov = {"dfov", "-1", true};
-cvar_t l_lens = {"lens", "rectilinear", true};
-
-cvar_t l_fitmode = {"fitmode", "0", true};
-#define FIT_NONE  0
-#define FIT_H     1
-#define FIT_V     2
-#define FIT_BOTH  3
+static double hfov, vfov, dfov;
 
 typedef unsigned char B;
 static B *cubemap = NULL;  
@@ -98,6 +89,9 @@ static int mapInverseIndex;
 
 static int xyValidIndex;
 static int rValidIndex;
+
+static int lenschange;
+static int fovchange;
 
 // side count used to determine which cube faces to render
 static int side_count[6];
@@ -348,38 +342,165 @@ void L_InitLua(void)
    lua_setglobal(lua, "ray_to_cubemap");
 }
 
+void clearFov(void)
+{
+   fit = hfit = vfit = 0;
+   fov = hfov = vfov = dfov = 0;
+   framesize = 0; // clear framesize pointer
+   fovchange = 1; // trigger change
+}
+
 void L_HFit(void)
 {
-   Cvar_SetValue("fitmode", FIT_H);
+   clearFov();
+   hfit = 1;
 }
 
 void L_VFit(void)
 {
-   Cvar_SetValue("fitmode", FIT_V);
+   clearFov();
+   vfit = 1;
 }
 
 void L_Fit(void)
 {
-   Cvar_SetValue("fitmode", FIT_BOTH);
+   clearFov();
+   fit = 1;
+}
+
+void L_WriteConfig(FILE* f)
+{
+   if (hfov != 0)
+   {
+      fprintf(f,"hfov %f\n", hfov);
+   }
+   else if (vfov != 0)
+   {
+      fprintf(f,"vfov %f\n", vfov);
+   }
+   else if (dfov != 0)
+   {
+      fprintf(f,"dfov %f\n", dfov);
+   }
+   else if (hfit) 
+   {
+      fprintf(f,"hfit\n");
+   }
+   else if (vfit)
+   {
+      fprintf(f,"vfit\n");
+   }
+   else if (fit)
+   {
+      fprintf(f,"fit\n");
+   }
+
+   fprintf(f,"lens \"%s\"\n",lens);
+}
+
+void printActiveFov(void)
+{
+   Con_Printf("Current Active FOV: ");
+   if (hfov != 0) {
+      Con_Printf("Horizontal: %f degrees\n",hfov);
+   }
+   else if (vfov != 0) {
+      Con_Printf("Vertical: %f degrees\n",vfov);
+   }
+   else if (dfov != 0) {
+      Con_Printf("Diagonal: %f degrees\n",dfov);
+   }
+}
+
+void L_HFov(void)
+{
+   if (Cmd_Argc() < 2) { // no fov given
+      Con_Printf("hfov <degrees>: set horizontal FOV\n");
+      printActiveFov();
+      return;
+   }
+
+   clearFov();
+
+   hfov = Q_atof(Cmd_Argv(1)); // will return 0 if not valid
+   framesize = &width;
+   fov = hfov * M_PI / 180;
+}
+
+void L_VFov(void)
+{
+   if (Cmd_Argc() < 2) { // no fov given
+      Con_Printf("vfov <degrees>: set vertical FOV\n");
+      printActiveFov();
+      return;
+   }
+
+   clearFov();
+   vfov = Q_atof(Cmd_Argv(1)); // will return 0 if not valid
+   framesize = &height;
+   fov = vfov * M_PI / 180;
+}
+
+void L_DFov(void)
+{
+   if (Cmd_Argc() < 2) { // no fov given
+      Con_Printf("dfov <degrees>: set diagonal FOV\n");
+      printActiveFov();
+      return;
+   }
+
+   clearFov();
+   fovchange = 1;
+   dfov = Q_atof(Cmd_Argv(1)); // will return 0 if not valid
+   framesize = &diag;
+   fov = dfov * M_PI / 180;
+}
+
+
+int lua_lens_load(void);
+
+void L_Lens(void)
+{
+   if (Cmd_Argc() < 2) { // no lens name given
+      Con_Printf("lens <name>: use a new lens\n");
+      Con_Printf("Currently using %s\n", lens);
+      return;
+   }
+
+   // trigger change
+   lenschange = 1;
+
+   // get name
+   strcpy(lens, Cmd_Argv(1));
+
+   // load lens
+   valid_lens = lua_lens_load();
+   if (!valid_lens) {
+      strcpy(lens,"");
+      Con_Printf("not a valid lens\n");
+   }
 }
 
 void L_Init(void)
 {
    L_InitLua();
 
-   Cmd_AddCommand("lenses", L_Help);
+   //Cmd_AddCommand("lenses", L_Help);
    Cmd_AddCommand("savecube", L_CaptureCubeMap);
    Cmd_AddCommand("fov", L_ShowFovDeprecate);
    Cmd_AddCommand("colorcube", L_ColorCube);
    Cmd_AddCommand("hfit", L_HFit);
    Cmd_AddCommand("vfit", L_VFit);
    Cmd_AddCommand("fit", L_Fit);
-   Cvar_RegisterVariable (&l_hfov);
-   Cvar_RegisterVariable (&l_vfov);
-   Cvar_RegisterVariable (&l_dfov);
-   Cvar_RegisterVariable (&l_lens);
-   Cvar_RegisterVariable (&l_fitmode);
+   Cmd_AddCommand("hfov", L_HFov);
+   Cmd_AddCommand("vfov", L_VFov);
+   Cmd_AddCommand("dfov", L_DFov);
+   Cmd_AddCommand("lens", L_Lens);
+   //Cmd_AddCompletion("lens", L_LensArg);
 
+   // default view state
+   Cmd_ExecuteString("lens rectilinear", src_command);
+   Cmd_ExecuteString("hfov 90", src_command);
 }
 
 void L_Shutdown(void)
@@ -590,7 +711,7 @@ int lua_lens_init(void)
    // clear lens scale
    scale = -1;
 
-   if (l_fitmode.value == FIT_NONE) // use FOV for scaling since no fit mode is selected
+   if (fit == 0 && hfit == 0 && vfit == 0)
    {
       // check FOV limits
       if (max_hfov <= 0 || max_vfov <= 0)
@@ -1190,12 +1311,6 @@ void L_RenderView()
 {
    static int pwidth = -1;
    static int pheight = -1;
-   static char plens[MAX_LENS_LEN] = "\0";
-   static double phfov = -1;
-   static double pvfov = -1;
-   static double pdfov = -1;
-   static int pcolorcube = -1;
-   static int pfitmode = -1;
 
    // update screen size
    left = scr_vrect.x;
@@ -1206,91 +1321,6 @@ void L_RenderView()
    diag = sqrt(width*width+height*height);
    int area = width*height;
    int sizechange = pwidth!=width || pheight!=height;
-
-   // update lens
-   strcpy(lens, l_lens.string);
-   int lenschange = strcmp(plens,lens);
-   if (lenschange)
-   {
-      valid_lens = lua_lens_load();
-      if (!valid_lens)
-      {
-         strcpy(lens,"");
-         Cvar_Set("lens",lens);
-         Con_Printf("not a valid lens\n");
-      }
-   }
-
-   // update FOV and framesize
-   int fovchange = 1;
-   if (l_hfov.value != phfov)
-   {
-      fov = l_hfov.value * M_PI / 180;
-      framesize = &width;
-      Cvar_SetValue("vfov", -1);
-      Cvar_SetValue("dfov", -1);
-   }
-   else if (l_vfov.value != pvfov)
-   {
-      fov = l_vfov.value * M_PI / 180;
-      framesize = &height;
-      Cvar_SetValue("hfov", -1);
-      Cvar_SetValue("dfov", -1);
-   }
-   else if (l_dfov.value != pdfov)
-   {
-      fov = l_dfov.value * M_PI / 180;
-      framesize = &diag;
-      Cvar_SetValue("hfov", -1);
-      Cvar_SetValue("vfov", -1);
-   }
-   else 
-   {
-      fovchange = 0;
-   }
-
-   // check for fit change
-   if (fovchange)
-   {
-      // assume the fit won't change in the same frame the FOV changes
-      Cvar_SetValue("fitmode", FIT_NONE);
-   }
-   else
-   {
-      if (l_fitmode.value != pfitmode) // fitmode changed
-      {
-         if (l_fitmode.value > 0 && l_fitmode.value <= 3) // fitmode valid
-         {
-            fit = hfit = vfit = 0;
-            if (l_fitmode.value == FIT_H)
-               hfit = 1;
-            else if (l_fitmode.value == FIT_V)
-               vfit = 1;
-            else if (l_fitmode.value == FIT_BOTH)
-            {
-               fit = 1;
-            }
-
-            // trigger change and clear fov's
-            fovchange = 1;
-            fov = 0;
-            framesize = 0; // null pointer
-            Cvar_SetValue("hfov", -1);
-            Cvar_SetValue("vfov", -1);
-            Cvar_SetValue("dfov", -1);
-         }
-         else
-         {
-            if (l_fitmode.value == FIT_NONE) {
-               Con_Printf("You cannot set fit mode to NONE.  Use hfov,vfov, or dfov or use hfit/vfit.\n");
-            }
-            else {
-               Con_Printf("%d is not a valid fitmode. Use (1,2,3) for (h,v,both)\n",(int)l_fitmode.value);
-            }
-            Cvar_SetValue("fitmode", pfitmode);
-         }
-      }
-   }
 
    // allocate new buffers if size changes
    if(sizechange)
@@ -1318,6 +1348,7 @@ void L_RenderView()
 
    // render the environment onto a cube map
    int i;
+   /*
    if (colorcube)
    {
       if (pcolorcube != colorcube)
@@ -1331,6 +1362,7 @@ void L_RenderView()
       }
    }
    else
+   */
    {
       for (i=0; i<6; ++i)
          if (faceDisplay[i]) {
@@ -1354,11 +1386,8 @@ void L_RenderView()
    // store current values for change detection
    pwidth = width;
    pheight = height;
-   strcpy(plens,lens);
-   phfov = l_hfov.value;
-   pvfov = l_vfov.value;
-   pdfov = l_dfov.value;
-   pcolorcube = colorcube;
-   pfitmode = l_fitmode.value;
+
+   // reset change flags
+   lenschange = fovchange = 0;
 }
 

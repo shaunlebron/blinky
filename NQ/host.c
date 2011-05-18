@@ -285,6 +285,9 @@ Host_WriteConfiguration(void)
 	if (in_mlook.state & 1)
 	    fprintf(f, "+mlook\n");
 
+   /* Save lens information */
+   L_WriteConfig(f);
+
 	fclose(f);
     }
 }
