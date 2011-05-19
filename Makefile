@@ -123,7 +123,7 @@ ST_INC    = $(TOPDIR)/scitech/include
 NQ_ST_LIBDIR = scitech/lib/win32/vc
 QW_ST_LIBDIR = scitech/lib/win32/vc
 
-NQ_W32_COMMON_LIBS = wsock32 winmm dxguid
+NQ_W32_COMMON_LIBS = wsock32 winmm dxguid lua51
 NQ_W32_SW_LIBS = mgllt ddraw
 NQ_W32_GL_LIBS = opengl32 comctl32
 
@@ -217,7 +217,7 @@ QWGL_CPPFLAGS += -I$(TOPDIR)/QW/client
 QWSV_CPPFLAGS += -I$(TOPDIR)/QW/server -I$(TOPDIR)/QW/client
 
 ifeq ($(TARGET_OS),WIN32)
-NQSW_CPPFLAGS += -idirafter $(DX_INC) -idirafter $(ST_INC)
+NQSW_CPPFLAGS += -I/local/include -idirafter $(DX_INC) -idirafter $(ST_INC)
 NQGL_CPPFLAGS += -idirafter $(DX_INC)
 QWSW_CPPFLAGS += -idirafter $(DX_INC) -idirafter $(ST_INC)
 QWGL_CPPFLAGS += -idirafter $(DX_INC)
@@ -603,7 +603,7 @@ endif
 
 # Win32
 tyr-quake.exe:	$(patsubst %,$(NQSWDIR)/%,$(NQ_W32_SW_OBJS))
-	$(call do_cc_link,-mwindows -L$(NQ_ST_LIBDIR) $(NQ_W32_SW_LFLAGS))
+	$(call do_cc_link,-mwindows -L/local/lib -L$(NQ_ST_LIBDIR) $(NQ_W32_SW_LFLAGS))
 	$(call do_strip,$@)
 
 tyr-glquake.exe:	$(patsubst %,$(NQGLDIR)/%,$(NQ_W32_GL_OBJS))

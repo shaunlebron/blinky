@@ -902,8 +902,9 @@ Sbar_Draw(void)
     if (scr_con_current == vid.height)
 	return;			// console is full screen
 
-    if (sb_updates >= vid.numpages)
-	return;
+    // commented out because it was making status bar display in Windows whenever picking up a powerup
+    //if (sb_updates >= vid.numpages)
+	//return;
 
     scr_copyeverything = 1;
 
