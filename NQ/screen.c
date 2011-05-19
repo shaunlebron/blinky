@@ -333,6 +333,15 @@ SCR_SizeDown_f(void)
 
 //============================================================================
 
+// set flag to take screenshot right after the screen is drawn
+// this is to bypass an anomaly with the video buffer getting mangled after VID_Update
+static int screenshot_due = 0;
+void
+SCR_ScreenShot_f_due(void)
+{
+   screenshot_due = 1;
+}
+
 /*
 ==================
 SCR_Init
@@ -351,7 +360,7 @@ SCR_Init(void)
     Cvar_RegisterVariable(&scr_centertime);
     Cvar_RegisterVariable(&scr_printspeed);
 
-    Cmd_AddCommand("screenshot", SCR_ScreenShot_f);
+    Cmd_AddCommand("screenshot", SCR_ScreenShot_f_due);
     Cmd_AddCommand("sizeup", SCR_SizeUp_f);
     Cmd_AddCommand("sizedown", SCR_SizeDown_f);
 
@@ -617,7 +626,6 @@ WritePCXfile(char *filename, byte *data, int width, int height,
     length = pack - (byte *)pcx;
     COM_WriteFile(filename, pcx, length);
 }
-
 
 /*
 ==================
@@ -932,6 +940,13 @@ SCR_UpdateScreen(void)
 
     V_UpdatePalette();
 
+    // take a screenshot if flagged
+    if (screenshot_due)
+    {
+       SCR_ScreenShot_f();
+       screenshot_due = 0;
+    }
+
 //
 // update one of three areas
 //
@@ -960,6 +975,7 @@ SCR_UpdateScreen(void)
 
 	VID_Update(&vrect);
     }
+
 }
 
 
