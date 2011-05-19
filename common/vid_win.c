@@ -1723,8 +1723,9 @@ VID_LockBuffer(void)
     else
 	screenwidth = vid.rowbytes;
 
-    if (lcd_x.value)
-	screenwidth <<= 1;
+    // commented out because there are no traces of an lcd_x declaration
+    //if (lcd_x.value)
+	//screenwidth <<= 1;
 }
 
 
