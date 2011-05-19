@@ -131,19 +131,6 @@ static int mapCoord;
 // retrieves a pointer to a pixel in the lensmap
 #define LENSMAP(x,y) (lensmap + (x) + (y)*width)
 
-void L_Help(void)
-{
-   Con_Printf("\nQUAKE LENSES\n--------\n");
-   Con_Printf("hfov <degrees>: Specify FOV in horizontal degrees\n");
-   Con_Printf("vfov <degrees>: Specify FOV in vertical degrees\n");
-   Con_Printf("dfov <degrees>: Specify FOV in diagonal degrees\n");
-   Con_Printf("lens <name>: Change the lens\n");
-   Con_Printf("\n---------\n");
-   Con_Printf("colorcube: toggle paint cubemap\n");
-   Con_Printf("\n---------\n");
-   Con_Printf("Motion sick?  Try Stereographic or Panini\n");
-}
-
 void L_CaptureCubeMap(void)
 {
    char filename[100];
@@ -187,6 +174,16 @@ void L_ColorCube(void)
 {
    colorcube = colorcube ? 0 : 1;
    Con_Printf("Colored Cube is %s\n", colorcube ? "ON" : "OFF");
+   int i;
+   if (colorcube)
+   {
+      B colors[6] = {242,243,244,245,250,255};
+      for (i=0; i<6; ++i)
+      {
+         B* face = cubemap+cubesize*cubesize*i;
+         memset(face,colors[i],cubesize*cubesize);
+      }
+   }
 }
 
 /* START CONVERSION LUA HELPER FUNCTIONS */
@@ -400,15 +397,15 @@ void L_WriteConfig(FILE* f)
 
 void printActiveFov(void)
 {
-   Con_Printf("Current Active FOV: ");
+   Con_Printf("Currently: ");
    if (hfov != 0) {
-      Con_Printf("Horizontal: %f degrees\n",hfov);
+      Con_Printf("hfov %d\n",(int)hfov);
    }
    else if (vfov != 0) {
-      Con_Printf("Vertical: %f degrees\n",vfov);
+      Con_Printf("vfov %d\n",(int)vfov);
    }
    else if (dfov != 0) {
-      Con_Printf("Diagonal: %f degrees\n",dfov);
+      Con_Printf("dfov %d\n",(int)dfov);
    }
 }
 
@@ -463,7 +460,7 @@ void L_Lens(void)
 {
    if (Cmd_Argc() < 2) { // no lens name given
       Con_Printf("lens <name>: use a new lens\n");
-      Con_Printf("Currently using %s\n", lens);
+      Con_Printf("Currently: %s\n", lens);
       return;
    }
 
@@ -481,11 +478,24 @@ void L_Lens(void)
    }
 }
 
+static struct stree_root * L_LensArg(const char *arg)
+{
+   struct stree_root *root;
+
+   root = Z_Malloc(sizeof(struct stree_root));
+   if (root) {
+      *root = STREE_ROOT;
+
+      STree_AllocInit();
+      COM_ScanDir(root, "../lenses", arg, ".lua", true);
+   }
+   return root;
+}
+
 void L_Init(void)
 {
    L_InitLua();
 
-   //Cmd_AddCommand("lenses", L_Help);
    Cmd_AddCommand("savecube", L_CaptureCubeMap);
    Cmd_AddCommand("fov", L_ShowFovDeprecate);
    Cmd_AddCommand("colorcube", L_ColorCube);
@@ -496,7 +506,7 @@ void L_Init(void)
    Cmd_AddCommand("vfov", L_VFov);
    Cmd_AddCommand("dfov", L_DFov);
    Cmd_AddCommand("lens", L_Lens);
-   //Cmd_AddCompletion("lens", L_LensArg);
+   Cmd_SetCompletion("lens", L_LensArg);
 
    // default view state
    Cmd_ExecuteString("lens rectilinear", src_command);
@@ -716,16 +726,16 @@ int lua_lens_init(void)
       // check FOV limits
       if (max_hfov <= 0 || max_vfov <= 0)
       {
-         Con_Printf("Please specify a positive max_hfov and max_vfov in your lens script\n");
+         Con_Printf("max_hfov & max_vfov not specified, try \"fit\"\n");
          return 0;
       }
 
       if (width == *framesize && fov > max_hfov) {
-         Con_Printf("Horizontal FOV must be less than %f\n", max_hfov * 180 / M_PI);
+         Con_Printf("hfov must be less than %d\n", (int)(max_hfov * 180 / M_PI));
          return 0;
       }
       else if (height == *framesize && fov > max_vfov) {
-         Con_Printf("Vertical FOV must be less than %f\n", max_vfov * 180/ M_PI);
+         Con_Printf("vfov must be less than %d\n", (int)(max_vfov * 180/ M_PI));
          return 0;
       }
 
@@ -810,7 +820,8 @@ int lua_lens_init(void)
       if (hfit) {
          if (hfit_size <= 0)
          {
-            Con_Printf("Cannot use hfit unless a positive hfit_size is in your script\n");
+            //Con_Printf("Cannot use hfit unless a positive hfit_size is in your script\n");
+            Con_Printf("hfit_size not specified.  Try hfov instead.\n");
             return 0;
          }
          scale = hfit_size / width;
@@ -818,7 +829,8 @@ int lua_lens_init(void)
       else if (vfit) {
          if (vfit_size <= 0)
          {
-            Con_Printf("Cannot use vfit unless a positive vfit_size is in your script\n");
+            //Con_Printf("Cannot use vfit unless a positive vfit_size is in your script\n");
+            Con_Printf("vfit_size not specified.  Try vfov instead.\n");
             return 0;
          }
          scale = vfit_size / height;
@@ -831,7 +843,7 @@ int lua_lens_init(void)
             scale = hfit_size / width;
          }
          else if (vfit_size <= 0 && hfit_size <= 0) {
-            Con_Printf("Please specify a positive vfit_size or hfit_size in your script\n");
+            Con_Printf("vfit_size and hfit_size not specified.  Try hfov instead.\n");
             return 0;
          }
          else if (hfit_size / vfit_size > (double)width / height) {
@@ -1262,7 +1274,7 @@ void create_lensmap()
    // test if this lens can support the current fov
    if (!lua_lens_init())
    {
-      Con_Printf("This lens could not be initialized.\n");
+      //Con_Printf("This lens could not be initialized.\n");
       return;
    }
 
@@ -1348,21 +1360,7 @@ void L_RenderView()
 
    // render the environment onto a cube map
    int i;
-   /*
-   if (colorcube)
-   {
-      if (pcolorcube != colorcube)
-      {
-         B colors[6] = {242,243,244,245,250,255};
-         for (i=0; i<6; ++i)
-         {
-            B* face = cubemap+cubesize*cubesize*i;
-            memset(face,colors[i],cubesize*cubesize);
-         }
-      }
-   }
-   else
-   */
+   if (!colorcube)
    {
       for (i=0; i<6; ++i)
          if (faceDisplay[i]) {
