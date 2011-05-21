@@ -18,11 +18,6 @@
 Mainly to see different ways of squeezing panoramic images on the screen.  This has been done in photography and world maps, but rarely in the context of a game.
 </p>
 
-<h3>Why are the lenses so slow to load?</h3>
-<p>
-Lua code is fast, but it's still not as fast as C code.  When the lens is being loaded, functions in the Lua script are called several million times, one for each pixel on the screen if no symmetry is flagged.  I tried embedding the LuaJIT interpreter for faster execution, but I was only able to get it working on Linux.  The source code is available for anyone who wants to try.
-</p>
-
 <h3>Why choose an old game for a project like this?</h3>
 <p>
 Fisheye Quake already had the architecture implemented to make this project possible.
