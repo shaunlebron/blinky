@@ -1289,10 +1289,13 @@ void render_lensmap()
 {
    B **lmap = lensmap;
    int x, y;
-   for(y=0; y<height; y++) 
-      for(x=0; x<width; x++,lmap++) 
+   for(y=0; y<height; y++) {
+      for(x=0; x<width; x++,lmap++) {
+            //*VBUFFER(x+left, y+top) = *lmap ? **lmap : -5;
          if (*lmap)
             *VBUFFER(x+left, y+top) = **lmap;
+      }
+   }
 }
 
 // render a specific face on the cubemap

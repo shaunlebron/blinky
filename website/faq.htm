@@ -5,13 +5,14 @@
 <link rel="stylesheet" href="main.css" />
 </head>
 <body>
-<div id="container">
+<div id="header">
+</div>
 
-<h1>Quake Lenses</h1>
-
-<p>
+<div id="nav">
 <a href="index.htm">home</a> | <a href="manual.htm">manual</a> | <a href="gallery.htm">gallery</a> | <a href="faq.htm">f.a.q.</a> | <a href="download.htm">download</a> | <a href="contact.htm">contact</a>
-</p>
+</div>
+
+<div id="container">
 
 <h3>What's the point of this?</h3>
 <p>
@@ -47,15 +48,15 @@ I'm actually hoping someone else will do it after looking at this.  But if I do,
 
 <h3>What's the best lens to use?</h3>
 <p>
-In my opinion, stereographic projections are the only lenses you can use for considerable amount of time without getting motion sick.  This is because they are just off-center perspective projections of an environment map.  So when you move around the world, things around you warp fairly predictably according to perspective, which is good for preventing nausea.
+In my opinion, stereographic projections are the only lenses you can use for considerable amount of time without getting motion sick.  This is because they are just off-center perspective projections of an environment map.  In English, this means you can move around the world and things around you warp fairly predictably according to perspective, which is good for preventing nausea.
 </p>
 <p>
-So I suggest using either the stereographic or the panini projection.  I prefer Panini because it keeps vertical lines straight.  I created a modified version of Panini called Gumby, which comprimises distortion in order to extend the range of Panini a little bit.  It works by compressing the image horizontally along the cylinder and then vertically to compensate.  I stick with Panini though.
+So I suggest using either the stereographic or the panini lenses.  I prefer Panini because it keeps vertical lines straight.  I created a modified version of Panini called Gumby, which comprimises distortion in order to extend the range of Panini a little bit.  It works by compressing the image horizontally along the cylinder and then vertically to compensate.  I stick with Panini though.
 </p>
 
 <h3>Where can I get more lenses?</h3>
 <p>
-The PROJ.4 project has close to 180 projections in their source code <a href="http://trac.osgeo.org/proj/browser/branches/4.7/proj/src">here</a>.  You can convert any of them to a Lua script using latlon_to_xy or xy_to_latlon since these follow the same coordinate systems used by PROJ.4.  This is actually how I created several lenses.
+The PROJ.4 project has close to 180 projections in their source code <a href="http://trac.osgeo.org/proj/browser/branches/4.7/proj/src">here</a>.  You can convert any of them to a Lua script using latlon_to_xy or xy_to_latlon since these follow the same coordinate systems used by PROJ.4.  This is actually how I created several of the provided lenses.
 </p>
 
 </div>

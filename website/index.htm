@@ -1,29 +1,35 @@
 
+<!doctype html>
 <html>
 <head>
 <title>Quake Lenses - Home</title>
 <link rel="stylesheet" href="main.css" />
 </head>
 <body>
-<div id="container">
 
-<h1>Quake Lenses</h1>
+<div id="header">
+</div>
 
-<p>
+<div id="nav">
 <a href="index.htm">home</a> | <a href="manual.htm">manual</a> | <a href="gallery.htm">gallery</a> | <a href="faq.htm">f.a.q.</a> | <a href="download.htm">download</a> | <a href="contact.htm">contact</a>
-</p>
+</div>
+
+<div id="container">
 
 <h3>Welcome</h3>
 <p>
-Quake Lenses is an experiment for trying out new fields of view (FOVs) in 3D games.  It allows you to play Quake using a variety of different lenses, and it also allows you to make your own using Lua.
+Quake Lenses continues the direction of <a href="http://strlen.com/gfxengine/fisheyequake/">Fisheye Quake</a> by allowing you to use and create a variety of unconventional views using Lua scripts.  The intention is to advance wide-angle gaming using methods long used by photographers and cartographers for displaying up to 360&deg; of view.
 </p>
 
 <h3>Quick Look</h3>
+<p>
+The following shows how commands will affect your view.
+</p>
 <table>
 <tr>
    <td>
       <pre>
-&gt; lens fish2
+&gt; lens fisheye2
 &gt; fit </pre>
       <a href="pics/index/fish2.gif"><img src="pics/index/fish2.gif" width=300 /></a>
    </td>
@@ -68,17 +74,8 @@ Quake Lenses is an experiment for trying out new fields of view (FOVs) in 3D gam
 </tr>
 </table>
 
-<h3>Tools Used</h3>
-<p>
-<ul>
-   <li><a href="http://strlen.com/gfxengine/fisheyequake/">Fisheye Quake</a></li>
-   <li><a href="http://disenchant.net/engine.html">TyrQuake</a></li>
-   <li><a href="http://luajit.org">LuaJIT</a></li>
-</ul>
-</p>
-
 <h3>Commands</h3>
-This commands can be entered into Quake via the console by pressing the tilde key (~).
+Commands can be entered via Quake's console by pressing the tilde key (~).
 <ul>
    <li><samp>lens name</samp> : change the lens (use tab key for completion)</li>
    <li><samp>hfov #</samp> : specify <acronym title="Field of View">FOV</acronym> in horizontal degrees</li>
@@ -90,43 +87,85 @@ This commands can be entered into Quake via the console by pressing the tilde ke
 
 <h3>Lens Files</h3>
 <p>
-In the lenses folder of your quake directory, you will see a collection of files.  Each file is a Lua script used by the game to construct a lens.  If you're interested, you can <a href="tutorial.htm">create your own</a> and place it in this folder.
-<pre>
--- Stereographic Lens (stereographic.lua)
+In the lenses folder, you will see a collection of Lua files.  These represent the lenses you can use in a game.  If you're interested, you can <a href="manual.htm">create your own</a> and place it in this folder.  Here is an example script: 
+<div style="padding:3px;background:#333333; color:#fff;width:50%;margin-left:auto;margin-right:auto;"><font face="monospace">
+<font color="#ffff00">&nbsp;1 </font><font color="#87ceeb">-- Mercator Projection</font><br>
+<font color="#ffff00">&nbsp;2 </font><br>
+<font color="#ffff00">&nbsp;3 </font><font color="#87ceeb">-- horizontal and vertical symmetry</font><br>
+<font color="#ffff00">&nbsp;4 </font>hsym = <font color="#ffa0a0">true</font><br>
+<font color="#ffff00">&nbsp;5 </font>vsym = <font color="#ffa0a0">true</font><br>
+<font color="#ffff00">&nbsp;6 </font><br>
+<font color="#ffff00">&nbsp;7 </font><font color="#87ceeb">-- FOV bounds</font><br>
+<font color="#ffff00">&nbsp;8 </font>max_hfov = <font color="#ffa0a0">360</font><br>
+<font color="#ffff00">&nbsp;9 </font>max_vfov = <font color="#ffa0a0">180</font><br>
+<font color="#ffff00">10 </font><br>
+<font color="#ffff00">11 </font><font color="#87ceeb">-- horizontal fit size</font><br>
+<font color="#ffff00">12 </font>hfit_size = <font color="#ffa0a0">2</font>*pi<br>
+<font color="#ffff00">13 </font><br>
+<font color="#ffff00">14 </font><font color="#87ceeb">-- inverse mapping (screen to environment)</font><br>
+<font color="#ffff00">15 </font><font color="#98fb98">function</font>&nbsp;xy_to_latlon(x,y)<br>
+<font color="#ffff00">16 </font>&nbsp;&nbsp; <font color="#f0e68c"><b>local</b></font>&nbsp;lon = x<br>
+<font color="#ffff00">17 </font>&nbsp;&nbsp; <font color="#f0e68c"><b>local</b></font>&nbsp;lat = atan(sinh(y))<br>
+<font color="#ffff00">18 </font>&nbsp;&nbsp; <font color="#f0e68c"><b>return</b></font>&nbsp;lat, lon<br>
+<font color="#ffff00">19 </font><font color="#98fb98">end</font><br>
+<font color="#ffff00">20 </font><br>
+<font color="#ffff00">21 </font><font color="#87ceeb">-- forward mapping (environment to screen)</font><br>
+<font color="#ffff00">22 </font><font color="#98fb98">function</font>&nbsp;latlon_to_xy(lat,lon)<br>
+<font color="#ffff00">23 </font>&nbsp;&nbsp; <font color="#f0e68c"><b>local</b></font>&nbsp;x = lon<br>
+<font color="#ffff00">24 </font>&nbsp;&nbsp; <font color="#f0e68c"><b>local</b></font>&nbsp;y = log(tan(pi*<font color="#ffa0a0">0.25</font>+lat*<font color="#ffa0a0">0.5</font>))<br>
+<font color="#ffff00">25 </font>&nbsp;&nbsp; <font color="#f0e68c"><b>return</b></font>&nbsp;x,y<br>
+<font color="#ffff00">26 </font><font color="#98fb98">end</font><br>
+<font color="#ffff00">27 </font><br>
+<font color="#ffff00">28 </font><font color="#87ceeb">-- domain test</font><br>
+<font color="#ffff00">29 </font><font color="#98fb98">function</font>&nbsp;xy_isvalid(x,y)<br>
+<font color="#ffff00">30 </font>&nbsp;&nbsp; <font color="#f0e68c"><b>return</b></font>&nbsp;abs(x) &lt;= pi<br>
+<font color="#ffff00">31 </font><font color="#98fb98">end</font><br>
+</font></div>
 
--- horizontal and vertical symmetry
-hsym = true
-vsym = true
-
--- FOV bounds
-max_hfov = 360
-max_vfov = 360
-
--- inverse mapping (screen to environment)
-function r_to_theta(r)
-   return 2*atan(r)
-end
-
--- forward mapping (environment to screen)
-function theta_to_r(theta)
-   return tan(theta/2)
-end
-</pre>
 </p>
 
 <h3>Selecting a Lens</h3>
 <p>
-First, open quakelens.exe, and start a game.  To change your lens, use the <strong>lens</strong> command.  For example, if you wish to use the "panini" lens, type <strong>lens panini</strong>. The game will then load the file called "panini.lua" from the lenses folder.
+To change your lens, use the <samp>lens</samp> command.  For example, if you wish to use the "panini" lens, type <samp>lens panini</samp>. The game will then load the file called "panini.lua" from the lenses folder.
 </p>
+<h4>Lens Tab Completion</h4>
+<p>
+As a convenience for quickly selecting lenses, you can use the tab-completion feature from <a href="http://disenchant.net/engine.html">TyrQuake</a>.  Begin typing the lens name and press tab to try to complete the rest of the name.  If more than one lenses match, you can press TAB again to list all the matching lenses.  (You can also use this to list all the available lenses, seen below.) 
+</p>
+<table>
+   <tr>
+      <td>
+         <pre>
+&gt; lens &lt;TAB&gt;&lt;TAB&gt;</pre>
+         <img src="pics/lenses.gif" />
+      </td>
+   </tr>
+</table>
 
 <h3>FOV</h3>
 <p>
-You can zoom in and out by specifying a viewing angle. Type <strong>hfov 180</strong> if you want your screen to horizontally cover 180 degrees.  Similarly, you can type <strong>vfov 90</strong> to cover 90 degrees vertically.
+You can zoom in and out by specifying a viewing angle for your Field of View (FOV). Type <samp>hfov 180</samp> if you want your screen to horizontally cover 180 degrees.  Similarly, you can type <samp>vfov 90</samp> to cover 90 degrees vertically.
 </p>
+<table>
+   <tr>
+      <td>
+         <pre>
+&gt; lens panini
+&gt; hfov 90</pre>
+      <a href="pics/fov90.gif"><img src="pics/fov90.gif" width=300></a>
+      </td>
+      <td>
+         <pre>
+&gt; lens panini
+&gt; hfov 180</pre>
+      <a href="pics/fov180.gif"><img src="pics/fov180.gif" width=300></a>
+      </td>
+   </tr>
+</table>
 
 <h3>Fitting</h3>
 <p>
-If the image produced by the lens is not infinite in size, you can fit the whole image on the screen by typing <strong>fit</strong>.  Alternately, if you just want the picture to fit the horizontal or vertical bounds of the screen, you can type <strong>hfit</strong> or <strong>vfit</strong>, respectively.
+If the image produced by the lens is not infinite in size, you can fit the whole image on the screen by typing <samp>fit</samp>.  Alternately, if you just want the picture to fit the horizontal or vertical bounds of the screen, you can type <samp>hfit</samp> or <samp>vfit</samp>, respectively.
 </p>
 <p>
 <table>
