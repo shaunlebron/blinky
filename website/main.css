@@ -12,16 +12,18 @@ body
 #header
 {
    background: #483C32 url("pics/logoc.png") no-repeat center;
-   height: 150px;
+   height: 100px;
 }
 #nav
 {
    background: #5e544b;
    color: white;
+   text-align: center;
 }
 #nav a
 {
    color: white;
+   text-decoration:none;
 }
 #nav a:hover
 {
