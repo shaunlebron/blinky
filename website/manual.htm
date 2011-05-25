@@ -14,14 +14,20 @@
 <div id="container">
 <h3>Background</h3>
 <p>
-Before you can learn what <em>Quake Lenses</em> does, you must first understand the type of "lens" used by all games today - the <b>rectilinear projection</b>.  Imagine that there are colored objects in front of your player and you wish to render what the player sees onto an flat image.  The following diagram illustrates how to do this using the rectilinear projection.  
+Before you can learn what <em>Quake Lenses</em> does, you must first understand the type of "lens" used by all games today - the <b>rectilinear projection</b>.  For the sake of simplicity, imagine that there are colored balls in front of your player and you wish to render what the player sees onto an flat image.  The following diagram illustrates how to do this using the rectilinear projection.  
 </p>
 
 <table><tr><td><a href="diagrams/standard-rect.png"><img src="diagrams/standard-rect.png" width=600 /></a></td></tr></table>
 
 <p>
-Note here that the horizontal colored lines right below the dotted line represent the projected images of the balls on the screen.  The size of the red, green, and blue images are roughly the same size, but the purple and orange images are very stretched.  This is a common side effect of trying to project images in your periphery.
+Note the horizontal colored lines right below the dotted line. These represent the images of the balls on the screen.  The size of the red, green, and blue images are about the same size, but the purple and orange images are stretched.  This is a common side effect of trying to project images in your periphery.  You can imagine that objects further into your periphery will become increasingly stretched.
 </p>
+<p>
+The screenshots below illustrate periphery-stretching that results using the rectilinear projection in Quake.
+</p>
+<table>
+<tr>
+<td><
 <p>
 To allow a wider field of view on this pinhole camera construct, you can imagine placing water between the aperture and the film. When light rays enter water from air, it is refracted. This was the first fisheye camera, and they called it this because it creates an image that a fish would see when looking at the sky from the ocean. It is still limited to 180 degrees, but creates a barrel distortion which extends the practical limit of the rectilinear lens. The modern fisheye lenses of today implement the <em>azimuthal equidistant</em> and the <em>azimuthal equisolid</em> projections, which are limited to 360 degrees.
 </p>

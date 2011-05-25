@@ -35,6 +35,7 @@ static double hfov, vfov, dfov;
 typedef unsigned char B;
 static B *cubemap = NULL;  
 static B **lensmap = NULL;
+static B *palimap = NULL;
 
 // top left coordinates of the screen in the vid buffer
 static int left, top;
@@ -122,6 +123,8 @@ static int mapCoord;
 #define BOX_TOP    4
 #define BOX_BOTTOM 5
 
+static B palmap[6][256];
+
 // retrieves a pointer to a pixel in the video buffer
 #define VBUFFER(x,y) (vid.buffer + (x) + (y)*vid.rowbytes)
 
@@ -130,6 +133,84 @@ static int mapCoord;
 
 // retrieves a pointer to a pixel in the lensmap
 #define LENSMAP(x,y) (lensmap + (x) + (y)*width)
+
+// retrieves a pointer to a pixel in the palimap
+#define PALIMAP(x,y) (palimap + (x) + (y)*width)
+
+// find closest pallete index for color
+int find_closest_pal_index(int r, int g, int b)
+{
+   int i;
+   int mindist = 256*256*256;
+   int minindex = 0;
+   B* pal = host_basepal;
+   for (i=0; i<256; ++i)
+   {
+      int dr = (int)pal[0]-r;
+      int dg = (int)pal[1]-g;
+      int db = (int)pal[2]-b;
+      int dist = dr*dr+dg*dg+db*db;
+      if (dist < mindist)
+      {
+         mindist = dist;
+         minindex = i;
+      }
+      pal += 3;
+   }
+   return minindex;
+}
+
+void create_palmap(void)
+{
+   int i,j;
+   int percent = 256/6;
+   int tint[3];
+
+   for (j=0; j<6; ++j)
+   {
+      tint[0] = tint[1] = tint[2] = 0;
+      switch (j)
+      {
+         case BOX_FRONT:
+            break;
+         case BOX_LEFT:
+            tint[2] = 255;
+            break;
+         case BOX_BEHIND:
+            tint[0] = 255;
+            break;
+         case BOX_RIGHT:
+            tint[0] = tint[1] = 255;
+            break;
+         case BOX_TOP:
+            tint[0] = tint[2] = 255;
+            break;
+         case BOX_BOTTOM:
+            tint[1] = tint[2] = 255;
+            break;
+      }
+   
+      B* pal = host_basepal;
+      for (i=0; i<256; ++i)
+      {
+         int r = pal[0];
+         int g = pal[1];
+         int b = pal[2];
+
+         r += percent * (tint[0] - r) >> 8;
+         g += percent * (tint[1] - g) >> 8;
+         b += percent * (tint[2] - b) >> 8;
+
+         if (r < 0) r=0; if (r > 255) r=255;
+         if (g < 0) g=0; if (g > 255) g=255;
+         if (b < 0) b=0; if (b > 255) b=255;
+
+         palmap[j][i] = find_closest_pal_index(r,g,b);
+
+         pal += 3;
+      }
+   }
+}
 
 void L_CaptureCubeMap(void)
 {
@@ -174,15 +255,18 @@ void L_ColorCube(void)
 {
    colorcube = colorcube ? 0 : 1;
    Con_Printf("Colored Cube is %s\n", colorcube ? "ON" : "OFF");
-   int i;
    if (colorcube)
    {
+      // old solution for just coloring the faces solid colors
+      /*
       B colors[6] = {242,243,244,245,250,255};
+      int i;
       for (i=0; i<6; ++i)
       {
          B* face = cubemap+cubesize*cubesize*i;
          memset(face,colors[i],cubesize*cubesize);
       }
+      */
    }
 }
 
@@ -511,6 +595,8 @@ void L_Init(void)
    // default view state
    Cmd_ExecuteString("lens rectilinear", src_command);
    Cmd_ExecuteString("hfov 90", src_command);
+
+   create_palmap();
 }
 
 void L_Shutdown(void)
@@ -1082,6 +1168,7 @@ void setLensPixelToRay(int lx, int ly, double sx, double sy, double sz)
 
    // map lens pixel to cubeface pixel
    *LENSMAP(lx,ly) = CUBEFACE(side,px,py);
+   *PALIMAP(lx,ly) = side;
 }
 
 void create_lensmap_inverse()
@@ -1141,6 +1228,7 @@ void create_lensmap_inverse()
             int cx = clamp((int)(u*(cubesize-1)),0,cubesize-1);
             int cy = clamp((int)(v*(cubesize-1)),0,cubesize-1);
             *LENSMAP(lx,ly) = CUBEFACE(side,cx,cy);
+            *PALIMAP(lx,ly) = side;
             continue;
          }
 
@@ -1239,21 +1327,25 @@ void create_lensmap_forward()
 
             side_count[side]++;
             *LENSMAP(lx,ly) = CUBEFACE(side,cx,cy);
+            *PALIMAP(lx,ly) = side;
 
             if (hsym) {
                int oppside = (side == BOX_LEFT) ? BOX_RIGHT : side;
                side_count[oppside]++;
                *LENSMAP(width-1-lx,ly) = CUBEFACE(oppside,cubesize-1-cx,cy);
+               *PALIMAP(width-1-lx,ly) = oppside;
             }
             if (vsym) {
                int oppside = (side == BOX_TOP) ? BOX_BOTTOM : side;
                side_count[oppside]++;
                *LENSMAP(lx,height-1-ly) = CUBEFACE(oppside,cx,cubesize-1-cy);
+               *PALIMAP(lx,height-1-ly) = oppside;
             }
             if (hsym && vsym) {
                int oppside = (side == BOX_TOP) ? BOX_BOTTOM : ((side == BOX_LEFT) ? BOX_RIGHT : side);
                side_count[oppside]++;
                *LENSMAP(width-1-lx,height-1-ly) = CUBEFACE(oppside,cubesize-1-cx,cubesize-1-cy);
+               *PALIMAP(width-1-lx,height-1-ly) = oppside;
             }
          }
       }
@@ -1289,11 +1381,25 @@ void render_lensmap()
 {
    B **lmap = lensmap;
    int x, y;
+   int i;
+   int lx,ly;
    for(y=0; y<height; y++) {
       for(x=0; x<width; x++,lmap++) {
             //*VBUFFER(x+left, y+top) = *lmap ? **lmap : -5;
-         if (*lmap)
-            *VBUFFER(x+left, y+top) = **lmap;
+         if (*lmap) {
+            //*VBUFFER(x+left, y+top) = **lmap;
+            //*VBUFFER(x+left,y+top) = palmap[**lmap];
+            //*VBUFFER(x+left,y+top) = *PALIMAP(x+left,y+top) == 0 ? palmap[**lmap] : **lmap;
+            lx = x+left;
+            ly = y+top;
+            if (colorcube) {
+               i = *PALIMAP(lx,ly);
+               *VBUFFER(lx,ly) = i != 255 ? palmap[i][**lmap] : **lmap;
+            }
+            else {
+               *VBUFFER(lx,ly) = **lmap;
+            }
+         }
       }
    }
 }
@@ -1342,15 +1448,18 @@ void L_RenderView()
    {
       if(cubemap) free(cubemap);
       if(lensmap) free(lensmap);
+      if(palimap) free(palimap);
 
       cubemap = (B*)malloc(cubesize*cubesize*6*sizeof(B));
       lensmap = (B**)malloc(area*sizeof(B*));
-      if(!cubemap || !lensmap) exit(1); // the rude way
+      palimap = (B*)malloc(area*sizeof(B));
+      if(!cubemap || !lensmap || !palimap) exit(1); // the rude way
    }
 
    // recalculate lens
    if (sizechange || fovchange || lenschange) {
       memset(lensmap, 0, area*sizeof(B*));
+      memset(palimap, 255, area*sizeof(B));
       create_lensmap();
    }
 
@@ -1363,7 +1472,7 @@ void L_RenderView()
 
    // render the environment onto a cube map
    int i;
-   if (!colorcube)
+   //if (!colorcube)
    {
       for (i=0; i<6; ++i)
          if (faceDisplay[i]) {
