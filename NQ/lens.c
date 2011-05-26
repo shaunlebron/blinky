@@ -230,29 +230,9 @@ void create_palmap(void)
    }
 }
 
-// set a pixel on the lensmap
-inline void set_lensmap(int lx, int ly, int cx, int cy, int side)
-{
-   // increase the number of times this side is used
-   ++side_count[side];
-
-   // map the lens pixel to this cubeface pixel
-   *LENSMAP(lx,ly) = CUBEFACE(side,cx,cy);
-
-   // designate the palette for this pixel
-   // This will set the palette index map such that a grid is shown
-   int numdivs = colorcells*colorwfrac+1;
-   double divsize = (double)cubesize/numdivs;
-   double mod = colorwfrac;
-
-   double x = cx/divsize;
-   double y = cy/divsize;
-
-   int ongrid = fmod(x,mod) < 1 || fmod(y,mod) < 1;
-
-   if (!ongrid)
-      *PALIMAP(lx,ly) = side;
-}
+// -------------------------------------------
+// Console Commands
+// -------------------------------------------
 
 void L_CaptureCubeMap(void)
 {
@@ -303,6 +283,9 @@ void L_ColorCube(void)
 }
 
 /* START CONVERSION LUA HELPER FUNCTIONS */
+int lua_latlon_to_ray(lua_State *L);
+int lua_ray_to_latlon(lua_State *L);
+int lua_ray_to_cubemap(lua_State *L);
 
 void latlon_to_ray(double lat, double lon, vec3_t ray)
 {
@@ -312,41 +295,22 @@ void latlon_to_ray(double lat, double lon, vec3_t ray)
    ray[2] = cos(lon)*clat;
 }
 
-int lua_latlon_to_ray(lua_State *L)
-{
-   double lat = luaL_checknumber(L,1);
-   double lon = luaL_checknumber(L,2);
-   vec3_t ray;
-   latlon_to_ray(lat,lon,ray);
-   lua_pushnumber(L, ray[0]);
-   lua_pushnumber(L, ray[1]);
-   lua_pushnumber(L, ray[2]);
-   return 3;
-}
-
 void ray_to_latlon(vec3_t ray, double *lat, double *lon)
 {
    *lon = atan2(ray[0], ray[2]);
    *lat = atan2(ray[1], sqrt(ray[0]*ray[0]+ray[2]*ray[2]));
 }
 
-int lua_ray_to_latlon(lua_State *L)
-{
-   double rx = luaL_checknumber(L, 1);
-   double ry = luaL_checknumber(L, 2);
-   double rz = luaL_checknumber(L, 3);
-
-   vec3_t ray = {rx,ry,rz};
-   double lat,lon;
-   ray_to_latlon(ray,&lat,&lon);
-
-   lua_pushnumber(L, lat);
-   lua_pushnumber(L, lon);
-   return 2;
-}
-
 void ray_to_cubemap(vec3_t ray, int *side, double *u, double *v)
 {
+/*
+   +X = RIGHT
+   -X = LEFT
+   +Y = TOP
+   -Y = BOTTOM
+   +Z = FRONT
+   -Z = BEHIND
+*/
    // determine which side of the box we need
    double sx = ray[0], sy=ray[1], sz=ray[2];
    double abs_x = fabs(sx);
@@ -375,22 +339,6 @@ void ray_to_cubemap(vec3_t ray, int *side, double *u, double *v)
 #undef T
 }
 
-int lua_ray_to_cubemap(lua_State *L)
-{
-   double rx = luaL_checknumber(L, 1);
-   double ry = luaL_checknumber(L, 2);
-   double rz = luaL_checknumber(L, 3);
-
-   vec3_t ray = {rx,ry,rz};
-   int side;
-   double u,v;
-   ray_to_cubemap(ray,&side,&u,&v);
-
-   lua_pushinteger(L, side);
-   lua_pushnumber(L, u);
-   lua_pushnumber(L, v);
-   return 3;
-}
 
 /* END CONVERSION LUA HELPER FUNCTIONS */
 
@@ -641,7 +589,52 @@ void L_Shutdown(void)
    lua_close(lua);
 }
 
-/******** BEGIN LUA ******************/
+// -----------------------------------
+// Lua Functions
+// -----------------------------------
+
+int lua_latlon_to_ray(lua_State *L)
+{
+   double lat = luaL_checknumber(L,1);
+   double lon = luaL_checknumber(L,2);
+   vec3_t ray;
+   latlon_to_ray(lat,lon,ray);
+   lua_pushnumber(L, ray[0]);
+   lua_pushnumber(L, ray[1]);
+   lua_pushnumber(L, ray[2]);
+   return 3;
+}
+
+int lua_ray_to_latlon(lua_State *L)
+{
+   double rx = luaL_checknumber(L, 1);
+   double ry = luaL_checknumber(L, 2);
+   double rz = luaL_checknumber(L, 3);
+
+   vec3_t ray = {rx,ry,rz};
+   double lat,lon;
+   ray_to_latlon(ray,&lat,&lon);
+
+   lua_pushnumber(L, lat);
+   lua_pushnumber(L, lon);
+   return 2;
+}
+int lua_ray_to_cubemap(lua_State *L)
+{
+   double rx = luaL_checknumber(L, 1);
+   double ry = luaL_checknumber(L, 2);
+   double rz = luaL_checknumber(L, 3);
+
+   vec3_t ray = {rx,ry,rz};
+   int side;
+   double u,v;
+   ray_to_cubemap(ray,&side,&u,&v);
+
+   lua_pushinteger(L, side);
+   lua_pushnumber(L, u);
+   lua_pushnumber(L, v);
+   return 3;
+}
 
 int lua_xy_isvalid(double x, double y)
 {
@@ -839,154 +832,7 @@ int lua_cubemap_to_xy(int side, double u, double v, double *x, double *y)
    return 1;
 }
 
-int lua_lens_init(void)
-{
-   // clear lens scale
-   scale = -1;
-
-   if (fit == 0 && hfit == 0 && vfit == 0)
-   {
-      // check FOV limits
-      if (max_hfov <= 0 || max_vfov <= 0)
-      {
-         Con_Printf("max_hfov & max_vfov not specified, try \"fit\"\n");
-         return 0;
-      }
-
-      if (width == *framesize && fov > max_hfov) {
-         Con_Printf("hfov must be less than %d\n", (int)(max_hfov * 180 / M_PI));
-         return 0;
-      }
-      else if (height == *framesize && fov > max_vfov) {
-         Con_Printf("vfov must be less than %d\n", (int)(max_vfov * 180/ M_PI));
-         return 0;
-      }
-
-      // try to scale based on FOV using the forward map
-      if (mapForwardIndex != -1) {
-         if (mapCoord == COORD_RADIAL) {
-            double r;
-            if (lua_theta_to_r(fov*0.5, &r)) {
-               scale = r / (*framesize * 0.5);
-            }
-            else {
-               Con_Printf("theta_to_r did not return a valid r value for determining FOV scale\n");
-               return 0;
-            }
-         }
-         else if (mapCoord == COORD_SPHERICAL) {
-            double x,y;
-            if (*framesize == width) {
-               if (lua_latlon_to_xy(0,fov*0.5,&x,&y)) {
-                  scale = x / (*framesize * 0.5);
-               }
-               else {
-                  Con_Printf("latlon_to_xy did not return a valid r value for determining FOV scale\n");
-                  return 0;
-               }
-            }
-            else if (*framesize == height) {
-               if (lua_latlon_to_xy(fov*0.5,0,&x,&y)) {
-                  scale = y / (*framesize * 0.5);
-               }
-               else {
-                  Con_Printf("latlon_to_xy did not return a valid r value for determining FOV scale\n");
-                  return 0;
-               }
-            }
-            else {
-               Con_Printf("latlon_to_xy does not support diagonal FOVs\n");
-               return 0;
-            }
-         }
-         else if (mapCoord == COORD_EUCLIDEAN) {
-            vec3_t ray;
-            double x,y;
-            if (*framesize == width) {
-               latlon_to_ray(0,fov*0.5,ray);
-               if (lua_ray_to_xy(ray,&x,&y)) {
-                  scale = x / (*framesize * 0.5);
-               }
-               else {
-                  Con_Printf("ray_to_xy did not return a valid r value for determining FOV scale\n");
-                  return 0;
-               }
-            }
-            else if (*framesize == height) {
-               latlon_to_ray(fov*0.5,0,ray);
-               if (lua_ray_to_xy(ray,&x,&y)) {
-                  scale = y / (*framesize * 0.5);
-               }
-               else {
-                  Con_Printf("ray_to_xy did not return a valid r value for determining FOV scale\n");
-                  return 0;
-               }
-            }
-            else {
-               Con_Printf("ray_to_xy does not support diagonal FOVs\n");
-               return 0;
-            }
-         }
-         else if (mapCoord == COORD_CUBEMAP) {
-            Con_Printf("cubemap_to_xy currently not supported for FOV scaling\n");
-            return 0;
-         }
-      }
-      else
-      {
-         Con_Printf("Please specify a forward mapping function in your script for FOV scaling\n");
-         return 0;
-      }
-   }
-   else
-   {
-      if (hfit) {
-         if (hfit_size <= 0)
-         {
-            //Con_Printf("Cannot use hfit unless a positive hfit_size is in your script\n");
-            Con_Printf("hfit_size not specified.  Try hfov instead.\n");
-            return 0;
-         }
-         scale = hfit_size / width;
-      }
-      else if (vfit) {
-         if (vfit_size <= 0)
-         {
-            //Con_Printf("Cannot use vfit unless a positive vfit_size is in your script\n");
-            Con_Printf("vfit_size not specified.  Try vfov instead.\n");
-            return 0;
-         }
-         scale = vfit_size / height;
-      }
-      else if (fit) {
-         if (hfit_size <= 0 && vfit_size > 0) {
-            scale = vfit_size / height;
-         }
-         else if (vfit_size <=0 && hfit_size > 0) {
-            scale = hfit_size / width;
-         }
-         else if (vfit_size <= 0 && hfit_size <= 0) {
-            Con_Printf("vfit_size and hfit_size not specified.  Try hfov instead.\n");
-            return 0;
-         }
-         else if (hfit_size / vfit_size > (double)width / height) {
-            scale = hfit_size / width;
-         }
-         else {
-            scale = vfit_size / height;
-         }
-      }
-   }
-
-   // validate scale
-   if (scale <= 0) {
-      Con_Printf("init returned a scale of %f, which is  <= 0\n", scale);
-      return 0;
-   }
-
-   return 1;
-}
-
+// used to clear the state when switching lenses
 void lua_lens_clear(void)
 {
 #define CLEARVAR(var) lua_pushnil(lua); lua_setglobal(lua, var);
@@ -1175,8 +1021,157 @@ int lua_lens_load(void)
 }
 
 
-/*************** END LUA ****************/
+// -----------------------------------
+// End Lua Functions
+// -----------------------------------
 
+int determine_lens_scale(void)
+{
+   // clear lens scale
+   scale = -1;
+
+   if (fit == 0 && hfit == 0 && vfit == 0) // scale based on FOV
+   {
+      // check FOV limits
+      if (max_hfov <= 0 || max_vfov <= 0)
+      {
+         Con_Printf("max_hfov & max_vfov not specified, try \"fit\"\n");
+         return 0;
+      }
+
+      if (width == *framesize && fov > max_hfov) {
+         Con_Printf("hfov must be less than %d\n", (int)(max_hfov * 180 / M_PI));
+         return 0;
+      }
+      else if (height == *framesize && fov > max_vfov) {
+         Con_Printf("vfov must be less than %d\n", (int)(max_vfov * 180/ M_PI));
+         return 0;
+      }
+
+      // try to scale based on FOV using the forward map
+      if (mapForwardIndex != -1) {
+         if (mapCoord == COORD_RADIAL) {
+            double r;
+            if (lua_theta_to_r(fov*0.5, &r)) {
+               scale = r / (*framesize * 0.5);
+            }
+            else {
+               Con_Printf("theta_to_r did not return a valid r value for determining FOV scale\n");
+               return 0;
+            }
+         }
+         else if (mapCoord == COORD_SPHERICAL) {
+            double x,y;
+            if (*framesize == width) {
+               if (lua_latlon_to_xy(0,fov*0.5,&x,&y)) {
+                  scale = x / (*framesize * 0.5);
+               }
+               else {
+                  Con_Printf("latlon_to_xy did not return a valid r value for determining FOV scale\n");
+                  return 0;
+               }
+            }
+            else if (*framesize == height) {
+               if (lua_latlon_to_xy(fov*0.5,0,&x,&y)) {
+                  scale = y / (*framesize * 0.5);
+               }
+               else {
+                  Con_Printf("latlon_to_xy did not return a valid r value for determining FOV scale\n");
+                  return 0;
+               }
+            }
+            else {
+               Con_Printf("latlon_to_xy does not support diagonal FOVs\n");
+               return 0;
+            }
+         }
+         else if (mapCoord == COORD_EUCLIDEAN) {
+            vec3_t ray;
+            double x,y;
+            if (*framesize == width) {
+               latlon_to_ray(0,fov*0.5,ray);
+               if (lua_ray_to_xy(ray,&x,&y)) {
+                  scale = x / (*framesize * 0.5);
+               }
+               else {
+                  Con_Printf("ray_to_xy did not return a valid r value for determining FOV scale\n");
+                  return 0;
+               }
+            }
+            else if (*framesize == height) {
+               latlon_to_ray(fov*0.5,0,ray);
+               if (lua_ray_to_xy(ray,&x,&y)) {
+                  scale = y / (*framesize * 0.5);
+               }
+               else {
+                  Con_Printf("ray_to_xy did not return a valid r value for determining FOV scale\n");
+                  return 0;
+               }
+            }
+            else {
+               Con_Printf("ray_to_xy does not support diagonal FOVs\n");
+               return 0;
+            }
+         }
+         else if (mapCoord == COORD_CUBEMAP) {
+            Con_Printf("cubemap_to_xy currently not supported for FOV scaling\n");
+            return 0;
+         }
+      }
+      else
+      {
+         Con_Printf("Please specify a forward mapping function in your script for FOV scaling\n");
+         return 0;
+      }
+   }
+   else // scale based on fitting
+   {
+      if (hfit) {
+         if (hfit_size <= 0)
+         {
+            //Con_Printf("Cannot use hfit unless a positive hfit_size is in your script\n");
+            Con_Printf("hfit_size not specified.  Try hfov instead.\n");
+            return 0;
+         }
+         scale = hfit_size / width;
+      }
+      else if (vfit) {
+         if (vfit_size <= 0)
+         {
+            //Con_Printf("Cannot use vfit unless a positive vfit_size is in your script\n");
+            Con_Printf("vfit_size not specified.  Try vfov instead.\n");
+            return 0;
+         }
+         scale = vfit_size / height;
+      }
+      else if (fit) {
+         if (hfit_size <= 0 && vfit_size > 0) {
+            scale = vfit_size / height;
+         }
+         else if (vfit_size <=0 && hfit_size > 0) {
+            scale = hfit_size / width;
+         }
+         else if (vfit_size <= 0 && hfit_size <= 0) {
+            Con_Printf("vfit_size and hfit_size not specified.  Try hfov instead.\n");
+            return 0;
+         }
+         else if (hfit_size / vfit_size > (double)width / height) {
+            scale = hfit_size / width;
+         }
+         else {
+            scale = vfit_size / height;
+         }
+      }
+   }
+
+   // validate scale
+   if (scale <= 0) {
+      Con_Printf("init returned a scale of %f, which is  <= 0\n", scale);
+      return 0;
+   }
+
+   return 1;
+}
 
 int clamp(int value, int min, int max)
 {
@@ -1187,14 +1182,33 @@ int clamp(int value, int min, int max)
    return value;
 }
 
-/*
-   +X = RIGHT
-   -X = LEFT
-   +Y = TOP
-   -Y = BOTTOM
-   +Z = FRONT
-   -Z = BEHIND
-*/
+// ----------------------------------------
+// Lens Map Creation
+// ----------------------------------------
+
+// set a pixel on the lensmap
+inline void set_lensmap(int lx, int ly, int cx, int cy, int side)
+{
+   // increase the number of times this side is used
+   ++side_count[side];
+
+   // map the lens pixel to this cubeface pixel
+   *LENSMAP(lx,ly) = CUBEFACE(side,cx,cy);
+
+   // designate the palette for this pixel
+   // This will set the palette index map such that a grid is shown
+   int numdivs = colorcells*colorwfrac+1;
+   double divsize = (double)cubesize/numdivs;
+   double mod = colorwfrac;
+
+   double x = cx/divsize;
+   double y = cy/divsize;
+
+   int ongrid = fmod(x,mod) < 1 || fmod(y,mod) < 1;
+
+   if (!ongrid)
+      *PALIMAP(lx,ly) = side;
+}
 
 // set the (lx,ly) pixel on the lensmap to the (sx,sy,sz) view vector
 void setLensPixelToRay(int lx, int ly, double sx, double sy, double sz)
@@ -1384,7 +1398,7 @@ void create_lensmap()
       return;
 
    // test if this lens can support the current fov
-   if (!lua_lens_init()) {
+   if (!determine_lens_scale()) {
       //Con_Printf("This lens could not be initialized.\n");
       return;
    }
