@@ -30,17 +30,27 @@
 // the Lua state pointer
 lua_State *lua;
 
-static double hfov, vfov, dfov;
-
+// type to represent one pixel (one byte)
 typedef unsigned char B;
+
+// the environment cubemap
+// a large array of pixels that hold all six rendered views
 static B *cubemap = NULL;  
+
+// the lookup table
+// an array of pointers to cubemap pixels
+// (the view constructed by the lens)
 static B **lensmap = NULL;
+
+// how each pixel in the lensmap is colored
+// an array of palette indices
+// (used for displaying transparent colored overlays)
 static B *palimap = NULL;
 
-// top left coordinates of the screen in the vid buffer
+// top left coordinates of the view in the vid buffer
 static int left, top;
 
-// size of the screen in the vid buffer
+// size of the view in the vid buffer
 static int width, height, diag;
 
 // size of each rendered cube face in the vid buffer
@@ -48,6 +58,9 @@ static int cubesize;
 
 // desired FOV in radians
 static double fov;
+
+// specific desired FOVs in degrees
+static double hfov, vfov, dfov;
 
 // fit sizes
 static double hfit_size;
@@ -59,21 +72,26 @@ static int hfit;
 static int vfit;
 
 // name of the current lens
-#define MAX_LENS_LEN 50
-static char lens[MAX_LENS_LEN];
+static char lens[50];
 
 // pointer to the screen dimension (width,height or diag) attached to the desired fov
 static int* framesize;
 
-// multiplier used to transform screen coordinates to lens coordinates
+// scale determined from desired zoom level
+// (multiplier used to transform lens coordinates to screen coordinates)
 static double scale;
 
 // the number of pixels used on each cube face
-// used to only draw the cube faces in use
+// (used to skip the rendering of invisible cubefaces)
+static int side_count[6];
+
+// boolean flags set after looking at the final values of side_count
 static int faceDisplay[] = {0,0,0,0,0,0};
 
 // cubemap color display flag
 static int colorcube = 0;
+static int colorcells = 5;
+static int colorwfrac = 5;
 
 // maximum FOV width of the current lens
 static double max_vfov;
@@ -91,11 +109,10 @@ static int mapInverseIndex;
 static int xyValidIndex;
 static int rValidIndex;
 
+// change flags
 static int lenschange;
 static int fovchange;
 
-// side count used to determine which cube faces to render
-static int side_count[6];
 
 // MAP SYMMETRIES
 static int hsym,vsym;
@@ -172,6 +189,7 @@ void create_palmap(void)
       switch (j)
       {
          case BOX_FRONT:
+            tint[0] = tint[1] = tint[2] = 255;
             break;
          case BOX_LEFT:
             tint[2] = 255;
@@ -212,6 +230,30 @@ void create_palmap(void)
    }
 }
 
+// set a pixel on the lensmap
+inline void set_lensmap(int lx, int ly, int cx, int cy, int side)
+{
+   // increase the number of times this side is used
+   ++side_count[side];
+
+   // map the lens pixel to this cubeface pixel
+   *LENSMAP(lx,ly) = CUBEFACE(side,cx,cy);
+
+   // designate the palette for this pixel
+   // This will set the palette index map such that a grid is shown
+   int numdivs = colorcells*colorwfrac+1;
+   double divsize = (double)cubesize/numdivs;
+   double mod = colorwfrac;
+
+   double x = cx/divsize;
+   double y = cy/divsize;
+
+   int ongrid = fmod(x,mod) < 1 || fmod(y,mod) < 1;
+
+   if (!ongrid)
+      *PALIMAP(lx,ly) = side;
+}
+
 void L_CaptureCubeMap(void)
 {
    char filename[100];
@@ -243,6 +285,9 @@ void L_CaptureCubeMap(void)
    SET_FILE_FACE("top"); WRITE_FILE(BOX_TOP);
    SET_FILE_FACE("bottom"); WRITE_FILE(BOX_BOTTOM);
 
+#undef SET_FILE_FACE
+#undef WRITE_FILE
+
    Con_Printf("Saved cubemap to cube%02d_XXXX.pcx\n",i);
 }
 
@@ -255,19 +300,6 @@ void L_ColorCube(void)
 {
    colorcube = colorcube ? 0 : 1;
    Con_Printf("Colored Cube is %s\n", colorcube ? "ON" : "OFF");
-   if (colorcube)
-   {
-      // old solution for just coloring the faces solid colors
-      /*
-      B colors[6] = {242,243,244,245,250,255};
-      int i;
-      for (i=0; i<6; ++i)
-      {
-         B* face = cubemap+cubesize*cubesize*i;
-         memset(face,colors[i],cubesize*cubesize);
-      }
-      */
-   }
 }
 
 /* START CONVERSION LUA HELPER FUNCTIONS */
@@ -339,6 +371,8 @@ void ray_to_cubemap(vec3_t ray, int *side, double *u, double *v)
       case BOX_BOTTOM: *u = T( sx /  -sy); *v = T( -sz / -sy); break;
       case BOX_TOP:    *u = T(sx /  sy); *v = T( sz / sy); break;
    }
+
+#undef T
 }
 
 int lua_ray_to_cubemap(lua_State *L)
@@ -540,6 +574,7 @@ void L_DFov(void)
 
 int lua_lens_load(void);
 
+// lens command
 void L_Lens(void)
 {
    if (Cmd_Argc() < 2) { // no lens name given
@@ -562,6 +597,7 @@ void L_Lens(void)
    }
 }
 
+// autocompletion for lens names
 static struct stree_root * L_LensArg(const char *arg)
 {
    struct stree_root *root;
@@ -596,6 +632,7 @@ void L_Init(void)
    Cmd_ExecuteString("lens rectilinear", src_command);
    Cmd_ExecuteString("hfov 90", src_command);
 
+   // create palette maps
    create_palmap();
 }
 
@@ -970,6 +1007,7 @@ void lua_lens_clear(void)
    CLEARVAR("cubemap_to_xy");
    CLEARVAR("xy_isvalid");
    CLEARVAR("r_isvalid");
+#undef CLEARVAR
 }
 
 int lua_func_exists(const char* name)
@@ -1084,6 +1122,11 @@ int lua_lens_load(void)
       }
    }
 
+#undef SETFWD
+#undef SETINV
+#undef SETFWD_ACTIVE
+#undef SETINV_ACTIVE
+
    // set inverse coordinate checks
    rValidIndex = xyValidIndex = -1;
    if (mapInverseIndex != -1)
@@ -1160,21 +1203,17 @@ void setLensPixelToRay(int lx, int ly, double sx, double sy, double sz)
    int side;
    vec3_t ray = {sx,sy,sz};
    ray_to_cubemap(ray,&side,&xs,&ys);
-   side_count[side]++;
 
    // convert to face coordinates
-   int px = clamp((int)(xs*cubesize),0,cubesize-1);
-   int py = clamp((int)(ys*cubesize),0,cubesize-1);
+   int cx = clamp((int)(xs*cubesize),0,cubesize-1);
+   int cy = clamp((int)(ys*cubesize),0,cubesize-1);
 
    // map lens pixel to cubeface pixel
-   *LENSMAP(lx,ly) = CUBEFACE(side,px,py);
-   *PALIMAP(lx,ly) = side;
+   set_lensmap(lx,ly,cx,cy,side);
 }
 
 void create_lensmap_inverse()
 {
-   memset(side_count, 0, sizeof(side_count));
-
    int halfw = width/2;
    int halfh = height/2;
    int maxx = hsym ? halfw : width;
@@ -1191,9 +1230,6 @@ void create_lensmap_inverse()
 
          // map the current window coordinate to a ray vector
          vec3_t ray = { 0, 0, 1};
-         //if (lx==halfw && ly == halfh) {
-            // FIXME: this is a workaround for strange dead pixel in the center
-         //}
          if (mapCoord == COORD_RADIAL)
          {
             double r = sqrt(x*x+y*y);
@@ -1224,24 +1260,20 @@ void create_lensmap_inverse()
             if (!lua_xy_to_cubemap(x,y,&side,&u,&v))
                continue;
 
-            side_count[side]++;
             int cx = clamp((int)(u*(cubesize-1)),0,cubesize-1);
             int cy = clamp((int)(v*(cubesize-1)),0,cubesize-1);
-            *LENSMAP(lx,ly) = CUBEFACE(side,cx,cy);
-            *PALIMAP(lx,ly) = side;
+            set_lensmap(lx,ly,cx,cy,side);
             continue;
          }
 
          setLensPixelToRay(lx,ly,ray[0],ray[1],ray[2]);
+
+         // apply symmetries
          if (hsym) setLensPixelToRay(width-1-lx,ly,-ray[0],ray[1],ray[2]);
          if (vsym) setLensPixelToRay(lx,height-1-ly,ray[0],-ray[1],ray[2]);
          if (vsym && hsym) setLensPixelToRay(width-1-lx,height-1-ly,-ray[0],-ray[1],ray[2]);
       }
    }
-
-   int i;
-   for(i=0; i<6; ++i)
-      faceDisplay[i] = (side_count[i] > 1);
 }
 
 void create_lensmap_forward()
@@ -1315,7 +1347,7 @@ void create_lensmap_forward()
 
             x /= scale;
             y /= scale;
-            y *= -1;
+            y = -y;
             x += width*0.5;
             y += height*0.5;
 
@@ -1325,35 +1357,23 @@ void create_lensmap_forward()
             if (lx < 0 || lx >= width || ly < 0 || ly >= height)
                continue;
 
-            side_count[side]++;
-            *LENSMAP(lx,ly) = CUBEFACE(side,cx,cy);
-            *PALIMAP(lx,ly) = side;
+            set_lensmap(lx,ly,cx,cy,side);
 
+            // apply symmetries
             if (hsym) {
                int oppside = (side == BOX_LEFT) ? BOX_RIGHT : side;
-               side_count[oppside]++;
-               *LENSMAP(width-1-lx,ly) = CUBEFACE(oppside,cubesize-1-cx,cy);
-               *PALIMAP(width-1-lx,ly) = oppside;
+               set_lensmap(width-1-lx,ly,cubesize-1-cx,cy,oppside);
             }
             if (vsym) {
                int oppside = (side == BOX_TOP) ? BOX_BOTTOM : side;
-               side_count[oppside]++;
-               *LENSMAP(lx,height-1-ly) = CUBEFACE(oppside,cx,cubesize-1-cy);
-               *PALIMAP(lx,height-1-ly) = oppside;
+               set_lensmap(lx,height-1-ly,cx,cubesize-1-cy,oppside);
             }
             if (hsym && vsym) {
                int oppside = (side == BOX_TOP) ? BOX_BOTTOM : ((side == BOX_LEFT) ? BOX_RIGHT : side);
-               side_count[oppside]++;
-               *LENSMAP(width-1-lx,height-1-ly) = CUBEFACE(oppside,cubesize-1-cx,cubesize-1-cy);
-               *PALIMAP(width-1-lx,height-1-ly) = oppside;
+               set_lensmap(width-1-lx,height-1-ly,cubesize-1-cx,cubesize-1-cy,oppside);
             }
          }
       }
-   }
-
-   int i;
-   for(i=0; i<6; ++i) {
-      faceDisplay[i] = (side_count[i] > 1);
    }
 }
 
@@ -1364,36 +1384,40 @@ void create_lensmap()
       return;
 
    // test if this lens can support the current fov
-   if (!lua_lens_init())
-   {
+   if (!lua_lens_init()) {
       //Con_Printf("This lens could not be initialized.\n");
       return;
    }
 
+   // clear the side counts
+   memset(side_count, 0, sizeof(side_count));
+
+   // create lensmap
    if (mapType == MAP_FORWARD)
       create_lensmap_forward();
    else if (mapType == MAP_INVERSE)
       create_lensmap_inverse();
+
+   // update face display flags depending on tallied side counts
+   int i;
+   for(i=0; i<6; ++i) {
+      faceDisplay[i] = (side_count[i] > 1);
+   }
 }
 
 // draw the lensmap to the vidbuffer
 void render_lensmap()
 {
    B **lmap = lensmap;
+   B *pmap = palimap;
    int x, y;
-   int i;
-   int lx,ly;
    for(y=0; y<height; y++) {
-      for(x=0; x<width; x++,lmap++) {
-            //*VBUFFER(x+left, y+top) = *lmap ? **lmap : -5;
+      for(x=0; x<width; x++,lmap++,pmap++) {
          if (*lmap) {
-            //*VBUFFER(x+left, y+top) = **lmap;
-            //*VBUFFER(x+left,y+top) = palmap[**lmap];
-            //*VBUFFER(x+left,y+top) = *PALIMAP(x+left,y+top) == 0 ? palmap[**lmap] : **lmap;
-            lx = x+left;
-            ly = y+top;
+            int lx = x+left;
+            int ly = y+top;
             if (colorcube) {
-               i = *PALIMAP(lx,ly);
+               int i = *pmap;
                *VBUFFER(lx,ly) = i != 255 ? palmap[i][**lmap] : **lmap;
             }
             else {
@@ -1472,22 +1496,19 @@ void L_RenderView()
 
    // render the environment onto a cube map
    int i;
-   //if (!colorcube)
-   {
-      for (i=0; i<6; ++i)
-         if (faceDisplay[i]) {
-            B* face = cubemap+cubesize*cubesize*i;
-            switch(i) {
-               //                                     FORWARD  RIGHT   UP
-               case BOX_BEHIND: render_cubeface(face, back,    left,   up);    break;
-               case BOX_BOTTOM: render_cubeface(face, down,    right,  front); break;
-               case BOX_TOP:    render_cubeface(face, up,      right,  back);  break;
-               case BOX_LEFT:   render_cubeface(face, left,    front,  up);    break;
-               case BOX_RIGHT:  render_cubeface(face, right,   back,   up);    break;
-               case BOX_FRONT:  render_cubeface(face, front,   right,  up);    break;
-            }
+   for (i=0; i<6; ++i)
+      if (faceDisplay[i]) {
+         B* face = cubemap+cubesize*cubesize*i;
+         switch(i) {
+            //                                     FORWARD  RIGHT   UP
+            case BOX_BEHIND: render_cubeface(face, back,    left,   up);    break;
+            case BOX_BOTTOM: render_cubeface(face, down,    right,  front); break;
+            case BOX_TOP:    render_cubeface(face, up,      right,  back);  break;
+            case BOX_LEFT:   render_cubeface(face, left,    front,  up);    break;
+            case BOX_RIGHT:  render_cubeface(face, right,   back,   up);    break;
+            case BOX_FRONT:  render_cubeface(face, front,   right,  up);    break;
          }
-   }
+      }
 
    // render our view
    Draw_TileClear(0, 0, vid.width, vid.height);
