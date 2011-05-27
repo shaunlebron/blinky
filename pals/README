@@ -1,6 +1,6 @@
 Quake Lenses - Color Palette Experiment
 
-This was an effort to determine if nearest color matching in RGB space could be improved by using other color spaces.  The purpose was to try to minimize the artifacts due to a limited 256 color palette.
+This was an effort to improve translucent overlays in the domain of a 256 color palette.  Primary objective was to determine if nearest color matching in RGB space could be improved by using other color spaces.  This would hopefully minimize artifacts and perceptual errors in color blending.
 
 CONCLUSION
 
@@ -25,5 +25,8 @@ genpals.sh:
    output to stdout
 
    example:
-   #include "../pals/alphapal"
+   #include "../pals/alphapal.h"
    static B palmap[6][256] = { WHITEPAL YELLOWPAL REDPAL BLUEPAL MAGENTAPAL CYANPAL };
+
+   the order of the color palettes in palmap can be rearranged to change the colors of the cube faces
+   the order is determined by the BOX_FRONT, BOX_LEFT ... enums in NQ/lens.c
