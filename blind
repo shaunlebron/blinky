@@ -1,0 +1,27 @@
+
+Blind is a 1D game.  Just as you must play a 3D game through a 2D screen, we envision a 2D player viewing its world through a 1D screen.
+
+The shape of the screen must be a line.  The path of this line can be changed to curve on a 2D screen in different ways.  This depends on the type of projection used.  A circle would be the best representation for a panoramic type projection.  A straight line would be the best representation for a rectilinear projection.  A parabola might be another.
+
+The objective of this experiment for a 1D game is to determine how well a person can perceive a 2D world through a 1D projection of it.
+
+The player will be walking around, and will see shapes on their 1D screen moving in response to their movement.  This will hopefully create a sense of space when there is nothing else.
+
+Here are some notes from our brainstorming session:
+* put them in a dark room at first
+* only light objects that you hit
+* paint objects that you touch
+* find stage of objects in limited amount of steps
+* using sound to navigate
+* pick one sense that you can keep
+   * sound
+   * touch
+   * sight
+* multiple choice guesses for guessing the shape of the room after a fixed amount of allowed steps
+* first/third person
+* grid-based movement
+* shot at/assaulted, must find shapes and manipulate into shield
+* dodge bullets after seeing flash
+* begin by throwing waves to locate approximate area of shape
+* player must navigate to shape to mark it so it appears (anchors) on sphere of vision
+* mission to collect and sort shapes without running out of alotted steps.
