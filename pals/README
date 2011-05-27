@@ -1,0 +1,29 @@
+Quake Lenses - Color Palette Experiment
+
+This was an effort to determine if nearest color matching in RGB space could be improved by using other color spaces.  The purpose was to try to minimize the artifacts due to a limited 256 color palette.
+
+CONCLUSION
+
+Compare screenshots/rgb.pcx and screenshots/cmc.pcx
+From this single case, it seems that rgb produces a more favorable result than cmc color model which is supposed to be a better metric for perceptual colors.  There are still other color models provided in python-colormath.
+
+Cyan seems to be handled better in cmc than rgb, but magenta is handled better in rgb than cmc.  This is probably due to the non-uniform color palette used by Quake.
+
+FILE DESCRIPTIONS
+
+palette: 
+   the palette file dumped by the "dumppal" command in Quake Lenses
+   Each color is printed on its own line as a comma-delimited list of 3 numbers r,g,b
+
+shiftpal.py: 
+   takes r,g,b,a arguments for the palette overlay (to add a hue)
+   produces a new color index table for the new shifted palette
+   output to stdout, comma-delimited list of 256 integers
+
+genpals.sh:
+   produces macro definitions to be included in C for each of the six predefined colors
+   output to stdout
+
+   example:
+   #include "../pals/alphapal"
+   static B palmap[6][256] = { WHITEPAL YELLOWPAL REDPAL BLUEPAL MAGENTAPAL CYANPAL };

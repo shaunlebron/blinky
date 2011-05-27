@@ -140,6 +140,7 @@ static int mapCoord;
 #define BOX_TOP    4
 #define BOX_BOTTOM 5
 
+// the palettes for each cube face used by the rubix filter
 static B palmap[6][256];
 
 // retrieves a pointer to a pixel in the video buffer
@@ -271,6 +272,23 @@ void L_CaptureCubeMap(void)
    Con_Printf("Saved cubemap to cube%02d_XXXX.pcx\n",i);
 }
 
+void L_DumpPalette(void)
+{
+   int i;
+   B *pal = host_basepal;
+   FILE *pFile = fopen("palette","w");
+   if (NULL == pFile) {
+      Con_Printf("could not open \"palette\" for writing\n");
+      return;
+   }
+   for (i=0; i<256; ++i) {
+      fprintf(pFile, "%d, %d, %d,\n",
+            pal[0],pal[1],pal[2]);
+      pal+=3;
+   }
+   fclose(pFile);
+}
+
 void L_ShowFovDeprecate(void)
 {
    Con_Printf("Please use hfov instead\n");
@@ -355,8 +373,7 @@ void L_InitLua(void)
 
    // initialize LuaJIT optimizer 
    char *cmd = "require(\"jit.opt\").start()";
-   int error = luaL_loadbuffer(lua, cmd, strlen(cmd), "jit.opt") ||
-      lua_pcall(lua, 0, 0, 0);
+   int error = luaL_loadbuffer(lua, cmd, strlen(cmd), "jit.opt") || lua_pcall(lua, 0, 0, 0);
    if (error) {
       fprintf(stderr, "%s", lua_tostring(lua, -1));
       lua_pop(lua, 1);  /* pop error message from the stack */
@@ -564,6 +581,7 @@ void L_Init(void)
 {
    L_InitLua();
 
+   Cmd_AddCommand("dumppal", L_DumpPalette);
    Cmd_AddCommand("savecube", L_CaptureCubeMap);
    Cmd_AddCommand("fov", L_ShowFovDeprecate);
    Cmd_AddCommand("colorcube", L_ColorCube);
@@ -1175,10 +1193,8 @@ int determine_lens_scale(void)
 
 int clamp(int value, int min, int max)
 {
-   if (value < min)
-      return min;
-   if (value > max)
-      return max;
+   if (value < min) return min;
+   if (value > max) return max;
    return value;
 }
 
