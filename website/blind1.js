@@ -1,91 +1,60 @@
-function Box(R,x,y,w,h,c) {
-   this.x = x; // left
-   this.y = y; // top
-   this.w = w; // width
-   this.h = h; // height
-   this.rect = R.rect(x,y,w,h).attr({fill:c});
-}
-
-function Image(R,x1,y1,x2,y2,c) {
-   this.x1 = x1;
-   this.y1 = y1;
-   this.x2 = x2;
-   this.y2 = y2;
-   this.path = R.path().attr({path:["M",x1,y1,"L",x2,y2],stroke:c});
-}
-
-function Cam(x,y) {
-   this.x = x; // center x
-   this.y = y; // center y
-   this.r = 10; // radius
-}
-
-function Screen(tx,ty,sx,sy) {
-   this.tx = tx;
-   this.ty = ty;
-   this.sx = sx;
-   this.sy = sy;
-   this.sin = 0;
-   this.cos = 0;
-}
-
-Screen.prototype.update = function() {
-   var dx=this.tx-this.sx;
-   if (Math.abs(dx) < 0.0001)
-   {
-      this.sin = 0;
-      this.cos = 1;
-      return;
-   }
-   var dy=this.ty-this.sy;
-   var len = Math.sqrt(dx*dx+dy*dy);
-   this.sin = len / (dx+dy*dy/dx);
-   this.cos = dy/dx*this.sin;
-}
-
-Screen.prototype.project(cam,px,py) {
-   var x,y;
-
-   // transform point
-   x = px-cam.x;
-   if (x < 0.0001)
-   {
-      // behind or too close to camera
-      return null;
-   }
-   y = py-cam.y;
-   var nx = x*this.cos - y*this.sin;
-   var ny = x*this.sin + y*this.cos;
-
-   // transform screen
-   x = this.tx - cam.x;
-   y = this.ty - cam.y;
-   var sx = x*this.cos - y*this.sin; // screen x
-   var sy = x*this.sin + y*this.cos; // screen top
-   var sy2 = sy + this.len;          // screen bottom;
-
-   var ny2 = ny/nx*sx;
-   if (ny2 > sy2 || ny2 < sy)
-   {
-      // outside of screen bounds
-      return null;
-   }
-
-   // unrotate
-   x = sx*this.cos + ny2*this.sin;
-   y = -sx*this.sin+ ny2*this.cos;
-
-   // untranslate
-   x += cam.x;
-   y += cam.y;
-
-   return [x,y];
-}
-
 window.onload = function() {
    var w = 400,
        h = 200,
 
-       cam = { x:1, y:1 },
-       screen = { x:1, y:1, height:1},
+       cam = { x:w/2, y:h/2+20, r:5 },
+       obj = {x:w/4, y:h/4, r:20},
+       screen = { x:w/2, y:h/2, width:w/2},
+
+       bound = function(x,min,max) { return Math.min(Math.max(x,min),max); },
+
+       R = Raphael("figure",w,h),
+
+       camVis = R.circle(cam.x, cam.y, cam.r)
+                  .attr({fill:"#000"})
+
+       objVis = R.circle(obj.x, obj.y, obj.r).attr({fill:"#f00",stroke:"none"})
+                  .drag(
+                        function(dx,dy) {
+                           obj.x = bound(this.ox + dx, 0, w),
+                           obj.y = bound(this.oy + dy, 0, h);
+                           this.attr({cx:obj.x, cy:obj.y});
+                           updateCone();
+                        },
+                        function() {
+                           this.ox = this.attrs.cx;
+                           this.oy = this.attrs.cy;
+                        },
+                        function () {
+                        }),
+
+       coneVis = R.path().attr({fill:"#f00", opacity:"0.5", stroke:"none"}),
+
+       updateCone = function() {
+          var dx = obj.x - cam.x,
+              dy = obj.y - cam.y,
+              dist = Math.sqrt(dx*dx+dy*dy),
+              cx1 = obj.x-obj.r*dy/dist,
+              cy1 = obj.y+obj.r*dx/dist,
+              cx2 = obj.x+obj.r*dy/dist,
+              cy2 = obj.y-obj.r*dx/dist;
+          coneVis.attr({path:["M",cam.x,cam.y,"L",cx1,cy1,"L",cx2,cy2,"Z"]});
+
+          var ix1 = (cx1-cam.x)/(cy1-cam.y)*(screen.y-cam.y) + cam.x,
+              ix2 = (cx2-cam.x)/(cy2-cam.y)*(screen.y-cam.y) + cam.x;
+          imageVis.attr({path:["M",ix1,screen.y,"L",ix2,screen.y]});
+       },
+
+       imageVis = R.path().attr({stroke:"#f00"});
+
+       /*
+       screenVis = R.path([
+                     "M",
+                     screen.x - screen.width/2,
+                     screen.y,
+                     "h", screen.width]);
+                     */
+   
+   updateCone();
+   coneVis.insertBefore(objVis);
 }
