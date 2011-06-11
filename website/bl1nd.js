@@ -1,7 +1,7 @@
 window.onload = function() {
 
    // size of usable area
-   var w = 400;
+   var w = 650;
    var h = 400;
 
    // RaphaelJS object
@@ -11,13 +11,15 @@ window.onload = function() {
    var cam = { x:w/2, y:h/2+40, r:5 };
    var camVis = R.circle(cam.x, cam.y, cam.r)
       .attr({fill:"#000"});
-   var camText = R.text(cam.x + cam.r + 20, cam.y, "camera");
+   var camText = R.text(cam.x + cam.r + 30, cam.y, "camera")
+      .attr({"font-size":"15px"});
 
    // 1D screen
-   var screen = { x:w/2, y:h/2, width:w/2};
+   var screen = { x:w/2, y:h/2, width:w};
    var screenVis = R.path([ "M", screen.x - screen.width/2, screen.y, "h", screen.width])
       .attr({opacity:"0.5"});
-   var screenText = R.text(screen.x + screen.width/2 + 20, screen.y, "screen");
+   var screenText = R.text(screen.x + screen.width/2 + 30, screen.y, "screen")
+      .attr({"font-size":"15px"});
 
    // math utilities
    var bound = function(x,min,max) { return Math.min(Math.max(x,min),max); };
@@ -36,7 +38,13 @@ window.onload = function() {
 
       // create the visual circle 
       obj.circle = R.circle(x,y,radius)
-         .attr({fill:color,stroke:"none"})
+         .attr({fill:color,stroke:"none",cursor:"move"})
+         .mouseover(
+               function (e) {
+               })
+         .mouseout(
+               function (e) {
+               })
          .drag(
                // the "this" pointer refers to the circle object
                // "this.ox" and "this.oy" represent the original location before dragging
@@ -53,21 +61,26 @@ window.onload = function() {
                function() {
                   this.ox = this.attrs.cx;
                   this.oy = this.attrs.cy;
+                  obj.cone.animate({opacity:"0.3"},500,">");
                },
 
                // onend
                function () {
                   // useful for creating initial position
                   // alert([obj.x, obj.y]);
+                  obj.cone.animate({opacity:"0"},500,">");
                });
 
       // create the visual cone
       obj.cone = R.path()
-         .attr({fill:color, opacity:"0.3", stroke:"none"});
+         .attr({fill:color, opacity:"0", stroke:"none"});
+
+      obj.tracer1 = R.path();
+      obj.tracer2 = R.path();
 
       // create the visual 1D image
       obj.image = R.path()
-         .attr({"stroke-width":"4px", stroke:color});
+         .attr({"stroke-width":"5px", stroke:color});
 
       // updates the position of the cone and the image depending on the circle
       obj.update = function() {
@@ -90,6 +103,13 @@ window.onload = function() {
           //   r * cos(theta), where theta is the angle at the object center.
           //   The x-coordinate is r * sin(theta).
           //   We must then rotate this cone point back to our original coordinate frame.
+
+          // hide image if object is behind camera
+          if (obj.y-obj.r > cam.y) {
+             obj.image.attr({path:""});
+             obj.cone.attr({path:""});
+             return;
+          }
 
           // distances between camera and object
           var dx = obj.x - cam.x;
@@ -114,9 +134,6 @@ window.onload = function() {
           var cx2 = obj.x - ex[0]*rx + ey[0]*ry;
           var cy2 = obj.y - ex[1]*rx + ey[1]*ry;
 
-          // update object's visual cone
-          obj.cone.attr({path:["M",cam.x,cam.y,"L",cx1,cy1,"L",cx2,cy2,"Z"]});
-
           // calculate object's 1D screen image
           var ix1 = (cx1-cam.x)/(cy1-cam.y)*(screen.y-cam.y) + cam.x;
           var ix2 = (cx2-cam.x)/(cy2-cam.y)*(screen.y-cam.y) + cam.x;
@@ -125,16 +142,16 @@ window.onload = function() {
           ix1 = bound(ix1,screen.x - screen.width/2,screen.x+screen.width/2);
           ix2 = bound(ix2,screen.x - screen.width/2,screen.x+screen.width/2);
 
-          // hide image if object is behind camera
-          if (obj.y-obj.r > cam.y) {
-             obj.image.hide();
-          }
-          else {
-             obj.image.show();
-          }
+          // extend cone to screen (temporary until we use the cone points for "tracers")
+          cy1 = cy2 = screen.y;
+          cx1 = ix1;
+          cx2 = ix2;
 
           // update object's 1D screen image
           obj.image.attr({path:["M",ix1,screen.y,"H",ix2]});
+
+          // update object's visual cone
+          obj.cone.attr({path:["M",cam.x,cam.y,"L",cx1,cy1,"L",cx2,cy2,"Z"]});
       };
 
       // insert cone behind circle so drag events are not blocked
@@ -149,7 +166,12 @@ window.onload = function() {
    var green = "#556B2F";
 
    // create the colored balls
-   new ObjType(130, 174, 20, red);
-   new ObjType(206, 152, 20, green);
-   new ObjType(308, 164, 20, blue);
+   for (var i=0; i<4; ++i) {
+      var color = "hsl(" + Math.round(Math.random()*360) + ",60,50)";
+      new ObjType(
+            Math.random()*w, 
+            Math.random()*h/2, 
+            Math.random()*20+20, 
+            color);
+   }
 }
