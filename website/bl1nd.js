@@ -2,19 +2,22 @@ window.onload = function() {
 
    // size of usable area
    var w = 400;
-   var h = 200;
+   var h = 400;
 
    // RaphaelJS object
    var R = Raphael("figure",w,h);
 
    // camera
    var cam = { x:w/2, y:h/2+40, r:5 };
-   var camVis = R.circle(cam.x, cam.y, cam.r).attr({fill:"#000"});
+   var camVis = R.circle(cam.x, cam.y, cam.r)
+      .attr({fill:"#000"});
+   var camText = R.text(cam.x + cam.r + 20, cam.y, "camera");
 
    // 1D screen
    var screen = { x:w/2, y:h/2, width:w/2};
-   var screenVis = R.path([ "M", screen.x - screen.width/2, screen.y, "h", screen.width]).
-          attr({opacity:"0.5"});
+   var screenVis = R.path([ "M", screen.x - screen.width/2, screen.y, "h", screen.width])
+      .attr({opacity:"0.5"});
+   var screenText = R.text(screen.x + screen.width/2 + 20, screen.y, "screen");
 
    // math utilities
    var bound = function(x,min,max) { return Math.min(Math.max(x,min),max); };
@@ -146,7 +149,7 @@ window.onload = function() {
    var green = "#556B2F";
 
    // create the colored balls
-   new ObjType(130, 74, 20, red);
-   new ObjType(206, 52, 20, green);
-   new ObjType(308, 64, 20, blue);
+   new ObjType(130, 174, 20, red);
+   new ObjType(206, 152, 20, green);
+   new ObjType(308, 164, 20, blue);
 }
