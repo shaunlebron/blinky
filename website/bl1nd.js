@@ -61,19 +61,19 @@ window.onload = function() {
                function() {
                   this.ox = this.attrs.cx;
                   this.oy = this.attrs.cy;
-                  obj.cone.animate({opacity:"0.3"},500,">");
+                  //obj.cone.animate({opacity:"0.3"},500,">");
                },
 
                // onend
                function () {
                   // useful for creating initial position
                   // alert([obj.x, obj.y]);
-                  obj.cone.animate({opacity:"0"},500,">");
+                  //obj.cone.animate({opacity:"0"},500,">");
                });
 
       // create the visual cone
       obj.cone = R.path()
-         .attr({fill:color, opacity:"0", stroke:"none"});
+         .attr({fill:color, opacity:"0.3", stroke:"none"});
 
       obj.tracer1 = R.path();
       obj.tracer2 = R.path();
@@ -142,10 +142,12 @@ window.onload = function() {
           ix1 = bound(ix1,screen.x - screen.width/2,screen.x+screen.width/2);
           ix2 = bound(ix2,screen.x - screen.width/2,screen.x+screen.width/2);
 
+          /*
           // extend cone to screen (temporary until we use the cone points for "tracers")
           cy1 = cy2 = screen.y;
           cx1 = ix1;
           cx2 = ix2;
+          */
 
           // update object's 1D screen image
           obj.image.attr({path:["M",ix1,screen.y,"H",ix2]});
@@ -155,7 +157,7 @@ window.onload = function() {
       };
 
       // insert cone behind circle so drag events are not blocked
-      obj.cone.insertBefore(obj.circle);
+      obj.circle.toFront();
 
       // initialize cone and image positions
       obj.update();
@@ -166,12 +168,15 @@ window.onload = function() {
    var green = "#556B2F";
 
    // create the colored balls
-   for (var i=0; i<4; ++i) {
+   for (var i=0; i<3; ++i) {
       var color = "hsl(" + Math.round(Math.random()*360) + ",60,50)";
+      var cone = Math.PI/4*3;
+      var angle = Math.random()*cone + (Math.PI-cone)/2;
+      var radius = Math.random()*h/4+h/4;
       new ObjType(
-            Math.random()*w, 
-            Math.random()*h/2, 
-            Math.random()*20+20, 
+            Math.cos(angle)*radius+cam.x,
+            cam.y - Math.sin(angle)*radius,
+            20,
             color);
    }
 }
