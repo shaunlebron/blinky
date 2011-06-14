@@ -38,7 +38,11 @@ window.onload = function() {
 
       // create the visual circle 
       obj.circle = R.circle(x,y,radius)
-         .attr({fill:color,stroke:"none",cursor:"move"})
+         .attr({fill:color,stroke:"none",cursor:"move"});
+
+      // create the touch circle
+      obj.touch = R.circle(x,y,radius)
+         .attr({fill:"#000",stroke:"none",opacity:"0",cursor:"move"})
          .mouseover(
                function (e) {
                })
@@ -51,17 +55,39 @@ window.onload = function() {
 
                // onmove
                function(dx,dy) {
-                  obj.x = bound(this.ox + dx, 0, w);
-                  obj.y = bound(this.oy + dy, 0, h);
-                  this.attr({cx:obj.x, cy:obj.y});
-                  obj.update();
+                  // get mouse position
+                  var newx = bound(this.ox + dx, 0, w);
+                  var newy = bound(this.oy + dy, 0, h);
+
+                  if (obj.update(newx,newy) == false) {
+                     // circle was too close to camera
+                     //  so push it away
+                     var dx = newx-cam.x;
+                     var dy = newy-cam.y;
+                     var dist = Math.sqrt(dx*dx+dy*dy);
+                     var r = cam.r+obj.r+0.1;
+                     newx = cam.x+dx/dist*r;
+                     newy = cam.y+dy/dist*r;
+                     obj.update(newx,newy);
+                  }
+
+                  // update final position
+                  obj.circle.attr({cx:newx, cy:newy});
+                  obj.touch.attr({cx:newx, cy:newy});
+                  obj.x = newx;
+                  obj.y = newy;
                },
 
                // onstart
                function() {
                   this.ox = this.attrs.cx;
                   this.oy = this.attrs.cy;
-                  //obj.cone.animate({opacity:"0.3"},500,">");
+
+                  // bring to the front (but behind the objects)
+                  // (screenText is used as a middle marker)
+                  obj.image.insertBefore(screenText);
+                  obj.cone.insertBefore(screenText);
+                  obj.circle.insertBefore(screenText);
                },
 
                // onend
@@ -73,94 +99,72 @@ window.onload = function() {
 
       // create the visual cone
       obj.cone = R.path()
-         .attr({fill:color, opacity:"0.3", stroke:"none"});
-
-      obj.tracer1 = R.path();
-      obj.tracer2 = R.path();
+         .attr({fill:color, opacity:"0.2", stroke:"none"});
 
       // create the visual 1D image
       obj.image = R.path()
          .attr({"stroke-width":"5px", stroke:color});
 
       // updates the position of the cone and the image depending on the circle
-      obj.update = function() {
-
-          //            * (obj.x,obj.y)
-          //            |\
-          //      obj.r | \ dist
-          //            |  \
-          //            |___\
-          //  (cx1,cy1) *    * (cam.x,cam.y)
-
-          // -------------------
-          // algorithm:
-          //   The diagram illustrates how to find the viewing cone of a circle.
-          //   The (cx1,cy1) represents the cone end point, which is tangent
-          //   to the circle.  This means the angle at that corner of the triangle
-          //   is 90 degrees.
-          //   Now we imagine that the object is vertically aligned with the camera.
-          //   In this new frame, the y-coordinate of the cone point is equal to
-          //   r * cos(theta), where theta is the angle at the object center.
-          //   The x-coordinate is r * sin(theta).
-          //   We must then rotate this cone point back to our original coordinate frame.
-
-          // hide image if object is behind camera
-          if (obj.y-obj.r > cam.y) {
-             obj.image.attr({path:""});
-             obj.cone.attr({path:""});
-             return;
-          }
+      obj.update = function(newx,newy) {
 
           // distances between camera and object
-          var dx = obj.x - cam.x;
-          var dy = obj.y - cam.y;
+          var dx = newx - cam.x;
+          var dy = newy - cam.y;
           var dist = Math.sqrt(dx*dx+dy*dy);
 
-          // cone point on vertically aligned unit circle
-          var ry = obj.r/dist; // cos(theta)
-          var rx = Math.sqrt(1-ry*ry); // r * sin = sqrt(1-cos^2)
+          // too close to camera (exit)
+          if (dist <= obj.r+cam.r) {
+             return false;
+          }
 
-          // scale cone point up to the object's perimeter
-          rx *= obj.r;
-          ry *= obj.r;
-
-          // create the inverse rotation frame
-          var ex = [dy/dist, -dx/dist]; 
-          var ey = [-dx/dist, -dy/dist];
-
-          // apply inverse rotation for the cone's absolute endpoints
-          var cx1 = obj.x + ex[0]*rx + ey[0]*ry; 
-          var cy1 = obj.y + ex[1]*rx + ey[1]*ry;
-          var cx2 = obj.x - ex[0]*rx + ey[0]*ry;
-          var cy2 = obj.y - ex[1]*rx + ey[1]*ry;
+          // set cone position
+          var angle = Math.atan2(dy,dx);
+          var da = Math.asin(obj.r / dist);
+          var t = w*h; // arbitrarily large (relies on clipping)
+          var cx1 = cam.x + t*Math.cos(angle-da);
+          var cy1 = cam.y + t*Math.sin(angle-da);
+          var cx2 = cam.x + t*Math.cos(angle+da);
+          var cy2 = cam.y + t*Math.sin(angle+da);
 
           // calculate object's 1D screen image
           var ix1 = (cx1-cam.x)/(cy1-cam.y)*(screen.y-cam.y) + cam.x;
           var ix2 = (cx2-cam.x)/(cy2-cam.y)*(screen.y-cam.y) + cam.x;
-          if (cy1 >= cam.y) { ix1 = sign(cx1-cam.x) * Infinity; }
-          if (cy2 >= cam.y) { ix2 = sign(cx2-cam.x) * Infinity; }
-          ix1 = bound(ix1,screen.x - screen.width/2,screen.x+screen.width/2);
-          ix2 = bound(ix2,screen.x - screen.width/2,screen.x+screen.width/2);
 
-          /*
-          // extend cone to screen (temporary until we use the cone points for "tracers")
-          cy1 = cy2 = screen.y;
-          cx1 = ix1;
-          cx2 = ix2;
-          */
+          if (cy1 >= cam.y && cy2 >= cam.y) {
+             // object is behind camera
+             obj.image.attr({path:""});
+          }
+          else {
 
-          // update object's 1D screen image
-          obj.image.attr({path:["M",ix1,screen.y,"H",ix2]});
+             // determine infinite distance cases
+             if (cy1 >= cam.y) { 
+                ix1 = -Infinity;
+             }
+             else if (cy2 >= cam.y) { 
+                ix2 = Infinity;
+             }
 
+             // bound to screen
+             ix1 = bound(ix1,screen.x - screen.width/2,screen.x+screen.width/2);
+             ix2 = bound(ix2,screen.x - screen.width/2,screen.x+screen.width/2); 
+
+             // update screen image
+             obj.image.attr({path:["M",ix1,screen.y,"H",ix2]});
+          }
           // update object's visual cone
           obj.cone.attr({path:["M",cam.x,cam.y,"L",cx1,cy1,"L",cx2,cy2,"Z"]});
+          return true;
       };
 
-      // insert cone behind circle so drag events are not blocked
-      obj.circle.toFront();
+      // insert all right above the 1D screen
+      obj.image.insertAfter(screenVis);
+      obj.cone.insertAfter(obj.image);
+      obj.circle.insertAfter(obj.cone);
+      obj.touch.toFront();
 
       // initialize cone and image positions
-      obj.update();
+      obj.update(obj.x, obj.y);
    };
 
    var blue = "#5D8AA8";
@@ -168,15 +172,20 @@ window.onload = function() {
    var green = "#556B2F";
 
    // create the colored balls
-   for (var i=0; i<3; ++i) {
+   var makeObj = function() {
       var color = "hsl(" + Math.round(Math.random()*360) + ",60,50)";
-      var cone = Math.PI/4*3;
+      var cone = Math.PI/6*5;
       var angle = Math.random()*cone + (Math.PI-cone)/2;
       var radius = Math.random()*h/4+h/4;
-      new ObjType(
+      return new ObjType(
             Math.cos(angle)*radius+cam.x,
             cam.y - Math.sin(angle)*radius,
             20,
             color);
+   };
+
+   var obj_count = 3;
+   for (var i=0; i<obj_count; ++i) {
+      makeObj();
    }
 }
