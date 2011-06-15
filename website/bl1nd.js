@@ -2,24 +2,23 @@ window.onload = function() {
 
    // size of usable area
    var w = 650;
-   var h = 400;
+   var h = 300;
 
    // RaphaelJS object
    var R = Raphael("figure",w,h);
 
    // camera
    var cam = { x:w/2, y:h/2+40, r:5 };
-   var camVis = R.circle(cam.x, cam.y, cam.r)
-      .attr({fill:"#000"});
-   var camText = R.text(cam.x + cam.r + 30, cam.y, "camera")
-      .attr({"font-size":"15px"});
+   var camVis = R.path("M24.25,10.25H20.5v-1.5h-9.375v1.5h-3.75c-1.104,0-2,0.896-2,2v10.375c0,1.104,0.896,2,2,2H24.25c1.104,0,2-0.896,2-2V12.25C26.25,11.146,25.354,10.25,24.25,10.25zM15.812,23.499c-3.342,0-6.06-2.719-6.06-6.061c0-3.342,2.718-6.062,6.06-6.062s6.062,2.72,6.062,6.062C21.874,20.78,19.153,23.499,15.812,23.499zM15.812,13.375c-2.244,0-4.062,1.819-4.062,4.062c0,2.244,1.819,4.062,4.062,4.062c2.244,0,4.062-1.818,4.062-4.062C19.875,15.194,18.057,13.375,15.812,13.375z")
+      .attr({fill:"#000",opacity:"0.8"});
+   camVis.translate(cam.x-16,cam.y-10);
 
    // 1D screen
-   var screen = { x:w/2, y:h/2, width:w};
+   var screen = { x:w/2, y:h/2, width:w*0.6};
    var screenVis = R.path([ "M", screen.x - screen.width/2, screen.y, "h", screen.width])
       .attr({opacity:"0.5"});
-   var screenText = R.text(screen.x + screen.width/2 + 30, screen.y, "screen")
-      .attr({"font-size":"15px"});
+   var screenText = R.text(screen.x+screen.width/2-25, screen.y-12, "screen")
+      .attr({"font-size":"12px","font-style":"italic",opacity:"0.5"});
 
    // math utilities
    var bound = function(x,min,max) { return Math.min(Math.max(x,min),max); };
@@ -171,12 +170,9 @@ window.onload = function() {
    var red = "#E32636";
    var green = "#556B2F";
 
-   // create the colored balls
-   var makeObj = function() {
-      var color = "hsl(" + Math.round(Math.random()*360) + ",60,50)";
-      var cone = Math.PI/6*5;
-      var angle = Math.random()*cone + (Math.PI-cone)/2;
-      var radius = Math.random()*h/4+h/4;
+   // function to create a colored ball
+   var makeObj = function(hue,angle,radius) {
+      var color = "hsl(" + hue + ",60,50)";
       return new ObjType(
             Math.cos(angle)*radius+cam.x,
             cam.y - Math.sin(angle)*radius,
@@ -184,8 +180,17 @@ window.onload = function() {
             color);
    };
 
+   // random random colored balls
    var obj_count = 3;
+   var hue = Math.random()*360;
+   var angle = Math.random()*Math.PI/8+Math.PI/6;
    for (var i=0; i<obj_count; ++i) {
-      makeObj();
+      var radius = Math.random()*h/4+h/4;
+      makeObj(hue,angle,radius);
+      angle += Math.random()*Math.PI/4+Math.PI/8;
+      hue += Math.random()*40+60;
+      if (hue > 360) {
+         hue -= 360;
+      }
    }
 }
