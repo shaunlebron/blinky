@@ -19,10 +19,11 @@ window.onload = function() {
    // circle screen
    var circScreen = {r:50 };
    var circScreenVis = R.circle(cam.x, cam.y, circScreen.r)
-      .attr({fill:"none",opacity:"0.3"});
+      .attr({fill:"none",opacity:"0.0"});
+
 
    // rectilinear screen
-   var rectScreen = { x:w/2, y:h/2-20, width:w*0.6};
+   var rectScreen = { x:w/2, y:h/2-20, width:w*0.8};
    var rectScreenVis = R.path([ 
          "M", rectScreen.x - rectScreen.width/2, rectScreen.y, 
          "h", rectScreen.width])
@@ -193,7 +194,7 @@ window.onload = function() {
          // update dependent visuals
          obj.updateCone();
          obj.updateRectilinear();
-         obj.updateCircle();
+         //obj.updateCircle();
 
          return true;
       };
@@ -219,12 +220,12 @@ window.onload = function() {
             color);
    };
 
-   // random random colored balls
+   // random colored balls
    var obj_count = 3;
    var hue = Math.random()*360;
    var angle = Math.random()*Math.PI/8+Math.PI/6;
    for (var i=0; i<obj_count; ++i) {
-      var radius = Math.random()*h/4+h/4;
+      var radius = Math.random()*h/8+h/3;
       makeObj(hue,angle,radius);
       angle += Math.random()*Math.PI/4+Math.PI/8;
       hue += Math.random()*40+60;

@@ -27,8 +27,26 @@ div#figure
 <a href="index.htm">home</a> | <a href="manual.htm">manual</a> | <a href="gallery.htm">gallery</a> | <a href="faq.htm">f.a.q.</a> | <a href="download.htm">download</a> | <a href="contact.htm">contact</a>
 </div>
 <div id="container">
+<h2>How it works</h2>
+This is a visual explanation of the theory behind Quake Lenses.  
+<h3>The Standard Projection</h3>
+<p>
+The interactive figure below is a top-down view of how a camera takes a picture (sort of).  The colored circles represent the objects being photographed.  The flat line is the photograph itself. 
+</p>
+<p><strong>Try it:</strong> Drag the circles. </p>
 <div id="figure"></div>
 <p>
+This is incidentally how all 3D games today are rendered to your screen.  It is the Standard Projection, formally known as the <em>Rectilinear</em> Projection.
+</p>
+<p><strong>Note:</strong> Did you notice how the projection stretches near the edges of the photograph?</p>
+<p>Unfortunately, stretching is a nasty side effect of the Standard Projection when used for <em>wide-angle</em> views.  The screenshot below has 160 degrees of view (same as the figure above).
+</p>
+<img src="pics/standard-stretch.jpg" width=100%/>
+<p>The guys in the image above are all the same size, but distortion increases toward the edges of the image.  The Standard Projection is really only suited for 120 degrees at most.  So if you want a wider view, you have to try another projection.</p>
 
+<h3>The Panorama</h3>
+<p>The next figure is a top-down view of how a <em>panoramic</em> camera takes a picture (sort of).  The film is no longer flat, but curved into a cylinder.  After the picture is taken, we unroll it onto a flat frame.</p>
+<p><strong>Try it:</strong> Drag the circles, and scroll the bar to unroll.</strong></p>
+<div id="figure2"></div>
 </body>
 </html>
