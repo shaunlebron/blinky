@@ -24,36 +24,11 @@ div#figure
 </div>
 
 <div id="nav">
-<a href="index.htm">home</a> | <a href="manual.htm">manual</a> | <a href="gallery.htm">gallery</a> | <a href="faq.htm">f.a.q.</a> | <a href="download.htm">download</a> | <a href="contact.htm">contact</a>
+<a href="index.htm">home</a> | <a href="theory.htm">theory</a> | <a href="manual.htm">manual</a> | <a href="gallery.htm">gallery</a> | <a href="faq.htm">f.a.q.</a> | <a href="download.htm">download</a> | <a href="contact.htm">contact</a>
 </div>
 <div id="container">
-<h3></h3>
-<p>
-<div id="figure"></div>
-</p>
-
-<p>
-Note the horizontal colored lines right below the dotted line. These represent the images of the balls on the screen.  The size of the red, green, and blue images are about the same size, but the purple and orange images are stretched.  This is a common side effect of trying to project images in your periphery.  You can imagine that objects further into your periphery will become increasingly stretched.
-</p>
-<p>
-The screenshots below illustrate periphery-stretching that results using the rectilinear projection in Quake.
-</p>
-<p>
-To allow a wider field of view on this pinhole camera construct, you can imagine placing water between the aperture and the film. When light rays enter water from air, it is refracted. This was the first fisheye camera, and they called it this because it creates an image that a fish would see when looking at the sky from the ocean. It is still limited to 180 degrees, but creates a barrel distortion which extends the practical limit of the rectilinear lens. The modern fisheye lenses of today implement the <em>azimuthal equidistant</em> and the <em>azimuthal equisolid</em> projections, which are limited to 360 degrees.
-</p>
-<p>
-The rectilinear (azimuthal gnomonic) continues to dominate 3D applications due to its ease of construction using a frustum projection matrix. Games in particular allow the adjustment of the frustrum's FOV (field of view), which can make the shortcomings of the rectilinear lens noticeable when increasing past 120 degrees.
-</p>
-<p>
-To create a view that better represents a person's ~180 degree horizontal FOV, one can imagine projecting all the light rays onto a sphere around the viewer. The resulting image on this sphere completely represents everything that the viewer can see, and it is called an environment map.  We can "unwrap" this sphere onto a flat frame using projection methods used by cartographers for the earth. 
-</p>
-<p>
-Quake Lenses uses an existing engine modification called <a href="http://strlen.com/gfxengine/fisheyequake/">Fisheye Quake</a>. This creates an environment map on a cube surrounding the viewer, called a cubemap, which can be used the same way as the aforementioned sphere. Each face of the cube is a rectilinear (azimuthal gnomonic) projection. The game is able to render these faces by pointing the camera at each of the faces respective orientations, which becomes straightforward.  This is how online photo panoramas are created, like google street view.
-</p>
-<p>
-All the alternative projections to the rectilinear are better suited to representing wide FOVs. An additional test for the quality of the lens can be done by seeing how motion in the environment is translated to the projection.  Some seem to induce motion-sickness, while the stereographic projections seem to handle motion in a manner analogous to the rectilinear lens, creating a convincing perspective that reacts predictably to motion.
-</p>
-
+<h2>Manual</h2>
+This is a reference manual that contains technical details and everything you need to know to create a lens.
 <h3>Technical Lens Details</h3>
 <p>
 To draw the player's view, an intermediate lookup table is used to map a pixel on the screen to a pixel on the cubemap.  The lens is responsible for the structure of the lookup table.  In other words, the lens is responsible for directing a ray of light from the environment to a pixel on the screen, or vice versa.  This is called a forward mapping and an inverse mapping, respectively.
