@@ -101,6 +101,7 @@
         fill: "none",
         opacity: "0.5"
       });
+      this.screen.vis.insertBefore(this.aboveScreen);
     }
     FigureCircle.prototype.updateBallImage = function(ball) {
       return ball.image.attr({
@@ -130,6 +131,7 @@
         opacity: "0.2",
         stroke: "none"
       });
+      this.bringAboveScreen();
       touchDragMove = __bind(function(dx, dy) {
         this.x = bound(this.ox + dx, 0, this.figure.w);
         this.y = bound(this.oy + dy, 0, this.figure.h);
@@ -151,8 +153,7 @@
       touchDragStart = __bind(function() {
         this.ox = this.touch.attrs.cx;
         this.oy = this.touch.attrs.cy;
-        this.cone.insertBefore(this.figure.aboveScreen);
-        return this.circle.insertBefore(this.figure.aboveScreen);
+        return this.bringAboveScreen();
       }, this);
       touchDragEnd = __bind(function() {}, this);
       this.touch = this.figure.R.circle(x, y, r).attr({
@@ -163,6 +164,11 @@
       }).drag(touchDragMove, touchDragStart, touchDragEnd);
       this.update();
     }
+    Ball.prototype.bringAboveScreen = function() {
+      this.circle.insertBefore(this.figure.aboveScreen);
+      this.image.insertBefore(this.figure.aboveScreen);
+      return this.cone.insertBefore(this.figure.aboveScreen);
+    };
     Ball.prototype.updateCone = function() {
       var t;
       this.angle = Math.atan2(this.dy, this.dx);

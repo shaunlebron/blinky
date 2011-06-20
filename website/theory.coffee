@@ -47,7 +47,6 @@ class FigureRect extends Figure
          x : w/2
          y : h/2-20
          width : w*0.8
-
       @screen.vis = @R.path ["M", @screen.x - @screen.width/2, @screen.y, "h", @screen.width]
       @screen.vis.attr(opacity:"0.5").insertBefore(@aboveScreen)
 
@@ -77,10 +76,9 @@ class FigureCircle extends Figure
    constructor: (id,w,h) ->
       super id,w,h
 
-      @screen =
-         r : 50
-
+      @screen = r : 50
       @screen.vis = @R.circle(@cam.x, @cam.y, @screen.r).attr(fill:"none",opacity:"0.5")
+      @screen.vis.insertBefore(@aboveScreen)
 
    updateBallImage: (ball) ->
       ball.image.attr path:[
@@ -97,10 +95,9 @@ class Ball
    constructor: (@x,@y,@r,@color,@figure) ->
 
       @circle = @figure.R.circle(x,y,r).attr fill:color, stroke:"none"
-
       @image = @figure.R.path().attr "stroke-width":"5px", stroke:@color
-
       @cone = @figure.R.path().attr fill:@color, opacity:"0.2", stroke:"none"
+      @bringAboveScreen()
 
       touchDragMove = (dx,dy) =>
          @x = bound @ox + dx, 0, @figure.w
@@ -118,9 +115,7 @@ class Ball
       touchDragStart = =>
          @ox = @touch.attrs.cx
          @oy = @touch.attrs.cy
-
-         @cone.insertBefore @figure.aboveScreen
-         @circle.insertBefore @figure.aboveScreen
+         @bringAboveScreen()
 
       touchDragEnd = =>
 
@@ -129,6 +124,11 @@ class Ball
          .drag(touchDragMove, touchDragStart, touchDragEnd)
 
       @update()
+
+   bringAboveScreen: ->
+      @circle.insertBefore @figure.aboveScreen
+      @image.insertBefore @figure.aboveScreen
+      @cone.insertBefore @figure.aboveScreen
 
    updateCone: ->
       # set cone position
