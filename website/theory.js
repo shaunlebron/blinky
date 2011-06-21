@@ -14,7 +14,7 @@
   about different projections used in Quake Lenses.
   
   ------------------------------------------------------
-  */  var Ball, Figure, FigureCircle, FigureRect, bound, camIcon, populateFigure, sign;
+  */  var Ball, Figure, FigureCircle, FigureRect, VScrollBar, bound, camIcon, populateFigure, sign;
   var __hasProp = Object.prototype.hasOwnProperty, __extends = function(child, parent) {
     for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; }
     function ctor() { this.constructor = child; }
@@ -90,22 +90,122 @@
     };
     return FigureRect;
   })();
+  VScrollBar = (function() {
+    function VScrollBar(x, y, height, value, R, f) {
+      var onDragEnd, onDragMove, onDragStart;
+      this.x = x;
+      this.y = y;
+      this.height = height;
+      this.value = value;
+      this.f = f;
+      this.bar = R.path(["M", x, y - height / 2, "v", height]);
+      this.bar.attr({
+        opacity: "0.3"
+      });
+      this.button = {
+        w: 30,
+        h: 10
+      };
+      this.miny = y - height / 2;
+      this.maxy = y + height / 2 - this.button.h;
+      this.rangey = this.maxy - this.miny;
+      this.button.vis = R.rect(x - this.button.w / 2, 0, this.button.w, this.button.h, 3);
+      this.button.vis.attr({
+        fill: "#333",
+        stroke: "none",
+        cursor: "move",
+        opacity: "0.8"
+      });
+      onDragStart = __bind(function() {
+        return this.oy = this.button.vis.attrs.y;
+      }, this);
+      onDragMove = __bind(function(dx, dy) {
+        var ny;
+        ny = bound(this.oy + dy, this.miny, this.maxy);
+        this.value = (ny - this.miny) / this.rangey;
+        return this.setValue(this.value);
+      }, this);
+      onDragEnd = function() {};
+      this.button.vis.drag(onDragMove, onDragStart, onDragEnd);
+      this.setValue(value);
+    }
+    VScrollBar.prototype.setValue = function(value) {
+      this.value = bound(value, 0, 1);
+      this.button.vis.attr({
+        y: this.miny + this.rangey * this.value
+      });
+      return this.f(this.value);
+    };
+    return VScrollBar;
+  })();
   FigureCircle = (function() {
     __extends(FigureCircle, Figure);
     function FigureCircle(id, w, h) {
+      var onScroll, r;
       FigureCircle.__super__.constructor.call(this, id, w, h);
       this.screen = {
-        r: 50
+        x: this.cam.x,
+        y: this.cam.y,
+        r: 50,
+        n: 40
       };
-      this.screen.vis = this.R.circle(this.cam.x, this.cam.y, this.screen.r).attr({
+      this.screen.foldAngle = Math.PI - 2 * Math.PI / this.screen.n;
+      r = this.screen.r;
+      this.screen.segLength = Math.sqrt(2 * r * r * (1 - Math.cos(2 * Math.PI / this.screen.n)));
+      this.screen.vis = this.R.path().attr({
         fill: "none",
         opacity: "0.5"
       });
       this.screen.vis.insertBefore(this.aboveScreen);
+      this.da = Math.PI - this.screen.foldAngle;
+      onScroll = __bind(function(scale) {
+        return this.setPathFromFoldAngle(this.screen.foldAngle + this.da * (1 - scale));
+      }, this);
+      this.scroll = new VScrollBar(w - 50, h / 2, 100, 1, this.R, onScroll);
     }
     FigureCircle.prototype.updateBallImage = function(ball) {
       return ball.image.attr({
         path: ["M", this.cam.x + this.screen.r * Math.cos(ball.angle - ball.da), this.cam.y + this.screen.r * Math.sin(ball.angle - ball.da), "A", this.screen.r, this.screen.r, 0, 0, 1, this.cam.x + this.screen.r * Math.cos(ball.angle + ball.da), this.cam.y + this.screen.r * Math.sin(ball.angle + ball.da)]
+      });
+    };
+    FigureCircle.prototype.setPathFromFoldAngle = function(angle) {
+      var c, dx, dy, halfAngle, i, index0, index1, len, path, s, x0, x1, y0, y1, _ref;
+      halfAngle = angle / 2;
+      x0 = this.screen.x;
+      y0 = this.screen.y - this.screen.r;
+      x1 = x0 + this.screen.segLength * Math.sin(halfAngle);
+      y1 = y0 + this.screen.segLength * Math.cos(halfAngle);
+      len = 3 * (this.screen.n + 1);
+      path = new Array(len);
+      index0 = index1 = this.screen.n / 2 * 3;
+      path[index0] = "L";
+      path[index0 + 1] = x0;
+      path[index0 + 2] = y0;
+      index0 -= 3;
+      index1 += 3;
+      path[index0] = path[index1] = "L";
+      path[index0 + 1] = 2 * this.screen.x - x1;
+      path[index1 + 1] = x1;
+      path[index0 + 2] = path[index1 + 2] = y1;
+      s = Math.sin(-angle);
+      c = Math.cos(-angle);
+      for (i = 2, _ref = this.screen.n / 2; 2 <= _ref ? i <= _ref : i >= _ref; 2 <= _ref ? i++ : i--) {
+        dx = x0 - x1;
+        dy = y0 - y1;
+        x0 = x1;
+        y0 = y1;
+        x1 = x1 + dx * c - dy * s;
+        y1 = y1 + dx * s + dy * c;
+        index0 -= 3;
+        index1 += 3;
+        path[index0] = path[index1] = "L";
+        path[index0 + 1] = 2 * this.screen.x - x1;
+        path[index1 + 1] = x1;
+        path[index0 + 2] = path[index1 + 2] = y1;
+      }
+      path[0] = "M";
+      return this.screen.vis.attr({
+        path: path
       });
     };
     return FigureCircle;

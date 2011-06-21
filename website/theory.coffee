@@ -71,14 +71,67 @@ class FigureRect extends Figure
          # update screen image
          ball.image.attr path:[ "M",ix1,@screen.y, "H",ix2 ]
 
+
+# a function to construct a vertical scrollbar
+class VScrollBar
+   constructor: (@x,@y,@height,@value,R, @f) ->
+      @bar = R.path ["M",x,y-height/2,"v",height]
+      @bar.attr opacity:"0.3"
+
+      @button =
+         w : 30
+         h : 10
+
+      @miny = y-height/2
+      @maxy = y+height/2-@button.h
+      @rangey = @maxy-@miny
+
+      @button.vis = R.rect x-@button.w/2,0,@button.w,@button.h, 3
+      @button.vis.attr fill:"#333", stroke:"none", cursor:"move", opacity:"0.8"
+      onDragStart = =>
+         @oy = @button.vis.attrs.y
+      onDragMove = (dx,dy) =>
+         ny = bound @oy+dy, @miny, @maxy
+         @value = (ny - @miny) / @rangey
+         @setValue @value
+      onDragEnd = ->
+      @button.vis.drag(onDragMove, onDragStart, onDragEnd)
+
+      @setValue value
+
+   setValue: (value) ->
+      @value = bound value, 0, 1
+      @button.vis.attr y : @miny + @rangey * @value
+      @f @value
+
 # Figure class for the panoramic projection
 class FigureCircle extends Figure
    constructor: (id,w,h) ->
       super id,w,h
 
-      @screen = r : 50
-      @screen.vis = @R.circle(@cam.x, @cam.y, @screen.r).attr(fill:"none",opacity:"0.5")
+      # the screen is an n-sided regular polygon
+      @screen = 
+         x : @cam.x # center
+         y : @cam.y
+         r : 50  # radius
+         n : 40 # number of segments
+
+      # The fold angle is the angle between contiguous segments
+      # such that they form a closed polygon.
+      # This angle will be transitioned to Math.PI (180 degrees)
+      # in order to flatten the screen.
+      @screen.foldAngle = Math.PI - 2*Math.PI / @screen.n
+      r = @screen.r
+      @screen.segLength = Math.sqrt(2*r*r*(1-Math.cos(2*Math.PI/@screen.n)))
+
+      @screen.vis = @R.path().attr(fill:"none",opacity:"0.5")
       @screen.vis.insertBefore(@aboveScreen)
+
+      @da = Math.PI-@screen.foldAngle
+      onScroll = (scale) =>
+         @setPathFromFoldAngle(@screen.foldAngle+@da*(1-scale))
+
+      @scroll = new VScrollBar(w - 50, h/2, 100, 1, @R, onScroll)
 
    updateBallImage: (ball) ->
       ball.image.attr path:[
@@ -89,6 +142,55 @@ class FigureCircle extends Figure
           @screen.r, @screen.r, 0, 0, 1,
           @cam.x + @screen.r * Math.cos(ball.angle+ball.da),
           @cam.y + @screen.r * Math.sin(ball.angle+ball.da) ]
+
+   setPathFromFoldAngle: (angle) ->
+      halfAngle = angle/2
+
+      # calculate the top of the circle and the immediate point to the right
+      x0 = @screen.x
+      y0 = @screen.y - @screen.r
+      x1 = x0 + @screen.segLength * Math.sin halfAngle
+      y1 = y0 + @screen.segLength * Math.cos halfAngle
+
+      # create the path
+      len = 3*(@screen.n+1)
+      path = new Array(len)
+
+      # add first two known points to our path
+      index0 = index1 = @screen.n/2*3
+      path[index0] = "L"
+      path[index0+1] = x0
+      path[index0+2] = y0
+      index0 -= 3
+      index1 += 3
+      path[index0] = path[index1] = "L"
+      path[index0+1] = 2*@screen.x-x1
+      path[index1+1] = x1
+      path[index0+2] = path[index1+2] = y1
+      
+      # add the rest of the points
+      s = Math.sin(-angle)
+      c = Math.cos(-angle)
+      for i in [2..@screen.n/2]
+         dx = x0-x1
+         dy = y0-y1
+         x0 = x1
+         y0 = y1
+         x1 = x1 + dx*c - dy*s
+         y1 = y1 + dx*s + dy*c
+         index0 -= 3
+         index1 += 3
+         path[index0] = path[index1] = "L"
+         path[index0+1] = 2*@screen.x-x1
+         path[index1+1] = x1
+         path[index0+2] = path[index1+2] = y1
+
+      # correct starting point 
+      path[0] = "M"
+
+      # update the path
+      @screen.vis.attr path:path
+
 
 # a ball to be projected onto a screen
 class Ball
