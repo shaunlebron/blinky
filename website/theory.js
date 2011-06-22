@@ -50,7 +50,18 @@
       });
       this.cam.vis.translate(this.cam.x - 16, this.cam.y - 10);
       this.aboveScreen = this.R.path();
+      this.balls = [];
     }
+    Figure.prototype.projectBalls = function() {
+      var ball, _i, _len, _ref, _results;
+      _ref = this.balls;
+      _results = [];
+      for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+        ball = _ref[_i];
+        _results.push(this.projectBall(ball));
+      }
+      return _results;
+    };
     return Figure;
   })();
   FigureRect = (function() {
@@ -67,7 +78,7 @@
         opacity: "0.5"
       }).insertBefore(this.aboveScreen);
     }
-    FigureRect.prototype.updateBallImage = function(ball) {
+    FigureRect.prototype.projectBall = function(ball) {
       var ix1, ix2;
       ix1 = (ball.cx1 - this.cam.x) / (ball.cy1 - this.cam.y) * (this.screen.y - this.cam.y) + this.cam.x;
       ix2 = (ball.cx2 - this.cam.x) / (ball.cy2 - this.cam.y) * (this.screen.y - this.cam.y) + this.cam.x;
@@ -163,9 +174,35 @@
       }, this);
       this.scroll = new VScrollBar(w - 50, h / 2, 100, 1, this.R, onScroll);
     }
-    FigureCircle.prototype.updateBallImage = function(ball) {
+    FigureCircle.prototype.projectBall = function(ball) {
+      var maxAngle, maxlen, minAngle, path, path2, ratio;
+      minAngle = ball.angle - ball.da;
+      maxAngle = ball.angle + ball.da;
+      minAngle -= Math.PI / 2;
+      maxAngle -= Math.PI / 2;
+      if ((minAngle < 0 && 0 < maxAngle)) {
+        if (minAngle < 0) {
+          minAngle += Math.PI * 2;
+        }
+        if (maxAngle < 0) {
+          maxAngle += Math.PI * 2;
+        }
+        path = this.screen.vis.getSubpath(0, maxAngle * this.screen.r);
+        maxlen = this.screen.segLength * this.screen.n;
+        ratio = maxlen / (this.screen.r * Math.PI * 2);
+        path2 = this.screen.vis.getSubpath(minAngle * ratio, 2 * Math.PI * ratio - 0.01);
+        path = path2;
+      } else {
+        if (minAngle < 0) {
+          minAngle += Math.PI * 2;
+        }
+        if (maxAngle < 0) {
+          maxAngle += Math.PI * 2;
+        }
+        path = this.screen.vis.getSubpath(minAngle * this.screen.r, maxAngle * this.screen.r);
+      }
       return ball.image.attr({
-        path: ["M", this.cam.x + this.screen.r * Math.cos(ball.angle - ball.da), this.cam.y + this.screen.r * Math.sin(ball.angle - ball.da), "A", this.screen.r, this.screen.r, 0, 0, 1, this.cam.x + this.screen.r * Math.cos(ball.angle + ball.da), this.cam.y + this.screen.r * Math.sin(ball.angle + ball.da)]
+        path: path
       });
     };
     FigureCircle.prototype.setPathFromFoldAngle = function(angle) {
@@ -204,9 +241,10 @@
         path[index0 + 2] = path[index1 + 2] = y1;
       }
       path[0] = "M";
-      return this.screen.vis.attr({
+      this.screen.vis.attr({
         path: path
       });
+      return this.projectBalls();
     };
     return FigureCircle;
   })();
@@ -290,14 +328,14 @@
         return false;
       } else {
         this.updateCone();
-        this.figure.updateBallImage(this);
+        this.figure.projectBall(this);
         return true;
       }
     };
     Ball.prototype.create = function(hue, angle, dist, radius, figure) {
       var color;
       color = "hsl( " + hue + " ,60, 50)";
-      return new Ball(figure.cam.x + Math.cos(angle) * dist, figure.cam.y - Math.sin(angle) * dist, radius, color, figure);
+      return figure.balls.push(new Ball(figure.cam.x + Math.cos(angle) * dist, figure.cam.y - Math.sin(angle) * dist, radius, color, figure));
     };
     return Ball;
   })();

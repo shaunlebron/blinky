@@ -38,6 +38,11 @@ class Figure
 
       @aboveScreen = @R.path()
 
+      @balls = []
+
+   projectBalls: ->
+      @projectBall ball for ball in @balls
+
 # Figure class for the rectilinear projection
 class FigureRect extends Figure
    constructor: (id,w,h) ->
@@ -50,7 +55,7 @@ class FigureRect extends Figure
       @screen.vis = @R.path ["M", @screen.x - @screen.width/2, @screen.y, "h", @screen.width]
       @screen.vis.attr(opacity:"0.5").insertBefore(@aboveScreen)
 
-   updateBallImage: (ball) ->
+   projectBall: (ball) ->
       ix1 = (ball.cx1-@cam.x) / (ball.cy1-@cam.y) * (@screen.y-@cam.y) + @cam.x
       ix2 = (ball.cx2-@cam.x) / (ball.cy2-@cam.y) * (@screen.y-@cam.y) + @cam.x
 
@@ -133,15 +138,35 @@ class FigureCircle extends Figure
 
       @scroll = new VScrollBar(w - 50, h/2, 100, 1, @R, onScroll)
 
-   updateBallImage: (ball) ->
-      ball.image.attr path:[
-          "M",
-          @cam.x + @screen.r * Math.cos(ball.angle-ball.da),
-          @cam.y + @screen.r * Math.sin(ball.angle-ball.da),
-          "A",
-          @screen.r, @screen.r, 0, 0, 1,
-          @cam.x + @screen.r * Math.cos(ball.angle+ball.da),
-          @cam.y + @screen.r * Math.sin(ball.angle+ball.da) ]
+   projectBall: (ball) ->
+      #ball.image.attr path:[
+      #    "M",
+      #    @cam.x + @screen.r * Math.cos(ball.angle-ball.da),
+      #    @cam.y + @screen.r * Math.sin(ball.angle-ball.da),
+      #    "A",
+      #    @screen.r, @screen.r, 0, 0, 1,
+      #    @cam.x + @screen.r * Math.cos(ball.angle+ball.da),
+      #    @cam.y + @screen.r * Math.sin(ball.angle+ball.da) ]
+      minAngle = ball.angle-ball.da
+      maxAngle = ball.angle+ball.da
+      minAngle -= Math.PI/2
+      maxAngle -= Math.PI/2
+      if minAngle < 0 < maxAngle
+         # split path into two images
+         minAngle += Math.PI*2 if minAngle < 0
+         maxAngle += Math.PI*2 if maxAngle < 0
+         path = @screen.vis.getSubpath(0, maxAngle*@screen.r)
+         maxlen = @screen.segLength * @screen.n
+         ratio = maxlen / (@screen.r*Math.PI*2)
+         path2 = @screen.vis.getSubpath(minAngle*ratio, 2*Math.PI*ratio-0.01)
+         path = path2
+         #path += path2
+      else
+         minAngle += Math.PI*2 if minAngle < 0
+         maxAngle += Math.PI*2 if maxAngle < 0
+         path = @screen.vis.getSubpath minAngle*@screen.r, maxAngle*@screen.r
+
+      ball.image.attr path:path
 
    setPathFromFoldAngle: (angle) ->
       halfAngle = angle/2
@@ -190,6 +215,8 @@ class FigureCircle extends Figure
 
       # update the path
       @screen.vis.attr path:path
+
+      @projectBalls()
 
 
 # a ball to be projected onto a screen
@@ -258,12 +285,12 @@ class Ball
          false
       else
          @updateCone()
-         @figure.updateBallImage @
+         @figure.projectBall @
          true
 
    create: (hue, angle, dist, radius, figure) ->
       color = "hsl( #{hue} ,60, 50)"
-      new Ball \
+      figure.balls.push new Ball \
          figure.cam.x + Math.cos(angle)*dist,
          figure.cam.y - Math.sin(angle)*dist,
          radius,
