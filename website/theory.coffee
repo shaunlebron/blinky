@@ -53,7 +53,7 @@ class FigureRect extends Figure
          y : h/2-20
          width : w*0.8
       @screen.vis = @R.path ["M", @screen.x - @screen.width/2, @screen.y, "h", @screen.width]
-      @screen.vis.attr(opacity:"0.5").insertBefore(@aboveScreen)
+      @screen.vis.attr("stroke-width":"10px",opacity:"0.1").insertBefore(@aboveScreen)
 
    projectBall: (ball) ->
       ix1 = (ball.cx1-@cam.x) / (ball.cy1-@cam.y) * (@screen.y-@cam.y) + @cam.x
@@ -129,54 +129,90 @@ class FigureCircle extends Figure
       r = @screen.r
       @screen.segLength = Math.sqrt(2*r*r*(1-Math.cos(2*Math.PI/@screen.n)))
 
-      @screen.vis = @R.path().attr(fill:"none",opacity:"0.5")
+      @screen.vis = @R.path().attr "stroke-width":"10px", fill:"none",opacity:"0.1"
       @screen.vis.insertBefore(@aboveScreen)
 
       @da = Math.PI-@screen.foldAngle
       onScroll = (scale) =>
-         @setPathFromFoldAngle(@screen.foldAngle+@da*(1-scale))
+         @foldScreen(@screen.foldAngle+@da*(1-scale))
 
       @scroll = new VScrollBar(w - 50, h/2, 100, 1, @R, onScroll)
 
    projectBall: (ball) ->
-      #ball.image.attr path:[
-      #    "M",
-      #    @cam.x + @screen.r * Math.cos(ball.angle-ball.da),
-      #    @cam.y + @screen.r * Math.sin(ball.angle-ball.da),
-      #    "A",
-      #    @screen.r, @screen.r, 0, 0, 1,
-      #    @cam.x + @screen.r * Math.cos(ball.angle+ball.da),
-      #    @cam.y + @screen.r * Math.sin(ball.angle+ball.da) ]
+
+      # get the boundary angles of the projection
       minAngle = ball.angle-ball.da
       maxAngle = ball.angle+ball.da
+
+      # rotate the frame such that the origin is at the bottom of the circle
+      # positive angle is clockwise
       minAngle -= Math.PI/2
       maxAngle -= Math.PI/2
-      if minAngle < 0 < maxAngle
-         # split path into two images
-         minAngle += Math.PI*2 if minAngle < 0
-         maxAngle += Math.PI*2 if maxAngle < 0
-         path = @screen.vis.getSubpath(0, maxAngle*@screen.r)
-         path2 = @screen.vis.getSubpath(minAngle*@screen.r, 2*Math.PI*@screen.r-1)
-         path += path2
-      else
-         minAngle += Math.PI*2 if minAngle < 0
-         maxAngle += Math.PI*2 if maxAngle < 0
-         path = @screen.vis.getSubpath minAngle*@screen.r, maxAngle*@screen.r
 
+      # if the projection falls on a fault, it must be split
+      if minAngle < 0 < maxAngle
+         # TODO: split path into two images
+         #minAngle += Math.PI*2 if minAngle < 0
+         #maxAngle += Math.PI*2 if maxAngle < 0
+         #minAngle = @toArcAngle minAngle
+         #maxAngle = @toArcAngle maxAngle
+         #path = @screen.vis.getSubpath(0, maxAngle*@screen.r)
+         #path2 = @screen.vis.getSubpath(minAngle*@screen.r, 2*Math.PI*@screen.r-1)
+         #path += path2
+
+      # projection is contiguous
+      else
+         # make angles are positive
+         minAngle += Math.PI*2 if minAngle < 0
+         maxAngle += Math.PI*2 if maxAngle < 0
+
+         # screen is horizontal
+         if @arcAngle < 0.001
+            path = [
+               "M",
+               @screen.x - Math.PI*@screen.r + minAngle*@screen.r,
+               @screen.y - @screen.r,
+               "H",
+               @screen.x - Math.PI*@screen.r + maxAngle*@screen.r]
+
+         # screen is curved
+         else
+            # convert circle angle to the arc angle
+            minAngle = minAngle / (2*Math.PI) * @arcAngle
+            maxAngle = maxAngle / (2*Math.PI) * @arcAngle
+
+            # starting angle for the arc
+            start = (2*Math.PI - @arcAngle)/2 + Math.PI/2
+            path = [
+               "M",
+               @arcCenterX + @arcRadius * Math.cos(start + minAngle),
+               @arcCenterY + @arcRadius * Math.sin(start + minAngle),
+               "A",
+               @arcRadius, @arcRadius, 
+               0, # rotation
+               0, # large sweep
+               1, # arc sweep
+               @arcCenterX + @arcRadius * Math.cos(start + maxAngle),
+               @arcCenterY + @arcRadius * Math.sin(start + maxAngle)]
+
+      # update projection
       ball.image.attr path:path
 
-   setPathFromFoldAngle: (angle) ->
-      halfAngle = angle/2
-
+   foldScreen: (angle) ->
       # calculate the top of the circle and the immediate point to the right
-      dx = @screen.segLength * Math.sin halfAngle
-      dy = @screen.segLength * Math.cos halfAngle
-      @rfold = (dx*dx+dy*dy)/(2*dy)
+      dx = @screen.segLength * Math.sin angle/2
+      dy = @screen.segLength * Math.cos angle/2
 
-      # I hate this more than anything in my life
+      # the unfolded circle is actually an arc on a larger circle
+      # with the following radius and angle coverage
+      @arcRadius = (dx*dx+dy*dy)/(2*dy)
+      @arcAngle = 2*Math.PI*@screen.r / @arcRadius
+      @arcCenterX = @screen.x
+      @arcCenterY = @screen.y - @screen.r + @arcRadius
 
       path = []
 
+      # screen is a circle
       if Math.abs(angle - @screen.foldAngle) < 0.001
          dt = 2*Math.PI / @screen.n
          for i in [0..@screen.n-1]
@@ -184,37 +220,32 @@ class FigureCircle extends Figure
                            @screen.y + @screen.r * Math.sin(Math.PI/2 + dt*i))
          path[0] = "M"
          path.push "Z"
+
+      # screen is horizontal
       else if dy < 0.001
          path = ["M", @screen.x-Math.PI*@screen.r,@screen.y-@screen.r, "h", 2*Math.PI*@screen.r]
 
+      # screen is an arc
       else
-         x0 = @screen.x
-         y0 = @screen.y - @screen.r
-         x1 = x0+dx
-         y1 = y0+dy
-
-         # add the rest of the points
-         s = Math.sin(-angle)
-         c = Math.cos(-angle)
-         for i in [2..@screen.n/2]
-            dx = x0-x1
-            dy = y0-y1
-            x0 = x1
-            y0 = y1
-            x1 = x1 + dx*c - dy*s
-            y1 = y1 + dx*s + dy*c
-
          # critical angle for switching large arc sweep
          ca = @da/2 + @screen.foldAngle
 
-         if angle < ca
-            path = ["M",x1,y1,"A",@rfold,@rfold,0,1,0,2*@screen.x-x1,y1]
-         else
-            path = ["M",x1,y1,"A",@rfold,@rfold,0,0,0,2*@screen.x-x1,y1]
+         # arc points
+         start = (2*Math.PI - @arcAngle)/2 + Math.PI/2
+         x1 = @arcCenterX + @arcRadius * Math.cos(start)
+         y1 = @arcCenterY + @arcRadius * Math.sin(start)
+         x0 = @arcCenterX + @arcRadius * Math.cos(start+@arcAngle)
+         y0 = @arcCenterY + @arcRadius * Math.sin(start+@arcAngle)
 
-      # update the path
+         if angle < ca
+            path = ["M",x0,y0,"A",@arcRadius,@arcRadius,0,1,0,x1,y1]
+         else
+            path = ["M",x0,y0,"A",@arcRadius,@arcRadius,0,0,0,x1,y1]
+
+      # update the screen shape path
       @screen.vis.attr path:path
 
+      # reproject the balls on the new screen
       @projectBalls()
 
 
@@ -224,7 +255,7 @@ class Ball
 
       @circle = @figure.R.circle(x,y,r).attr fill:color, stroke:"none"
       @image = @figure.R.path().attr "stroke-width":"5px", stroke:@color
-      @cone = @figure.R.path().attr fill:@color, opacity:"0.2", stroke:"none"
+      @cone = @figure.R.path().attr fill:@color, opacity:"0.1", stroke:"none"
       @bringAboveScreen()
 
       touchDragMove = (dx,dy) =>
@@ -289,6 +320,8 @@ class Ball
 
    create: (hue, angle, dist, radius, figure) ->
       color = "hsl( #{hue} ,60, 50)"
+
+      # create and add a ball to the given figure
       figure.balls.push new Ball \
          figure.cam.x + Math.cos(angle)*dist,
          figure.cam.y - Math.sin(angle)*dist,

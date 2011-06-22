@@ -75,7 +75,8 @@
       };
       this.screen.vis = this.R.path(["M", this.screen.x - this.screen.width / 2, this.screen.y, "h", this.screen.width]);
       this.screen.vis.attr({
-        opacity: "0.5"
+        "stroke-width": "10px",
+        opacity: "0.1"
       }).insertBefore(this.aboveScreen);
     }
     FigureRect.prototype.projectBall = function(ball) {
@@ -164,51 +165,51 @@
       r = this.screen.r;
       this.screen.segLength = Math.sqrt(2 * r * r * (1 - Math.cos(2 * Math.PI / this.screen.n)));
       this.screen.vis = this.R.path().attr({
+        "stroke-width": "10px",
         fill: "none",
-        opacity: "0.5"
+        opacity: "0.1"
       });
       this.screen.vis.insertBefore(this.aboveScreen);
       this.da = Math.PI - this.screen.foldAngle;
       onScroll = __bind(function(scale) {
-        return this.setPathFromFoldAngle(this.screen.foldAngle + this.da * (1 - scale));
+        return this.foldScreen(this.screen.foldAngle + this.da * (1 - scale));
       }, this);
       this.scroll = new VScrollBar(w - 50, h / 2, 100, 1, this.R, onScroll);
     }
     FigureCircle.prototype.projectBall = function(ball) {
-      var maxAngle, minAngle, path, path2;
+      var maxAngle, minAngle, path, start;
       minAngle = ball.angle - ball.da;
       maxAngle = ball.angle + ball.da;
       minAngle -= Math.PI / 2;
       maxAngle -= Math.PI / 2;
-      if ((minAngle <= 0 && 0 <= maxAngle)) {
+      if ((minAngle < 0 && 0 < maxAngle)) {} else {
         if (minAngle < 0) {
           minAngle += Math.PI * 2;
         }
         if (maxAngle < 0) {
           maxAngle += Math.PI * 2;
         }
-        path = this.screen.vis.getSubpath(0, maxAngle * this.screen.r);
-        path2 = this.screen.vis.getSubpath(minAngle * this.screen.r, 2 * Math.PI * this.screen.r - 1);
-        path += path2;
-      } else {
-        if (minAngle < 0) {
-          minAngle += Math.PI * 2;
+        if (this.arcAngle < 0.001) {
+          path = ["M", this.screen.x - Math.PI * this.screen.r + minAngle * this.screen.r, this.screen.y - this.screen.r, "H", this.screen.x - Math.PI * this.screen.r + maxAngle * this.screen.r];
+        } else {
+          minAngle = minAngle / (2 * Math.PI) * this.arcAngle;
+          maxAngle = maxAngle / (2 * Math.PI) * this.arcAngle;
+          start = (2 * Math.PI - this.arcAngle) / 2 + Math.PI / 2;
+          path = ["M", this.arcCenterX + this.arcRadius * Math.cos(start + minAngle), this.arcCenterY + this.arcRadius * Math.sin(start + minAngle), "A", this.arcRadius, this.arcRadius, 0, 0, 1, this.arcCenterX + this.arcRadius * Math.cos(start + maxAngle), this.arcCenterY + this.arcRadius * Math.sin(start + maxAngle)];
         }
-        if (maxAngle < 0) {
-          maxAngle += Math.PI * 2;
-        }
-        path = this.screen.vis.getSubpath(minAngle * this.screen.r, maxAngle * this.screen.r);
       }
       return ball.image.attr({
         path: path
       });
     };
-    FigureCircle.prototype.setPathFromFoldAngle = function(angle) {
-      var c, ca, dt, dx, dy, halfAngle, i, path, s, x0, x1, y0, y1, _ref, _ref2;
-      halfAngle = angle / 2;
-      dx = this.screen.segLength * Math.sin(halfAngle);
-      dy = this.screen.segLength * Math.cos(halfAngle);
-      this.rfold = (dx * dx + dy * dy) / (2 * dy);
+    FigureCircle.prototype.foldScreen = function(angle) {
+      var ca, dt, dx, dy, i, path, start, x0, x1, y0, y1, _ref;
+      dx = this.screen.segLength * Math.sin(angle / 2);
+      dy = this.screen.segLength * Math.cos(angle / 2);
+      this.arcRadius = (dx * dx + dy * dy) / (2 * dy);
+      this.arcAngle = 2 * Math.PI * this.screen.r / this.arcRadius;
+      this.arcCenterX = this.screen.x;
+      this.arcCenterY = this.screen.y - this.screen.r + this.arcRadius;
       path = [];
       if (Math.abs(angle - this.screen.foldAngle) < 0.001) {
         dt = 2 * Math.PI / this.screen.n;
@@ -220,25 +221,16 @@
       } else if (dy < 0.001) {
         path = ["M", this.screen.x - Math.PI * this.screen.r, this.screen.y - this.screen.r, "h", 2 * Math.PI * this.screen.r];
       } else {
-        x0 = this.screen.x;
-        y0 = this.screen.y - this.screen.r;
-        x1 = x0 + dx;
-        y1 = y0 + dy;
-        s = Math.sin(-angle);
-        c = Math.cos(-angle);
-        for (i = 2, _ref2 = this.screen.n / 2; 2 <= _ref2 ? i <= _ref2 : i >= _ref2; 2 <= _ref2 ? i++ : i--) {
-          dx = x0 - x1;
-          dy = y0 - y1;
-          x0 = x1;
-          y0 = y1;
-          x1 = x1 + dx * c - dy * s;
-          y1 = y1 + dx * s + dy * c;
-        }
         ca = this.da / 2 + this.screen.foldAngle;
+        start = (2 * Math.PI - this.arcAngle) / 2 + Math.PI / 2;
+        x1 = this.arcCenterX + this.arcRadius * Math.cos(start);
+        y1 = this.arcCenterY + this.arcRadius * Math.sin(start);
+        x0 = this.arcCenterX + this.arcRadius * Math.cos(start + this.arcAngle);
+        y0 = this.arcCenterY + this.arcRadius * Math.sin(start + this.arcAngle);
         if (angle < ca) {
-          path = ["M", x1, y1, "A", this.rfold, this.rfold, 0, 1, 0, 2 * this.screen.x - x1, y1];
+          path = ["M", x0, y0, "A", this.arcRadius, this.arcRadius, 0, 1, 0, x1, y1];
         } else {
-          path = ["M", x1, y1, "A", this.rfold, this.rfold, 0, 0, 0, 2 * this.screen.x - x1, y1];
+          path = ["M", x0, y0, "A", this.arcRadius, this.arcRadius, 0, 0, 0, x1, y1];
         }
       }
       this.screen.vis.attr({
@@ -266,7 +258,7 @@
       });
       this.cone = this.figure.R.path().attr({
         fill: this.color,
-        opacity: "0.2",
+        opacity: "0.1",
         stroke: "none"
       });
       this.bringAboveScreen();
