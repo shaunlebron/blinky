@@ -156,11 +156,8 @@ class FigureCircle extends Figure
          minAngle += Math.PI*2 if minAngle < 0
          maxAngle += Math.PI*2 if maxAngle < 0
          path = @screen.vis.getSubpath(0, maxAngle*@screen.r)
-         maxlen = @screen.segLength * @screen.n
-         ratio = maxlen / (@screen.r*Math.PI*2)
-         path2 = @screen.vis.getSubpath(minAngle*ratio, 2*Math.PI*ratio-0.01)
-         path = path2
-         #path += path2
+         path2 = @screen.vis.getSubpath(minAngle*@screen.r, 2*Math.PI*@screen.r-1)
+         path += path2
       else
          minAngle += Math.PI*2 if minAngle < 0
          maxAngle += Math.PI*2 if maxAngle < 0
@@ -172,46 +169,48 @@ class FigureCircle extends Figure
       halfAngle = angle/2
 
       # calculate the top of the circle and the immediate point to the right
-      x0 = @screen.x
-      y0 = @screen.y - @screen.r
-      x1 = x0 + @screen.segLength * Math.sin halfAngle
-      y1 = y0 + @screen.segLength * Math.cos halfAngle
+      dx = @screen.segLength * Math.sin halfAngle
+      dy = @screen.segLength * Math.cos halfAngle
+      @rfold = (dx*dx+dy*dy)/(2*dy)
 
-      # create the path
-      len = 3*(@screen.n+1)
-      path = new Array(len)
+      # I hate this more than anything in my life
 
-      # add first two known points to our path
-      index0 = index1 = @screen.n/2*3
-      path[index0] = "L"
-      path[index0+1] = x0
-      path[index0+2] = y0
-      index0 -= 3
-      index1 += 3
-      path[index0] = path[index1] = "L"
-      path[index0+1] = 2*@screen.x-x1
-      path[index1+1] = x1
-      path[index0+2] = path[index1+2] = y1
-      
-      # add the rest of the points
-      s = Math.sin(-angle)
-      c = Math.cos(-angle)
-      for i in [2..@screen.n/2]
-         dx = x0-x1
-         dy = y0-y1
-         x0 = x1
-         y0 = y1
-         x1 = x1 + dx*c - dy*s
-         y1 = y1 + dx*s + dy*c
-         index0 -= 3
-         index1 += 3
-         path[index0] = path[index1] = "L"
-         path[index0+1] = 2*@screen.x-x1
-         path[index1+1] = x1
-         path[index0+2] = path[index1+2] = y1
+      path = []
 
-      # correct starting point 
-      path[0] = "M"
+      if Math.abs(angle - @screen.foldAngle) < 0.001
+         dt = 2*Math.PI / @screen.n
+         for i in [0..@screen.n-1]
+            path.push("L", @screen.x + @screen.r * Math.cos(Math.PI/2 + dt*i), 
+                           @screen.y + @screen.r * Math.sin(Math.PI/2 + dt*i))
+         path[0] = "M"
+         path.push "Z"
+      else if dy < 0.001
+         path = ["M", @screen.x-Math.PI*@screen.r,@screen.y-@screen.r, "h", 2*Math.PI*@screen.r]
+
+      else
+         x0 = @screen.x
+         y0 = @screen.y - @screen.r
+         x1 = x0+dx
+         y1 = y0+dy
+
+         # add the rest of the points
+         s = Math.sin(-angle)
+         c = Math.cos(-angle)
+         for i in [2..@screen.n/2]
+            dx = x0-x1
+            dy = y0-y1
+            x0 = x1
+            y0 = y1
+            x1 = x1 + dx*c - dy*s
+            y1 = y1 + dx*s + dy*c
+
+         # critical angle for switching large arc sweep
+         ca = @da/2 + @screen.foldAngle
+
+         if angle < ca
+            path = ["M",x1,y1,"A",@rfold,@rfold,0,1,0,2*@screen.x-x1,y1]
+         else
+            path = ["M",x1,y1,"A",@rfold,@rfold,0,0,0,2*@screen.x-x1,y1]
 
       # update the path
       @screen.vis.attr path:path

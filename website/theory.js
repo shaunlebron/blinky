@@ -175,12 +175,12 @@
       this.scroll = new VScrollBar(w - 50, h / 2, 100, 1, this.R, onScroll);
     }
     FigureCircle.prototype.projectBall = function(ball) {
-      var maxAngle, maxlen, minAngle, path, path2, ratio;
+      var maxAngle, minAngle, path, path2;
       minAngle = ball.angle - ball.da;
       maxAngle = ball.angle + ball.da;
       minAngle -= Math.PI / 2;
       maxAngle -= Math.PI / 2;
-      if ((minAngle < 0 && 0 < maxAngle)) {
+      if ((minAngle <= 0 && 0 <= maxAngle)) {
         if (minAngle < 0) {
           minAngle += Math.PI * 2;
         }
@@ -188,10 +188,8 @@
           maxAngle += Math.PI * 2;
         }
         path = this.screen.vis.getSubpath(0, maxAngle * this.screen.r);
-        maxlen = this.screen.segLength * this.screen.n;
-        ratio = maxlen / (this.screen.r * Math.PI * 2);
-        path2 = this.screen.vis.getSubpath(minAngle * ratio, 2 * Math.PI * ratio - 0.01);
-        path = path2;
+        path2 = this.screen.vis.getSubpath(minAngle * this.screen.r, 2 * Math.PI * this.screen.r - 1);
+        path += path2;
       } else {
         if (minAngle < 0) {
           minAngle += Math.PI * 2;
@@ -206,41 +204,43 @@
       });
     };
     FigureCircle.prototype.setPathFromFoldAngle = function(angle) {
-      var c, dx, dy, halfAngle, i, index0, index1, len, path, s, x0, x1, y0, y1, _ref;
+      var c, ca, dt, dx, dy, halfAngle, i, path, s, x0, x1, y0, y1, _ref, _ref2;
       halfAngle = angle / 2;
-      x0 = this.screen.x;
-      y0 = this.screen.y - this.screen.r;
-      x1 = x0 + this.screen.segLength * Math.sin(halfAngle);
-      y1 = y0 + this.screen.segLength * Math.cos(halfAngle);
-      len = 3 * (this.screen.n + 1);
-      path = new Array(len);
-      index0 = index1 = this.screen.n / 2 * 3;
-      path[index0] = "L";
-      path[index0 + 1] = x0;
-      path[index0 + 2] = y0;
-      index0 -= 3;
-      index1 += 3;
-      path[index0] = path[index1] = "L";
-      path[index0 + 1] = 2 * this.screen.x - x1;
-      path[index1 + 1] = x1;
-      path[index0 + 2] = path[index1 + 2] = y1;
-      s = Math.sin(-angle);
-      c = Math.cos(-angle);
-      for (i = 2, _ref = this.screen.n / 2; 2 <= _ref ? i <= _ref : i >= _ref; 2 <= _ref ? i++ : i--) {
-        dx = x0 - x1;
-        dy = y0 - y1;
-        x0 = x1;
-        y0 = y1;
-        x1 = x1 + dx * c - dy * s;
-        y1 = y1 + dx * s + dy * c;
-        index0 -= 3;
-        index1 += 3;
-        path[index0] = path[index1] = "L";
-        path[index0 + 1] = 2 * this.screen.x - x1;
-        path[index1 + 1] = x1;
-        path[index0 + 2] = path[index1 + 2] = y1;
+      dx = this.screen.segLength * Math.sin(halfAngle);
+      dy = this.screen.segLength * Math.cos(halfAngle);
+      this.rfold = (dx * dx + dy * dy) / (2 * dy);
+      path = [];
+      if (Math.abs(angle - this.screen.foldAngle) < 0.001) {
+        dt = 2 * Math.PI / this.screen.n;
+        for (i = 0, _ref = this.screen.n - 1; 0 <= _ref ? i <= _ref : i >= _ref; 0 <= _ref ? i++ : i--) {
+          path.push("L", this.screen.x + this.screen.r * Math.cos(Math.PI / 2 + dt * i), this.screen.y + this.screen.r * Math.sin(Math.PI / 2 + dt * i));
+        }
+        path[0] = "M";
+        path.push("Z");
+      } else if (dy < 0.001) {
+        path = ["M", this.screen.x - Math.PI * this.screen.r, this.screen.y - this.screen.r, "h", 2 * Math.PI * this.screen.r];
+      } else {
+        x0 = this.screen.x;
+        y0 = this.screen.y - this.screen.r;
+        x1 = x0 + dx;
+        y1 = y0 + dy;
+        s = Math.sin(-angle);
+        c = Math.cos(-angle);
+        for (i = 2, _ref2 = this.screen.n / 2; 2 <= _ref2 ? i <= _ref2 : i >= _ref2; 2 <= _ref2 ? i++ : i--) {
+          dx = x0 - x1;
+          dy = y0 - y1;
+          x0 = x1;
+          y0 = y1;
+          x1 = x1 + dx * c - dy * s;
+          y1 = y1 + dx * s + dy * c;
+        }
+        ca = this.da / 2 + this.screen.foldAngle;
+        if (angle < ca) {
+          path = ["M", x1, y1, "A", this.rfold, this.rfold, 0, 1, 0, 2 * this.screen.x - x1, y1];
+        } else {
+          path = ["M", x1, y1, "A", this.rfold, this.rfold, 0, 0, 0, 2 * this.screen.x - x1, y1];
+        }
       }
-      path[0] = "M";
       this.screen.vis.attr({
         path: path
       });
