@@ -151,18 +151,61 @@ class FigureCircle extends Figure
 
       # if the projection falls on a fault, it must be split
       if minAngle < 0 < maxAngle
-         # TODO: split path into two images
-         #minAngle += Math.PI*2 if minAngle < 0
-         #maxAngle += Math.PI*2 if maxAngle < 0
-         #minAngle = @toArcAngle minAngle
-         #maxAngle = @toArcAngle maxAngle
-         #path = @screen.vis.getSubpath(0, maxAngle*@screen.r)
-         #path2 = @screen.vis.getSubpath(minAngle*@screen.r, 2*Math.PI*@screen.r-1)
-         #path += path2
+
+         # normalize angles (make positive) 
+         minAngle += Math.PI*2 if minAngle < 0
+         maxAngle += Math.PI*2 if maxAngle < 0
+         if maxAngle < minAngle
+            [minAngle, maxAngle] = [maxAngle, minAngle]
+
+         # screen is flat
+         if @arcAngle < 0.001
+            path = [
+               "M",
+               @screen.x - Math.PI*@screen.r,
+               @screen.y - @screen.r,
+               "H",
+               @screen.x - Math.PI*@screen.r + minAngle*@screen.r,
+               "M",
+               @screen.x - Math.PI*@screen.r + maxAngle*@screen.r,
+               @screen.y - @screen.r,
+               "H",
+               @screen.x + Math.PI*@screen.r]
+
+         # screen is curved
+         else
+            # convert angles to the folding arc angles
+            minAngle = minAngle / (2*Math.PI) * @arcAngle
+            maxAngle = maxAngle / (2*Math.PI) * @arcAngle
+            if maxAngle < minAngle
+               [minAngle, maxAngle] = [maxAngle, minAngle]
+
+            start = (2*Math.PI - @arcAngle)/2 + Math.PI/2
+            path = [
+               "M",
+               @arcCenterX + @arcRadius * Math.cos(start),
+               @arcCenterY + @arcRadius * Math.sin(start),
+               "A",
+               @arcRadius, @arcRadius, 
+               0, # rotation
+               0, # large sweep
+               1, # arc sweep
+               @arcCenterX + @arcRadius * Math.cos(start + minAngle),
+               @arcCenterY + @arcRadius * Math.sin(start + minAngle),
+               "M",
+               @arcCenterX + @arcRadius * Math.cos(start + maxAngle),
+               @arcCenterY + @arcRadius * Math.sin(start + maxAngle),
+               "A",
+               @arcRadius, @arcRadius, 
+               0, # rotation
+               0, # large sweep
+               1, # arc sweep
+               @arcCenterX + @arcRadius * Math.cos(start + @arcAngle),
+               @arcCenterY + @arcRadius * Math.sin(start + @arcAngle)]
 
       # projection is contiguous
       else
-         # make angles are positive
+         # normalize angles (make positive)
          minAngle += Math.PI*2 if minAngle < 0
          maxAngle += Math.PI*2 if maxAngle < 0
 
@@ -177,11 +220,10 @@ class FigureCircle extends Figure
 
          # screen is curved
          else
-            # convert circle angle to the arc angle
+            # convert angles to the folding arc angles
             minAngle = minAngle / (2*Math.PI) * @arcAngle
             maxAngle = maxAngle / (2*Math.PI) * @arcAngle
 
-            # starting angle for the arc
             start = (2*Math.PI - @arcAngle)/2 + Math.PI/2
             path = [
                "M",

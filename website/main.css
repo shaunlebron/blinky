@@ -37,6 +37,12 @@ body
    margin-right: auto;
    text-align:justify;
 }
+.centerimage
+{
+   display:block;
+   margin-left:auto;
+   margin-right:auto;
+}
 table
 {
    border-collapse: collapse;

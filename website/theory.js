@@ -177,12 +177,33 @@
       this.scroll = new VScrollBar(w - 50, h / 2, 100, 1, this.R, onScroll);
     }
     FigureCircle.prototype.projectBall = function(ball) {
-      var maxAngle, minAngle, path, start;
+      var maxAngle, minAngle, path, start, _ref, _ref2;
       minAngle = ball.angle - ball.da;
       maxAngle = ball.angle + ball.da;
       minAngle -= Math.PI / 2;
       maxAngle -= Math.PI / 2;
-      if ((minAngle < 0 && 0 < maxAngle)) {} else {
+      if ((minAngle < 0 && 0 < maxAngle)) {
+        if (minAngle < 0) {
+          minAngle += Math.PI * 2;
+        }
+        if (maxAngle < 0) {
+          maxAngle += Math.PI * 2;
+        }
+        if (maxAngle < minAngle) {
+          _ref = [maxAngle, minAngle], minAngle = _ref[0], maxAngle = _ref[1];
+        }
+        if (this.arcAngle < 0.001) {
+          path = ["M", this.screen.x - Math.PI * this.screen.r, this.screen.y - this.screen.r, "H", this.screen.x - Math.PI * this.screen.r + minAngle * this.screen.r, "M", this.screen.x - Math.PI * this.screen.r + maxAngle * this.screen.r, this.screen.y - this.screen.r, "H", this.screen.x + Math.PI * this.screen.r];
+        } else {
+          minAngle = minAngle / (2 * Math.PI) * this.arcAngle;
+          maxAngle = maxAngle / (2 * Math.PI) * this.arcAngle;
+          if (maxAngle < minAngle) {
+            _ref2 = [maxAngle, minAngle], minAngle = _ref2[0], maxAngle = _ref2[1];
+          }
+          start = (2 * Math.PI - this.arcAngle) / 2 + Math.PI / 2;
+          path = ["M", this.arcCenterX + this.arcRadius * Math.cos(start), this.arcCenterY + this.arcRadius * Math.sin(start), "A", this.arcRadius, this.arcRadius, 0, 0, 1, this.arcCenterX + this.arcRadius * Math.cos(start + minAngle), this.arcCenterY + this.arcRadius * Math.sin(start + minAngle), "M", this.arcCenterX + this.arcRadius * Math.cos(start + maxAngle), this.arcCenterY + this.arcRadius * Math.sin(start + maxAngle), "A", this.arcRadius, this.arcRadius, 0, 0, 1, this.arcCenterX + this.arcRadius * Math.cos(start + this.arcAngle), this.arcCenterY + this.arcRadius * Math.sin(start + this.arcAngle)];
+        }
+      } else {
         if (minAngle < 0) {
           minAngle += Math.PI * 2;
         }
