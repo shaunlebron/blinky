@@ -38,6 +38,8 @@ div#figure2
 <div id="container">
 <h2>How it works</h2>
 This is a visual explanation of the theory behind Quake Lenses.  
+
+<hr/>
 <h3>The Standard Projection</h3>
 <p>
 The interactive figure below is a top-down view of how a camera takes a picture (sort of).  The colored circles represent the objects being photographed.  The flat line is the photograph itself. 
@@ -53,6 +55,7 @@ This is incidentally how all 3D games today are rendered to your screen.  It is 
 <img class="centerimage" src="pics/standard-stretch.jpg" height="150" />
 <p>The guys in the image above are all the same size, but distortion increases toward the edges of the image.  The Standard Projection is really only suited for 120 degrees at most.  So if you want a wider view, you have to try another projection.</p>
 
+<hr/>
 <h3>The Panorama</h3>
 <p>The next figure is a top-down view of how a <em>panoramic</em> camera takes a picture (sort of).  The film is no longer flat, but curved into a cylinder around the camera.  After the picture is taken, we unroll it onto a flat frame.</p>
 <p><strong>Try it:</strong> Drag the circles, and scroll the bar to unroll.</strong></p>
@@ -73,13 +76,19 @@ It is hard to tell from a still image that this projection is ill-suited for gam
 The moving image creates a sense of nausea, stemming from the way that movement is translated into the projection.  Though it creates a wide field with minor distortion, it sacrifices the predictable "warping" of the image that creates the sense of space and perspective.  Thus, if we desire a less nauseating perspective, we must again move on to another projection.
 </p>
 <p>
+<hr/>
 <h3>The Stereograph</h3>
 <p>
-The stereograph is a combination of the Standard and Panoramic projections. It combines the best of both by forming a wide field of view without sacrificing playability.  The stereographic projection is a two-step projection, illustrated by the following figure:
+The stereograph is a combination of the Standard and Panoramic projections. It combines the best of both by forming a wide field of view without sacrificing playability.  The stereographic projection requires two cameras, illustrated by the following figure.
 </p>
+<p><strong>Try it:</strong> Drag the circles, and click the second camera to see the final projection.
 <div id="figure3"></div>
 <p>
-The projection first projects the image onto the cylinder-shaped film.  Then, we move the camera to the rear of the cylinder, and take a standard projection picture.
+The centered camera first projects the image onto the cylinder screen, exactly like before.  But instead of <em>unrolling</em> it onto a flat frame, we use a second camera to <em>project</em> it onto a flat frame.  The screenshot below shows what this looks like in-game.
+</p>
+<img class="centerimage" src="pics/stereo-stretch.jpg" height="150" />
+<p>
+The difference is subtle when looking at still comparisons, but it is more obvious when translated into a moving image:
 </p>
 </body>
 </html>
