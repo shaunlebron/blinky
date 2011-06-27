@@ -14,7 +14,7 @@
   about different projections used in Quake Lenses.
   
   ------------------------------------------------------
-  */  var Ball, Figure, FigureCircle, FigureRect, VScrollBar, bound, camIcon, populateFigure, sign;
+  */  var Ball, Figure, FigureCircle, FigureRect, FigureStereo, VScrollBar, bound, camIcon, populateFigure, sign;
   var __hasProp = Object.prototype.hasOwnProperty, __extends = function(child, parent) {
     for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; }
     function ctor() { this.constructor = child; }
@@ -39,16 +39,17 @@
       this.w = w;
       this.h = h;
       this.R = Raphael(id, w, h);
-      this.cam = {
+      this.cam1 = {
         x: w / 2,
         y: h / 2 + 40,
         r: 5
       };
-      this.cam.vis = this.R.path(camIcon).attr({
+      this.cam1.vis = this.R.path(camIcon).attr({
         fill: "#000",
         opacity: "0.8"
       });
-      this.cam.vis.translate(this.cam.x - 16, this.cam.y - 10);
+      this.cam1.vis.translate(this.cam1.x - 16, this.cam1.y - 10);
+      this.cam = this.cam1;
       this.aboveScreen = this.R.path();
       this.balls = [];
     }
@@ -261,6 +262,63 @@
     };
     return FigureCircle;
   })();
+  FigureStereo = (function() {
+    __extends(FigureStereo, Figure);
+    function FigureStereo(id, w, h) {
+      FigureStereo.__super__.constructor.call(this, id, w, h);
+      this.screen1 = {
+        x: this.cam.x,
+        y: this.cam.y,
+        r: 50
+      };
+      this.screen1.vis = this.R.circle(this.screen1.x, this.screen1.y, this.screen1.r);
+      this.screen1.vis.attr({
+        "stroke-width": "10px",
+        fill: "none",
+        opacity: "0.1"
+      });
+      this.screen1.vis.insertBefore(this.aboveScreen);
+      this.cam2 = {
+        x: this.cam.x,
+        y: this.cam.y + this.screen1.r,
+        r: 5
+      };
+      this.cam2.vis = this.R.path(camIcon).attr({
+        fill: "#000",
+        opacity: "0.8"
+      });
+      this.cam2.vis.translate(this.cam2.x - 16, this.cam2.y - 10);
+      this.screen2 = {
+        x: w / 2,
+        y: h / 2 - 20,
+        width: w * 0.8
+      };
+      this.screen2.vis = this.R.path(["M", this.screen2.x - this.screen2.width / 2, this.screen2.y, "h", this.screen2.width]);
+      this.screen2.vis.attr({
+        "stroke-width": "10px",
+        opacity: "0.1"
+      }).insertBefore(this.aboveScreen);
+      this.screen = this.screen1;
+    }
+    FigureStereo.prototype.projectBall = function(ball) {
+      var cx1, cx2, cy1, cy2, ix1, ix1b, ix2, ix2b;
+      cx1 = this.screen1.x + this.screen1.r * Math.cos(ball.angle - ball.da);
+      cy1 = this.screen1.y + this.screen1.r * Math.sin(ball.angle - ball.da);
+      cx2 = this.screen1.x + this.screen1.r * Math.cos(ball.angle + ball.da);
+      cy2 = this.screen1.y + this.screen1.r * Math.sin(ball.angle + ball.da);
+      ix1 = (cx1 - this.cam2.x) / (cy1 - this.cam2.y) * (this.screen2.y - this.cam2.y) + this.cam2.x;
+      ix2 = (cx2 - this.cam2.x) / (cy2 - this.cam2.y) * (this.screen2.y - this.cam2.y) + this.cam2.x;
+      ix1b = bound(ix1, this.screen2.x - this.screen2.width / 2, this.screen2.x + this.screen2.width / 2);
+      ix2b = bound(ix2, this.screen2.x - this.screen2.width / 2, this.screen2.x + this.screen2.width / 2);
+      ball.image.attr({
+        path: ["M", cx1, cy1, "A", this.screen1.r, this.screen1.r, 0, 0, 1, cx2, cy2, "M", ix1b, this.screen2.y, "H", ix2b]
+      });
+      return ball.cone.attr({
+        path: ["M", this.cam1.x, this.cam1.y, "L", ball.cx1, ball.cy1, "L", ball.cx2, ball.cy2, "Z", "M", this.cam2.x, this.cam2.y, "L", ix1, this.screen2.y, "L", ix2, this.screen2.y, "Z"]
+      });
+    };
+    return FigureStereo;
+  })();
   Ball = (function() {
     function Ball(x, y, r, color, figure) {
       var touchDragEnd, touchDragMove, touchDragStart;
@@ -352,9 +410,11 @@
     };
     return Ball;
   })();
-  populateFigure = function(figure) {
-    var angle, dist, hue, i, obj_count, _ref, _results;
-    obj_count = 3;
+  populateFigure = function(figure, obj_count) {
+    var angle, dist, hue, i, _ref, _results;
+    if (obj_count == null) {
+      obj_count = 3;
+    }
     hue = Math.random() * 360;
     angle = Math.random() * Math.PI / 8 + Math.PI / 6;
     _results = [];
@@ -371,6 +431,7 @@
   };
   window.onload = function() {
     populateFigure(new FigureRect("figure1", 650, 300));
-    return populateFigure(new FigureCircle("figure2", 650, 300));
+    populateFigure(new FigureCircle("figure2", 650, 300));
+    return populateFigure(new FigureStereo("figure3", 650, 300), 1);
   };
 }).call(this);

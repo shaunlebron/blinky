@@ -28,13 +28,16 @@ class Figure
    constructor: (@id, @w, @h) ->
       @R = Raphael id, w, h
 
-      @cam =
+      # center camera
+      @cam1 =
          x : w/2
          y : h/2+40
          r : 5
 
-      @cam.vis = @R.path(camIcon).attr(fill:"#000", opacity:"0.8")
-      @cam.vis.translate(@cam.x-16, @cam.y-10)
+      @cam1.vis = @R.path(camIcon).attr(fill:"#000", opacity:"0.8")
+      @cam1.vis.translate(@cam1.x-16, @cam1.y-10)
+
+      @cam = @cam1
 
       @aboveScreen = @R.path()
 
@@ -290,6 +293,85 @@ class FigureCircle extends Figure
       # reproject the balls on the new screen
       @projectBalls()
 
+class FigureStereo extends Figure
+   constructor: (id,w,h) ->
+      super id,w,h
+
+      # circle screen
+      @screen1 = 
+         x : @cam.x # center
+         y : @cam.y
+         r : 50  # radius
+      @screen1.vis = @R.circle @screen1.x, @screen1.y, @screen1.r
+      @screen1.vis.attr "stroke-width":"10px", fill:"none",opacity:"0.1"
+      @screen1.vis.insertBefore(@aboveScreen)
+
+      # stereographic camera
+      @cam2 =
+         x : @cam.x
+         y : @cam.y + @screen1.r
+         r : 5
+
+      @cam2.vis = @R.path(camIcon).attr(fill:"#000", opacity:"0.8")
+      @cam2.vis.translate(@cam2.x-16, @cam2.y-10)
+
+      # make click switch cameras
+      #@cam1.vis.click = => @cam = @cam1
+      #@cam2.vis.click = => @cam = @cam2
+
+      # cue camera clickability
+      #@cam1.vis.attr cursor:"pointer"
+      #@cam2.vis.attr cursor:"pointer"
+
+      # flat screen
+      @screen2 =
+         x : w/2
+         y : h/2-20
+         width: w*0.8
+      @screen2.vis = @R.path ["M", @screen2.x - @screen2.width/2, @screen2.y, "h", @screen2.width]
+      @screen2.vis.attr("stroke-width":"10px",opacity:"0.1").insertBefore(@aboveScreen)
+
+      @screen = @screen1
+
+   projectBall: (ball) ->
+
+      # circle projection points
+      cx1 = @screen1.x + @screen1.r * Math.cos(ball.angle-ball.da)
+      cy1 = @screen1.y + @screen1.r * Math.sin(ball.angle-ball.da)
+      cx2 = @screen1.x + @screen1.r * Math.cos(ball.angle+ball.da)
+      cy2 = @screen1.y + @screen1.r * Math.sin(ball.angle+ball.da)
+
+      # flat projection points
+      ix1 = (cx1-@cam2.x) / (cy1-@cam2.y) * (@screen2.y-@cam2.y) + @cam2.x
+      ix2 = (cx2-@cam2.x) / (cy2-@cam2.y) * (@screen2.y-@cam2.y) + @cam2.x
+
+      # bound to screen
+      ix1b = bound ix1, @screen2.x - @screen2.width/2, @screen2.x+@screen2.width/2
+      ix2b = bound ix2, @screen2.x - @screen2.width/2, @screen2.x+@screen2.width/2
+
+      ball.image.attr path:[
+         # panorama projection
+         "M",cx1,cy1,"A",
+         @screen1.r, @screen1.r,
+         0, # rotation
+         0, # large sweep
+         1, # arc sweep
+         cx2,cy2,
+         # rectilinear projection
+         "M",ix1b,@screen2.y,"H",ix2b
+         ]
+
+      ball.cone.attr path:[
+         "M", @cam1.x, @cam1.y,
+         "L", ball.cx1, ball.cy1,
+         "L", ball.cx2, ball.cy2,
+         "Z",
+         "M", @cam2.x, @cam2.y,
+         "L", ix1, @screen2.y,
+         "L", ix2, @screen2.y,
+         "Z"
+         ]
+
 
 # a ball to be projected onto a screen
 class Ball
@@ -372,8 +454,7 @@ class Ball
          figure
 
 # populate the figure with colored balls
-populateFigure = (figure) ->
-   obj_count = 3
+populateFigure = (figure, obj_count=3) ->
    hue = Math.random()*360
    angle = Math.random()*Math.PI/8+Math.PI/6
 
@@ -387,5 +468,6 @@ populateFigure = (figure) ->
 
 # create the figures
 window.onload = ->
-   populateFigure new FigureRect "figure1", 650, 300
-   populateFigure new FigureCircle "figure2", 650, 300
+   populateFigure new FigureRect("figure1", 650, 300)
+   populateFigure new FigureCircle("figure2", 650, 300)
+   populateFigure new FigureStereo("figure3", 650, 300), 1

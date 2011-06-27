@@ -7,16 +7,7 @@
 <script type="text/javascript" src="raphael.js"></script>
 <script type="text/javascript" src="theory.js"></script>
 <style>
-div#figure1
-{
-   border:1px dashed #000;
-   background: #F0EAD6;
-   width:650;
-   height:300px;
-   margin-left:auto;
-   margin-right:auto;
-}
-div#figure2
+div#figure1, div#figure2, div#figure3
 {
    border:1px dashed #000;
    background: #F0EAD6;
@@ -81,14 +72,23 @@ The moving image creates a sense of nausea, stemming from the way that movement 
 <p>
 The stereograph is a combination of the Standard and Panoramic projections. It combines the best of both by forming a wide field of view without sacrificing playability.  The stereographic projection requires two cameras, illustrated by the following figure.
 </p>
-<p><strong>Try it:</strong> Drag the circles, and click the second camera to see the final projection.
 <div id="figure3"></div>
+<p><strong>Try it:</strong> Drag the circles, and click the second camera to see the final projection.
 <p>
 The centered camera first projects the image onto the cylinder screen, exactly like before.  But instead of <em>unrolling</em> it onto a flat frame, we use a second camera to <em>project</em> it onto a flat frame.  The screenshot below shows what this looks like in-game.
 </p>
 <img class="centerimage" src="pics/stereo-stretch.jpg" height="150" />
 <p>
-The difference is subtle when looking at still comparisons, but it is more obvious when translated into a moving image:
+<p>
+The difference is subtle when showing only 160 degrees, but showing 300 degrees in the image below exaggerates what's really going on:
+</p>
+<p>
+<img class="centerimage" src="pics/stereo-stretch2.jpg" width="100%" />
+</p>
+<p>
+The idea here is that the stereographic projection increases the size of the objects near its margins, creating a predictable perspective effect.
+</p>
+<p><strong>Note:</strong> Did you notice that the guy in the far left in the image above is large, but undistorted?
 </p>
 </body>
 </html>
