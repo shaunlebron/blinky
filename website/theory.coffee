@@ -26,43 +26,76 @@ camIcon =
 # common Figure class
 class Figure
    constructor: (@id, @w, @h) ->
+
+      # RaphaelJS context
       @R = Raphael id, w, h
 
-      # center camera
+      # camera in the center of the figure
       @cam1 =
          x : w/2
          y : h/2+40
          r : 5
 
+      # visual camera icon
       @cam1.vis = @R.path(camIcon).attr(fill:"#000", opacity:"0.8")
       @cam1.vis.translate(@cam1.x-16, @cam1.y-10)
 
+      # set primary cam to cam1 (used by Ball to decide origin of viewing cone)
+      # (FigureStereo will have a second cam)
       @cam = @cam1
 
+      # an empty object acting as a bookmark for the top of the screen
       @aboveScreen = @R.path()
 
+      # list of balls to be projected to a screen
       @balls = []
 
       # blank path object used solely for hooking its animation callback
-      # we use it for animating arbitrary values
+      # (we use it for animating arbitrary values
+      #  like the folding angle in FigureCircle)
       @yoyo = @R.path()
 
+   # update all the ball projection images
    projectBalls: ->
       @projectBall ball for ball in @balls
+
+   # populate the figure with colored balls
+   populate: (obj_count=1) ->
+      hue = Math.random()*360
+      angle = Math.random()*Math.PI/8+Math.PI/6
+
+      for i in [0..obj_count-1]
+         dist = Math.random()*@h/8+@h/3
+         Ball::create hue,angle,dist,20,@
+
+         hue += Math.random()*40+60
+         hue -= 360 if hue > 360
+         angle += Math.random()*Math.PI/4+Math.PI/8
 
 # Figure class for the rectilinear projection
 class FigureRect extends Figure
    constructor: (id,w,h) ->
+
+      # call the original constructor
       super id,w,h
 
+      # create the horizontal screen
       @screen =
          x : w/2
          y : h/2-20
          width : w*0.8
+
+      # create the visual screen object
       @screen.vis = @R.path ["M", @screen.x - @screen.width/2, @screen.y, "h", @screen.width]
       @screen.vis.attr("stroke-width":"10px",opacity:"0.1").insertBefore(@aboveScreen)
 
+      # populate the figure with balls
+      @populate()
+
+   # project a ball onto our screen using the rectilinear projection
    projectBall: (ball) ->
+
+      # image x coordinates
       ix1 = (ball.cx1-@cam.x) / (ball.cy1-@cam.y) * (@screen.y-@cam.y) + @cam.x
       ix2 = (ball.cx2-@cam.x) / (ball.cy2-@cam.y) * (@screen.y-@cam.y) + @cam.x
 
@@ -87,43 +120,59 @@ class FigureRect extends Figure
 # Figure class for the panoramic projection
 class FigureCircle extends Figure
    constructor: (id,w,h) ->
+
+      # call the original constructor
       super id,w,h
 
-      # the screen is an n-sided regular polygon
+      # create the circular screen
       @screen = 
          x : @cam.x # center
          y : @cam.y
          r : 50  # radius
          n : 40 # number of segments
 
-      # The fold angle is the angle between contiguous segments
-      # such that they form a closed polygon.
-      # This angle will be transitioned to Math.PI (180 degrees)
-      # in order to flatten the screen.
+      # To unfold a circular screen, we interpolate a "folding angle"
+      # To calculate this angle, we treat the circle to be
+      # an n-sided regular polygon.  At each vertex is an angle,
+      # which is our "folding angle".  Thus, to unfold, we interpolate
+      # this value from the original angle to 180 degrees.
       @screen.foldAngle = Math.PI - 2*Math.PI / @screen.n
-      r = @screen.r
-      @screen.segLength = Math.sqrt(2*r*r*(1-Math.cos(2*Math.PI/@screen.n)))
+      @screen.segLength = Math.sqrt(2*@screen.r*@screen.r*(1-Math.cos(2*Math.PI/@screen.n)))
 
+      # create visual screen circle object
       @screen.vis = @R.path().attr "stroke-width":"10px", fill:"none",opacity:"0.1"
       @screen.vis.insertBefore(@aboveScreen)
 
+      # da is the "delta angle" which is the visual width of the object in degrees
       @da = Math.PI-@screen.foldAngle
-      @foldScreen(@screen.foldAngle+@da)
+      @foldScreen(Math.PI)
 
+      # set our yoyo (empty animation object) to animate our fold angle
       @yoyo.attr(x:1)
       @yoyo.onAnimation => @foldScreen(@screen.foldAngle+@da*@yoyo.attr("x"))
 
+      # populate the figure with colored balls
+      @populate()
+
+      # initialize the scene by calling the event after a ball drag is complete
+      # (this clears the viewing cones and unfolds the screen)
+      @ballDragEnd()
+
+   # event that is called when a user starts dragging a ball
+   # (enables viewing cones and rolls up the screen)
    ballDragStart: ->
       for ball in @balls
          ball.cone.attr opacity:"0.1"
-
       @yoyo.animate({x:0},200, => @foldScreen(@screen.foldAngle))
 
+   # event that is called when a user stops dragging a ball
+   # (clears viewing cones and unrolls the screen)
    ballDragEnd: ->
       for ball in @balls
          ball.cone.attr opacity:"0"
-      @yoyo.animate({x:1},200, => @foldScreen(@screen.foldAngle+@da))
+      @yoyo.animate({x:1},200, => @foldScreen(Math.PI))
 
+   # updates a ball's projection on the circular screen, however folded
    projectBall: (ball) ->
 
       # get the boundary angles of the projection
@@ -226,6 +275,7 @@ class FigureCircle extends Figure
       # update projection
       ball.image.attr path:path
 
+   # update the screen folding to create a rolling/unrolling effect
    foldScreen: (angle) ->
       # calculate the top of the circle and the immediate point to the right
       dx = @screen.segLength * Math.sin angle/2
@@ -276,8 +326,11 @@ class FigureCircle extends Figure
       # reproject the balls on the new screen
       @projectBalls()
 
+# Figure class for the stereographic projection
 class FigureStereo extends Figure
    constructor: (id,w,h) ->
+
+      # call the original constructor
       super id,w,h
 
       # circle screen
@@ -298,14 +351,6 @@ class FigureStereo extends Figure
       @cam2.vis = @R.path(camIcon).attr(fill:"#000", opacity:"0.8")
       @cam2.vis.translate(@cam2.x-16, @cam2.y-10)
 
-      # make click switch cameras
-      #@cam1.vis.click = => @cam = @cam1
-      #@cam2.vis.click = => @cam = @cam2
-
-      # cue camera clickability
-      #@cam1.vis.attr cursor:"pointer"
-      #@cam2.vis.attr cursor:"pointer"
-
       # flat screen
       @screen2 =
          x : w/2
@@ -314,7 +359,8 @@ class FigureStereo extends Figure
       @screen2.vis = @R.path ["M", @screen2.x - @screen2.width/2, @screen2.y, "h", @screen2.width]
       @screen2.vis.attr("stroke-width":"10px",opacity:"0.1").insertBefore(@aboveScreen)
 
-      @screen = @screen1
+      @populate()
+      @ballDragEnd()
 
    ballDragStart: ->
       @screen = @screen1
@@ -453,21 +499,8 @@ class Ball
          color,
          figure
 
-# populate the figure with colored balls
-populateFigure = (figure, obj_count=1) ->
-   hue = Math.random()*360
-   angle = Math.random()*Math.PI/8+Math.PI/6
-
-   for i in [0..obj_count-1]
-      dist = Math.random()*figure.h/8+figure.h/3
-      Ball::create hue,angle,dist,20,figure
-
-      hue += Math.random()*40+60
-      hue -= 360 if hue > 360
-      angle += Math.random()*Math.PI/4+Math.PI/8
-
 # create the figures
 window.onload = ->
-   populateFigure new FigureRect("figure1", 650, 300)
-   populateFigure new FigureCircle("figure2", 650, 300)
-   populateFigure new FigureStereo("figure3", 650, 300)
+   new FigureRect("figure1", 650, 300)
+   new FigureCircle("figure2", 650, 300)
+   new FigureStereo("figure3", 650, 300)

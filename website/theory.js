@@ -14,7 +14,7 @@
   about different projections used in Quake Lenses.
   
   ------------------------------------------------------
-  */  var Ball, Figure, FigureCircle, FigureRect, FigureStereo, bound, camIcon, populateFigure, sign;
+  */  var Ball, Figure, FigureCircle, FigureRect, FigureStereo, bound, camIcon, sign;
   var __hasProp = Object.prototype.hasOwnProperty, __extends = function(child, parent) {
     for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; }
     function ctor() { this.constructor = child; }
@@ -64,6 +64,25 @@
       }
       return _results;
     };
+    Figure.prototype.populate = function(obj_count) {
+      var angle, dist, hue, i, _ref, _results;
+      if (obj_count == null) {
+        obj_count = 1;
+      }
+      hue = Math.random() * 360;
+      angle = Math.random() * Math.PI / 8 + Math.PI / 6;
+      _results = [];
+      for (i = 0, _ref = obj_count - 1; 0 <= _ref ? i <= _ref : i >= _ref; 0 <= _ref ? i++ : i--) {
+        dist = Math.random() * this.h / 8 + this.h / 3;
+        Ball.prototype.create(hue, angle, dist, 20, this);
+        hue += Math.random() * 40 + 60;
+        if (hue > 360) {
+          hue -= 360;
+        }
+        _results.push(angle += Math.random() * Math.PI / 4 + Math.PI / 8);
+      }
+      return _results;
+    };
     return Figure;
   })();
   FigureRect = (function() {
@@ -80,6 +99,7 @@
         "stroke-width": "10px",
         opacity: "0.1"
       }).insertBefore(this.aboveScreen);
+      this.populate();
     }
     FigureRect.prototype.projectBall = function(ball) {
       var ix1, ix2;
@@ -107,7 +127,6 @@
   FigureCircle = (function() {
     __extends(FigureCircle, Figure);
     function FigureCircle(id, w, h) {
-      var r;
       FigureCircle.__super__.constructor.call(this, id, w, h);
       this.screen = {
         x: this.cam.x,
@@ -116,8 +135,7 @@
         n: 40
       };
       this.screen.foldAngle = Math.PI - 2 * Math.PI / this.screen.n;
-      r = this.screen.r;
-      this.screen.segLength = Math.sqrt(2 * r * r * (1 - Math.cos(2 * Math.PI / this.screen.n)));
+      this.screen.segLength = Math.sqrt(2 * this.screen.r * this.screen.r * (1 - Math.cos(2 * Math.PI / this.screen.n)));
       this.screen.vis = this.R.path().attr({
         "stroke-width": "10px",
         fill: "none",
@@ -125,13 +143,15 @@
       });
       this.screen.vis.insertBefore(this.aboveScreen);
       this.da = Math.PI - this.screen.foldAngle;
-      this.foldScreen(this.screen.foldAngle + this.da);
+      this.foldScreen(Math.PI);
       this.yoyo.attr({
         x: 1
       });
       this.yoyo.onAnimation(__bind(function() {
         return this.foldScreen(this.screen.foldAngle + this.da * this.yoyo.attr("x"));
       }, this));
+      this.populate();
+      this.ballDragEnd();
     }
     FigureCircle.prototype.ballDragStart = function() {
       var ball, _i, _len, _ref;
@@ -160,7 +180,7 @@
       return this.yoyo.animate({
         x: 1
       }, 200, __bind(function() {
-        return this.foldScreen(this.screen.foldAngle + this.da);
+        return this.foldScreen(Math.PI);
       }, this));
     };
     FigureCircle.prototype.projectBall = function(ball) {
@@ -284,7 +304,8 @@
         "stroke-width": "10px",
         opacity: "0.1"
       }).insertBefore(this.aboveScreen);
-      this.screen = this.screen1;
+      this.populate();
+      this.ballDragEnd();
     }
     FigureStereo.prototype.ballDragStart = function() {
       this.screen = this.screen1;
@@ -429,28 +450,9 @@
     };
     return Ball;
   })();
-  populateFigure = function(figure, obj_count) {
-    var angle, dist, hue, i, _ref, _results;
-    if (obj_count == null) {
-      obj_count = 1;
-    }
-    hue = Math.random() * 360;
-    angle = Math.random() * Math.PI / 8 + Math.PI / 6;
-    _results = [];
-    for (i = 0, _ref = obj_count - 1; 0 <= _ref ? i <= _ref : i >= _ref; 0 <= _ref ? i++ : i--) {
-      dist = Math.random() * figure.h / 8 + figure.h / 3;
-      Ball.prototype.create(hue, angle, dist, 20, figure);
-      hue += Math.random() * 40 + 60;
-      if (hue > 360) {
-        hue -= 360;
-      }
-      _results.push(angle += Math.random() * Math.PI / 4 + Math.PI / 8);
-    }
-    return _results;
-  };
   window.onload = function() {
-    populateFigure(new FigureRect("figure1", 650, 300));
-    populateFigure(new FigureCircle("figure2", 650, 300));
-    return populateFigure(new FigureStereo("figure3", 650, 300));
+    new FigureRect("figure1", 650, 300);
+    new FigureCircle("figure2", 650, 300);
+    return new FigureStereo("figure3", 650, 300);
   };
 }).call(this);
