@@ -14,7 +14,7 @@
   about different projections used in Quake Lenses.
   
   ------------------------------------------------------
-  */  var Ball, Figure, FigureCircle, FigureRect, FigureStereo, VScrollBar, bound, camIcon, populateFigure, sign;
+  */  var Ball, Figure, FigureCircle, FigureRect, FigureStereo, bound, camIcon, populateFigure, sign;
   var __hasProp = Object.prototype.hasOwnProperty, __extends = function(child, parent) {
     for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; }
     function ctor() { this.constructor = child; }
@@ -52,6 +52,7 @@
       this.cam = this.cam1;
       this.aboveScreen = this.R.path();
       this.balls = [];
+      this.yoyo = this.R.path();
     }
     Figure.prototype.projectBalls = function() {
       var ball, _i, _len, _ref, _results;
@@ -103,58 +104,10 @@
     };
     return FigureRect;
   })();
-  VScrollBar = (function() {
-    function VScrollBar(x, y, height, value, R, f) {
-      var onDragEnd, onDragMove, onDragStart;
-      this.x = x;
-      this.y = y;
-      this.height = height;
-      this.value = value;
-      this.f = f;
-      this.bar = R.path(["M", x, y - height / 2, "v", height]);
-      this.bar.attr({
-        opacity: "0.3"
-      });
-      this.button = {
-        w: 30,
-        h: 10
-      };
-      this.miny = y - height / 2;
-      this.maxy = y + height / 2 - this.button.h;
-      this.rangey = this.maxy - this.miny;
-      this.button.vis = R.rect(x - this.button.w / 2, 0, this.button.w, this.button.h, 3);
-      this.button.vis.attr({
-        fill: "#333",
-        stroke: "none",
-        cursor: "move",
-        opacity: "0.8"
-      });
-      onDragStart = __bind(function() {
-        return this.oy = this.button.vis.attrs.y;
-      }, this);
-      onDragMove = __bind(function(dx, dy) {
-        var ny;
-        ny = bound(this.oy + dy, this.miny, this.maxy);
-        this.value = (ny - this.miny) / this.rangey;
-        return this.setValue(this.value);
-      }, this);
-      onDragEnd = function() {};
-      this.button.vis.drag(onDragMove, onDragStart, onDragEnd);
-      this.setValue(value);
-    }
-    VScrollBar.prototype.setValue = function(value) {
-      this.value = bound(value, 0, 1);
-      this.button.vis.attr({
-        y: this.miny + this.rangey * this.value
-      });
-      return this.f(this.value);
-    };
-    return VScrollBar;
-  })();
   FigureCircle = (function() {
     __extends(FigureCircle, Figure);
     function FigureCircle(id, w, h) {
-      var onScroll, r;
+      var r;
       FigureCircle.__super__.constructor.call(this, id, w, h);
       this.screen = {
         x: this.cam.x,
@@ -172,11 +125,44 @@
       });
       this.screen.vis.insertBefore(this.aboveScreen);
       this.da = Math.PI - this.screen.foldAngle;
-      onScroll = __bind(function(scale) {
-        return this.foldScreen(this.screen.foldAngle + this.da * (1 - scale));
-      }, this);
-      this.scroll = new VScrollBar(w - 50, h / 2, 100, 1, this.R, onScroll);
+      this.foldScreen(this.screen.foldAngle + this.da);
+      this.yoyo.attr({
+        x: 1
+      });
+      this.yoyo.onAnimation(__bind(function() {
+        return this.foldScreen(this.screen.foldAngle + this.da * this.yoyo.attr("x"));
+      }, this));
     }
+    FigureCircle.prototype.ballDragStart = function() {
+      var ball, _i, _len, _ref;
+      _ref = this.balls;
+      for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+        ball = _ref[_i];
+        ball.cone.attr({
+          opacity: "0.1"
+        });
+      }
+      return this.yoyo.animate({
+        x: 0
+      }, 200, __bind(function() {
+        return this.foldScreen(this.screen.foldAngle);
+      }, this));
+    };
+    FigureCircle.prototype.ballDragEnd = function() {
+      var ball, _i, _len, _ref;
+      _ref = this.balls;
+      for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+        ball = _ref[_i];
+        ball.cone.attr({
+          opacity: "0"
+        });
+      }
+      return this.yoyo.animate({
+        x: 1
+      }, 200, __bind(function() {
+        return this.foldScreen(this.screen.foldAngle + this.da);
+      }, this));
+    };
     FigureCircle.prototype.projectBall = function(ball) {
       var maxAngle, minAngle, path, start, _ref, _ref2;
       minAngle = ball.angle - ball.da;
@@ -300,6 +286,26 @@
       }).insertBefore(this.aboveScreen);
       this.screen = this.screen1;
     }
+    FigureStereo.prototype.ballDragStart = function() {
+      this.screen = this.screen1;
+      this.cam1.vis.attr({
+        opacity: "0.8"
+      });
+      this.cam2.vis.attr({
+        opacity: "0.1"
+      });
+      return this.projectBalls();
+    };
+    FigureStereo.prototype.ballDragEnd = function() {
+      this.screen = this.screen2;
+      this.cam1.vis.attr({
+        opacity: "0.1"
+      });
+      this.cam2.vis.attr({
+        opacity: "0.8"
+      });
+      return this.projectBalls();
+    };
     FigureStereo.prototype.projectBall = function(ball) {
       var cx1, cx2, cy1, cy2, ix1, ix1b, ix2, ix2b;
       cx1 = this.screen1.x + this.screen1.r * Math.cos(ball.angle - ball.da);
@@ -313,9 +319,15 @@
       ball.image.attr({
         path: ["M", cx1, cy1, "A", this.screen1.r, this.screen1.r, 0, 0, 1, cx2, cy2, "M", ix1b, this.screen2.y, "H", ix2b]
       });
-      return ball.cone.attr({
-        path: ["M", this.cam1.x, this.cam1.y, "L", ball.cx1, ball.cy1, "L", ball.cx2, ball.cy2, "Z", "M", this.cam2.x, this.cam2.y, "L", ix1, this.screen2.y, "L", ix2, this.screen2.y, "Z"]
-      });
+      if (this.screen === this.screen1) {
+        return ball.cone.attr({
+          path: ["M", this.cam1.x, this.cam1.y, "L", ball.cx1, ball.cy1, "L", ball.cx2, ball.cy2, "Z"]
+        });
+      } else {
+        return ball.cone.attr({
+          path: ["M", this.cam2.x, this.cam2.y, "L", ix1, this.screen2.y, "L", ix2, this.screen2.y, "Z"]
+        });
+      }
     };
     return FigureStereo;
   })();
@@ -362,9 +374,16 @@
       touchDragStart = __bind(function() {
         this.ox = this.touch.attrs.cx;
         this.oy = this.touch.attrs.cy;
-        return this.bringAboveScreen();
+        this.bringAboveScreen();
+        if (this.figure.ballDragStart != null) {
+          return this.figure.ballDragStart();
+        }
       }, this);
-      touchDragEnd = __bind(function() {}, this);
+      touchDragEnd = __bind(function() {
+        if (this.figure.ballDragEnd != null) {
+          return this.figure.ballDragEnd();
+        }
+      }, this);
       this.touch = this.figure.R.circle(x, y, r).attr({
         fill: "#000",
         stroke: "none",
@@ -413,7 +432,7 @@
   populateFigure = function(figure, obj_count) {
     var angle, dist, hue, i, _ref, _results;
     if (obj_count == null) {
-      obj_count = 3;
+      obj_count = 1;
     }
     hue = Math.random() * 360;
     angle = Math.random() * Math.PI / 8 + Math.PI / 6;
@@ -432,6 +451,6 @@
   window.onload = function() {
     populateFigure(new FigureRect("figure1", 650, 300));
     populateFigure(new FigureCircle("figure2", 650, 300));
-    return populateFigure(new FigureStereo("figure3", 650, 300), 1);
+    return populateFigure(new FigureStereo("figure3", 650, 300));
   };
 }).call(this);

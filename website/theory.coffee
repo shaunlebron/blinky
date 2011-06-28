@@ -43,6 +43,10 @@ class Figure
 
       @balls = []
 
+      # blank path object used solely for hooking its animation callback
+      # we use it for animating arbitrary values
+      @yoyo = @R.path()
+
    projectBalls: ->
       @projectBall ball for ball in @balls
 
@@ -80,38 +84,6 @@ class FigureRect extends Figure
          ball.image.attr path:[ "M",ix1,@screen.y, "H",ix2 ]
 
 
-# a function to construct a vertical scrollbar
-class VScrollBar
-   constructor: (@x,@y,@height,@value,R, @f) ->
-      @bar = R.path ["M",x,y-height/2,"v",height]
-      @bar.attr opacity:"0.3"
-
-      @button =
-         w : 30
-         h : 10
-
-      @miny = y-height/2
-      @maxy = y+height/2-@button.h
-      @rangey = @maxy-@miny
-
-      @button.vis = R.rect x-@button.w/2,0,@button.w,@button.h, 3
-      @button.vis.attr fill:"#333", stroke:"none", cursor:"move", opacity:"0.8"
-      onDragStart = =>
-         @oy = @button.vis.attrs.y
-      onDragMove = (dx,dy) =>
-         ny = bound @oy+dy, @miny, @maxy
-         @value = (ny - @miny) / @rangey
-         @setValue @value
-      onDragEnd = ->
-      @button.vis.drag(onDragMove, onDragStart, onDragEnd)
-
-      @setValue value
-
-   setValue: (value) ->
-      @value = bound value, 0, 1
-      @button.vis.attr y : @miny + @rangey * @value
-      @f @value
-
 # Figure class for the panoramic projection
 class FigureCircle extends Figure
    constructor: (id,w,h) ->
@@ -136,10 +108,21 @@ class FigureCircle extends Figure
       @screen.vis.insertBefore(@aboveScreen)
 
       @da = Math.PI-@screen.foldAngle
-      onScroll = (scale) =>
-         @foldScreen(@screen.foldAngle+@da*(1-scale))
+      @foldScreen(@screen.foldAngle+@da)
 
-      @scroll = new VScrollBar(w - 50, h/2, 100, 1, @R, onScroll)
+      @yoyo.attr(x:1)
+      @yoyo.onAnimation => @foldScreen(@screen.foldAngle+@da*@yoyo.attr("x"))
+
+   ballDragStart: ->
+      for ball in @balls
+         ball.cone.attr opacity:"0.1"
+
+      @yoyo.animate({x:0},200, => @foldScreen(@screen.foldAngle))
+
+   ballDragEnd: ->
+      for ball in @balls
+         ball.cone.attr opacity:"0"
+      @yoyo.animate({x:1},200, => @foldScreen(@screen.foldAngle+@da))
 
    projectBall: (ball) ->
 
@@ -333,6 +316,18 @@ class FigureStereo extends Figure
 
       @screen = @screen1
 
+   ballDragStart: ->
+      @screen = @screen1
+      @cam1.vis.attr opacity:"0.8"
+      @cam2.vis.attr opacity:"0.1"
+      @projectBalls()
+
+   ballDragEnd: ->
+      @screen = @screen2
+      @cam1.vis.attr opacity:"0.1"
+      @cam2.vis.attr opacity:"0.8"
+      @projectBalls()
+
    projectBall: (ball) ->
 
       # circle projection points
@@ -361,16 +356,19 @@ class FigureStereo extends Figure
          "M",ix1b,@screen2.y,"H",ix2b
          ]
 
-      ball.cone.attr path:[
-         "M", @cam1.x, @cam1.y,
-         "L", ball.cx1, ball.cy1,
-         "L", ball.cx2, ball.cy2,
-         "Z",
-         "M", @cam2.x, @cam2.y,
-         "L", ix1, @screen2.y,
-         "L", ix2, @screen2.y,
-         "Z"
-         ]
+      if @screen == @screen1
+         ball.cone.attr path:[
+            "M", @cam1.x, @cam1.y,
+            "L", ball.cx1, ball.cy1,
+            "L", ball.cx2, ball.cy2,
+            "Z"]
+      else
+         ball.cone.attr path:[
+            "M", @cam2.x, @cam2.y,
+            "L", ix1, @screen2.y,
+            "L", ix2, @screen2.y,
+            "Z"]
+
 
 
 # a ball to be projected onto a screen
@@ -399,8 +397,10 @@ class Ball
          @ox = @touch.attrs.cx
          @oy = @touch.attrs.cy
          @bringAboveScreen()
+         @figure.ballDragStart() if @figure.ballDragStart?
 
       touchDragEnd = =>
+         @figure.ballDragEnd() if @figure.ballDragEnd?
 
       @touch = @figure.R.circle(x,y,r)
          .attr(fill:"#000",stroke:"none",opacity:"0",cursor:"move")
@@ -454,7 +454,7 @@ class Ball
          figure
 
 # populate the figure with colored balls
-populateFigure = (figure, obj_count=3) ->
+populateFigure = (figure, obj_count=1) ->
    hue = Math.random()*360
    angle = Math.random()*Math.PI/8+Math.PI/6
 
@@ -470,4 +470,4 @@ populateFigure = (figure, obj_count=3) ->
 window.onload = ->
    populateFigure new FigureRect("figure1", 650, 300)
    populateFigure new FigureCircle("figure2", 650, 300)
-   populateFigure new FigureStereo("figure3", 650, 300), 1
+   populateFigure new FigureStereo("figure3", 650, 300)
