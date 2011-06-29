@@ -14,7 +14,7 @@
   about different projections used in Quake Lenses.
   
   ------------------------------------------------------
-  */  var Ball, Figure, FigureCircle, FigureRect, FigureStereo, bound, camIcon, sign;
+  */  var Ball, Figure, FigureCircle, FigureRect, FigureStereo, bound, camAttr, camFadeSpeed, camIcon, camOpacityMax, camOpacityMin, coneFadeSpeed, coneOpacity, imageThickness, objectRadius, screenAttr, screenFoldSpeed, sign;
   var __hasProp = Object.prototype.hasOwnProperty, __extends = function(child, parent) {
     for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; }
     function ctor() { this.constructor = child; }
@@ -33,6 +33,22 @@
     };
   };
   camIcon = "M24.25,10.25H20.5v-1.5h-9.375v1.5h-3.75c-1.104,0-2,0.896-2,2v10.375c0,1.104,0.896,2,2,2H24.25c1.104,0,2-0.896,2-2V12.25C26.25,11.146,25.354,10.25,24.25,10.25zM15.812,23.499c-3.342,0-6.06-2.719-6.06-6.061c0-3.342,2.718-6.062,6.06-6.062s6.062,2.72,6.062,6.062C21.874,20.78,19.153,23.499,15.812,23.499zM15.812,13.375c-2.244,0-4.062,1.819-4.062,4.062c0,2.244,1.819,4.062,4.062,4.062c2.244,0,4.062-1.818,4.062-4.062C19.875,15.194,18.057,13.375,15.812,13.375z";
+  coneOpacity = 0.1;
+  coneFadeSpeed = 200;
+  screenFoldSpeed = 500;
+  camFadeSpeed = 200;
+  camOpacityMax = 0.8;
+  camOpacityMin = 0.2;
+  screenAttr = {
+    "stroke-width": "10px",
+    opacity: "0.1"
+  };
+  camAttr = {
+    fill: "#000",
+    opacity: camOpacityMax
+  };
+  imageThickness = 5;
+  objectRadius = 20;
   Figure = (function() {
     function Figure(id, w, h) {
       this.id = id;
@@ -44,10 +60,7 @@
         y: h / 2 + 40,
         r: 5
       };
-      this.cam1.vis = this.R.path(camIcon).attr({
-        fill: "#000",
-        opacity: "0.8"
-      });
+      this.cam1.vis = this.R.path(camIcon).attr(camAttr);
       this.cam1.vis.translate(this.cam1.x - 16, this.cam1.y - 10);
       this.cam = this.cam1;
       this.aboveScreen = this.R.path();
@@ -64,6 +77,33 @@
       }
       return _results;
     };
+    Figure.prototype.fadeInCones = function() {
+      var ball, _i, _len, _ref, _results;
+      _ref = this.balls;
+      _results = [];
+      for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+        ball = _ref[_i];
+        ball.cone.attr({
+          opacity: 0
+        });
+        _results.push(ball.cone.animate({
+          opacity: coneOpacity
+        }, coneFadeSpeed));
+      }
+      return _results;
+    };
+    Figure.prototype.fadeOutCones = function() {
+      var ball, _i, _len, _ref, _results;
+      _ref = this.balls;
+      _results = [];
+      for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+        ball = _ref[_i];
+        _results.push(ball.cone.animate({
+          opacity: 0
+        }, coneFadeSpeed));
+      }
+      return _results;
+    };
     Figure.prototype.populate = function(obj_count) {
       var angle, dist, hue, i, _ref, _results;
       if (obj_count == null) {
@@ -74,7 +114,7 @@
       _results = [];
       for (i = 0, _ref = obj_count - 1; 0 <= _ref ? i <= _ref : i >= _ref; 0 <= _ref ? i++ : i--) {
         dist = Math.random() * this.h / 8 + this.h / 3;
-        Ball.prototype.create(hue, angle, dist, 20, this);
+        Ball.prototype.create(hue, angle, dist, objectRadius, this);
         hue += Math.random() * 40 + 60;
         if (hue > 360) {
           hue -= 360;
@@ -95,11 +135,8 @@
         width: w * 0.8
       };
       this.screen.vis = this.R.path(["M", this.screen.x - this.screen.width / 2, this.screen.y, "h", this.screen.width]);
-      this.screen.vis.attr({
-        "stroke-width": "10px",
-        opacity: "0.1"
-      }).insertBefore(this.aboveScreen);
-      this.populate();
+      this.screen.vis.attr(screenAttr).insertBefore(this.aboveScreen);
+      this.populate(3);
     }
     FigureRect.prototype.projectBall = function(ball) {
       var ix1, ix2;
@@ -136,11 +173,7 @@
       };
       this.screen.foldAngle = Math.PI - 2 * Math.PI / this.screen.n;
       this.screen.segLength = Math.sqrt(2 * this.screen.r * this.screen.r * (1 - Math.cos(2 * Math.PI / this.screen.n)));
-      this.screen.vis = this.R.path().attr({
-        "stroke-width": "10px",
-        fill: "none",
-        opacity: "0.1"
-      });
+      this.screen.vis = this.R.path().attr(screenAttr);
       this.screen.vis.insertBefore(this.aboveScreen);
       this.da = Math.PI - this.screen.foldAngle;
       this.foldScreen(Math.PI);
@@ -150,36 +183,22 @@
       this.yoyo.onAnimation(__bind(function() {
         return this.foldScreen(this.screen.foldAngle + this.da * this.yoyo.attr("x"));
       }, this));
-      this.populate();
+      this.populate(3);
       this.ballDragEnd();
     }
     FigureCircle.prototype.ballDragStart = function() {
-      var ball, _i, _len, _ref;
-      _ref = this.balls;
-      for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-        ball = _ref[_i];
-        ball.cone.attr({
-          opacity: "0.1"
-        });
-      }
+      this.fadeInCones();
       return this.yoyo.animate({
         x: 0
-      }, 200, __bind(function() {
+      }, screenFoldSpeed, __bind(function() {
         return this.foldScreen(this.screen.foldAngle);
       }, this));
     };
     FigureCircle.prototype.ballDragEnd = function() {
-      var ball, _i, _len, _ref;
-      _ref = this.balls;
-      for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-        ball = _ref[_i];
-        ball.cone.attr({
-          opacity: "0"
-        });
-      }
+      this.fadeOutCones();
       return this.yoyo.animate({
         x: 1
-      }, 200, __bind(function() {
+      }, screenFoldSpeed, __bind(function() {
         return this.foldScreen(Math.PI);
       }, this));
     };
@@ -277,22 +296,14 @@
         y: this.cam.y,
         r: 50
       };
-      this.screen1.vis = this.R.circle(this.screen1.x, this.screen1.y, this.screen1.r);
-      this.screen1.vis.attr({
-        "stroke-width": "10px",
-        fill: "none",
-        opacity: "0.1"
-      });
+      this.screen1.vis = this.R.circle(this.screen1.x, this.screen1.y, this.screen1.r).attr(screenAttr);
       this.screen1.vis.insertBefore(this.aboveScreen);
       this.cam2 = {
         x: this.cam.x,
         y: this.cam.y + this.screen1.r,
         r: 5
       };
-      this.cam2.vis = this.R.path(camIcon).attr({
-        fill: "#000",
-        opacity: "0.8"
-      });
+      this.cam2.vis = this.R.path(camIcon).attr(camAttr);
       this.cam2.vis.translate(this.cam2.x - 16, this.cam2.y - 10);
       this.screen2 = {
         x: w / 2,
@@ -300,31 +311,30 @@
         width: w * 0.8
       };
       this.screen2.vis = this.R.path(["M", this.screen2.x - this.screen2.width / 2, this.screen2.y, "h", this.screen2.width]);
-      this.screen2.vis.attr({
-        "stroke-width": "10px",
-        opacity: "0.1"
-      }).insertBefore(this.aboveScreen);
-      this.populate();
+      this.screen2.vis.attr(screenAttr).insertBefore(this.aboveScreen);
+      this.populate(2);
       this.ballDragEnd();
     }
     FigureStereo.prototype.ballDragStart = function() {
       this.screen = this.screen1;
-      this.cam1.vis.attr({
-        opacity: "0.8"
-      });
-      this.cam2.vis.attr({
-        opacity: "0.1"
-      });
+      this.cam1.vis.animate({
+        opacity: camOpacityMax
+      }, camFadeSpeed);
+      this.cam2.vis.animate({
+        opacity: camOpacityMin
+      }, camFadeSpeed);
+      this.fadeInCones();
       return this.projectBalls();
     };
     FigureStereo.prototype.ballDragEnd = function() {
       this.screen = this.screen2;
-      this.cam1.vis.attr({
-        opacity: "0.1"
-      });
-      this.cam2.vis.attr({
-        opacity: "0.8"
-      });
+      this.cam1.vis.animate({
+        opacity: camOpacityMin
+      }, camFadeSpeed);
+      this.cam2.vis.animate({
+        opacity: camOpacityMax
+      }, camFadeSpeed);
+      this.fadeInCones();
       return this.projectBalls();
     };
     FigureStereo.prototype.projectBall = function(ball) {
@@ -365,12 +375,12 @@
         stroke: "none"
       });
       this.image = this.figure.R.path().attr({
-        "stroke-width": "5px",
+        "stroke-width": imageThickness,
         stroke: this.color
       });
       this.cone = this.figure.R.path().attr({
         fill: this.color,
-        opacity: "0.1",
+        opacity: coneOpacity,
         stroke: "none"
       });
       this.bringAboveScreen();

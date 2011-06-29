@@ -23,6 +23,21 @@ sign = (x) -> (x < 0) ? -1 : 1
 camIcon =
    "M24.25,10.25H20.5v-1.5h-9.375v1.5h-3.75c-1.104,0-2,0.896-2,2v10.375c0,1.104,0.896,2,2,2H24.25c1.104,0,2-0.896,2-2V12.25C26.25,11.146,25.354,10.25,24.25,10.25zM15.812,23.499c-3.342,0-6.06-2.719-6.06-6.061c0-3.342,2.718-6.062,6.06-6.062s6.062,2.72,6.062,6.062C21.874,20.78,19.153,23.499,15.812,23.499zM15.812,13.375c-2.244,0-4.062,1.819-4.062,4.062c0,2.244,1.819,4.062,4.062,4.062c2.244,0,4.062-1.818,4.062-4.062C19.875,15.194,18.057,13.375,15.812,13.375z"
 
+coneOpacity = 0.1
+coneFadeSpeed = 200
+
+screenFoldSpeed = 500
+
+camFadeSpeed = 200
+camOpacityMax = 0.8
+camOpacityMin = 0.2
+
+screenAttr = "stroke-width":"10px", opacity:"0.1"
+camAttr = fill:"#000", opacity:camOpacityMax
+
+imageThickness = 5
+objectRadius = 20
+
 # common Figure class
 class Figure
    constructor: (@id, @w, @h) ->
@@ -37,7 +52,7 @@ class Figure
          r : 5
 
       # visual camera icon
-      @cam1.vis = @R.path(camIcon).attr(fill:"#000", opacity:"0.8")
+      @cam1.vis = @R.path(camIcon).attr camAttr
       @cam1.vis.translate(@cam1.x-16, @cam1.y-10)
 
       # set primary cam to cam1 (used by Ball to decide origin of viewing cone)
@@ -59,6 +74,16 @@ class Figure
    projectBalls: ->
       @projectBall ball for ball in @balls
 
+   # fade in viewing cones
+   fadeInCones: ->
+      for ball in @balls
+         ball.cone.attr opacity:0
+         ball.cone.animate({opacity:coneOpacity},coneFadeSpeed)
+
+   fadeOutCones: ->
+      for ball in @balls
+         ball.cone.animate({opacity:0},coneFadeSpeed)
+
    # populate the figure with colored balls
    populate: (obj_count=1) ->
       hue = Math.random()*360
@@ -66,7 +91,7 @@ class Figure
 
       for i in [0..obj_count-1]
          dist = Math.random()*@h/8+@h/3
-         Ball::create hue,angle,dist,20,@
+         Ball::create hue,angle,dist,objectRadius,@
 
          hue += Math.random()*40+60
          hue -= 360 if hue > 360
@@ -87,10 +112,10 @@ class FigureRect extends Figure
 
       # create the visual screen object
       @screen.vis = @R.path ["M", @screen.x - @screen.width/2, @screen.y, "h", @screen.width]
-      @screen.vis.attr("stroke-width":"10px",opacity:"0.1").insertBefore(@aboveScreen)
+      @screen.vis.attr(screenAttr).insertBefore(@aboveScreen)
 
       # populate the figure with balls
-      @populate()
+      @populate 3
 
    # project a ball onto our screen using the rectilinear projection
    projectBall: (ball) ->
@@ -140,7 +165,7 @@ class FigureCircle extends Figure
       @screen.segLength = Math.sqrt(2*@screen.r*@screen.r*(1-Math.cos(2*Math.PI/@screen.n)))
 
       # create visual screen circle object
-      @screen.vis = @R.path().attr "stroke-width":"10px", fill:"none",opacity:"0.1"
+      @screen.vis = @R.path().attr screenAttr
       @screen.vis.insertBefore(@aboveScreen)
 
       # da is the "delta angle" which is the visual width of the object in degrees
@@ -152,7 +177,7 @@ class FigureCircle extends Figure
       @yoyo.onAnimation => @foldScreen(@screen.foldAngle+@da*@yoyo.attr("x"))
 
       # populate the figure with colored balls
-      @populate()
+      @populate 3
 
       # initialize the scene by calling the event after a ball drag is complete
       # (this clears the viewing cones and unfolds the screen)
@@ -161,16 +186,14 @@ class FigureCircle extends Figure
    # event that is called when a user starts dragging a ball
    # (enables viewing cones and rolls up the screen)
    ballDragStart: ->
-      for ball in @balls
-         ball.cone.attr opacity:"0.1"
-      @yoyo.animate({x:0},200, => @foldScreen(@screen.foldAngle))
+      @fadeInCones()
+      @yoyo.animate({x:0},screenFoldSpeed, => @foldScreen(@screen.foldAngle))
 
    # event that is called when a user stops dragging a ball
    # (clears viewing cones and unrolls the screen)
    ballDragEnd: ->
-      for ball in @balls
-         ball.cone.attr opacity:"0"
-      @yoyo.animate({x:1},200, => @foldScreen(Math.PI))
+      @fadeOutCones()
+      @yoyo.animate({x:1},screenFoldSpeed, => @foldScreen(Math.PI))
 
    # updates a ball's projection on the circular screen, however folded
    projectBall: (ball) ->
@@ -338,8 +361,7 @@ class FigureStereo extends Figure
          x : @cam.x # center
          y : @cam.y
          r : 50  # radius
-      @screen1.vis = @R.circle @screen1.x, @screen1.y, @screen1.r
-      @screen1.vis.attr "stroke-width":"10px", fill:"none",opacity:"0.1"
+      @screen1.vis = @R.circle(@screen1.x, @screen1.y, @screen1.r).attr screenAttr
       @screen1.vis.insertBefore(@aboveScreen)
 
       # stereographic camera
@@ -348,7 +370,7 @@ class FigureStereo extends Figure
          y : @cam.y + @screen1.r
          r : 5
 
-      @cam2.vis = @R.path(camIcon).attr(fill:"#000", opacity:"0.8")
+      @cam2.vis = @R.path(camIcon).attr(camAttr)
       @cam2.vis.translate(@cam2.x-16, @cam2.y-10)
 
       # flat screen
@@ -357,21 +379,23 @@ class FigureStereo extends Figure
          y : h/2-20
          width: w*0.8
       @screen2.vis = @R.path ["M", @screen2.x - @screen2.width/2, @screen2.y, "h", @screen2.width]
-      @screen2.vis.attr("stroke-width":"10px",opacity:"0.1").insertBefore(@aboveScreen)
+      @screen2.vis.attr(screenAttr).insertBefore(@aboveScreen)
 
-      @populate()
+      @populate 2
       @ballDragEnd()
 
    ballDragStart: ->
       @screen = @screen1
-      @cam1.vis.attr opacity:"0.8"
-      @cam2.vis.attr opacity:"0.1"
+      @cam1.vis.animate({opacity:camOpacityMax},camFadeSpeed)
+      @cam2.vis.animate({opacity:camOpacityMin},camFadeSpeed)
+      @fadeInCones()
       @projectBalls()
 
    ballDragEnd: ->
       @screen = @screen2
-      @cam1.vis.attr opacity:"0.1"
-      @cam2.vis.attr opacity:"0.8"
+      @cam1.vis.animate({opacity:camOpacityMin},camFadeSpeed)
+      @cam2.vis.animate({opacity:camOpacityMax},camFadeSpeed)
+      @fadeInCones()
       @projectBalls()
 
    projectBall: (ball) ->
@@ -422,8 +446,8 @@ class Ball
    constructor: (@x,@y,@r,@color,@figure) ->
 
       @circle = @figure.R.circle(x,y,r).attr fill:color, stroke:"none"
-      @image = @figure.R.path().attr "stroke-width":"5px", stroke:@color
-      @cone = @figure.R.path().attr fill:@color, opacity:"0.1", stroke:"none"
+      @image = @figure.R.path().attr "stroke-width":imageThickness, stroke:@color
+      @cone = @figure.R.path().attr fill:@color, opacity:coneOpacity, stroke:"none"
       @bringAboveScreen()
 
       touchDragMove = (dx,dy) =>
