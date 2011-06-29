@@ -38,6 +38,9 @@ camAttr = fill:"#000", opacity:camOpacityMax
 imageThickness = 5
 objectRadius = 20
 
+# pi is obsolete apparently (tauday.com)
+tau = Math.PI*2
+
 # common Figure class
 class Figure
    constructor: (@id, @w, @h) ->
@@ -87,7 +90,7 @@ class Figure
    # populate the figure with colored balls
    populate: (obj_count=1) ->
       hue = Math.random()*360
-      angle = Math.random()*Math.PI/8+Math.PI/6
+      angle = Math.random()*tau/16+tau/12
 
       for i in [0..obj_count-1]
          dist = Math.random()*@h/8+@h/3
@@ -95,7 +98,7 @@ class Figure
 
          hue += Math.random()*40+60
          hue -= 360 if hue > 360
-         angle += Math.random()*Math.PI/4+Math.PI/8
+         angle += Math.random()*tau/8+tau/16
 
 # Figure class for the rectilinear projection
 class FigureRect extends Figure
@@ -161,16 +164,16 @@ class FigureCircle extends Figure
       # an n-sided regular polygon.  At each vertex is an angle,
       # which is our "folding angle".  Thus, to unfold, we interpolate
       # this value from the original angle to 180 degrees.
-      @screen.foldAngle = Math.PI - 2*Math.PI / @screen.n
-      @screen.segLength = Math.sqrt(2*@screen.r*@screen.r*(1-Math.cos(2*Math.PI/@screen.n)))
+      @screen.foldAngle = tau/2 - tau / @screen.n
+      @screen.segLength = Math.sqrt(2*@screen.r*@screen.r*(1-Math.cos(tau/@screen.n)))
 
       # create visual screen circle object
       @screen.vis = @R.path().attr screenAttr
       @screen.vis.insertBefore(@aboveScreen)
 
       # da is the "delta angle" which is the visual width of the object in degrees
-      @da = Math.PI-@screen.foldAngle
-      @foldScreen(Math.PI)
+      @da = tau/2-@screen.foldAngle
+      @foldScreen(tau/2)
 
       # set our yoyo (empty animation object) to animate our fold angle
       @yoyo.attr(x:1)
@@ -193,7 +196,7 @@ class FigureCircle extends Figure
    # (clears viewing cones and unrolls the screen)
    ballDragEnd: ->
       @fadeOutCones()
-      @yoyo.animate({x:1},screenFoldSpeed, => @foldScreen(Math.PI))
+      @yoyo.animate({x:1},screenFoldSpeed, => @foldScreen(tau/2))
 
    # updates a ball's projection on the circular screen, however folded
    projectBall: (ball) ->
@@ -204,15 +207,15 @@ class FigureCircle extends Figure
 
       # rotate the frame such that the origin is at the bottom of the circle
       # positive angle is clockwise
-      minAngle -= Math.PI/2
-      maxAngle -= Math.PI/2
+      minAngle -= tau/4
+      maxAngle -= tau/4
 
       # if the projection falls on a fault, it must be split
       if minAngle < 0 < maxAngle
 
          # normalize angles (make positive) 
-         minAngle += Math.PI*2 if minAngle < 0
-         maxAngle += Math.PI*2 if maxAngle < 0
+         minAngle += tau if minAngle < 0
+         maxAngle += tau if maxAngle < 0
          if maxAngle < minAngle
             [minAngle, maxAngle] = [maxAngle, minAngle]
 
@@ -220,25 +223,25 @@ class FigureCircle extends Figure
          if @arcAngle < 0.001
             path = [
                "M",
-               @screen.x - Math.PI*@screen.r,
+               @screen.x - tau*@screen.r/2,
                @screen.y - @screen.r,
                "H",
-               @screen.x - Math.PI*@screen.r + minAngle*@screen.r,
+               @screen.x - tau*@screen.r/2 + minAngle*@screen.r,
                "M",
-               @screen.x - Math.PI*@screen.r + maxAngle*@screen.r,
+               @screen.x - tau*@screen.r/2 + maxAngle*@screen.r,
                @screen.y - @screen.r,
                "H",
-               @screen.x + Math.PI*@screen.r]
+               @screen.x + tau*@screen.r/2]
 
          # screen is curved
          else
             # convert angles to the folding arc angles
-            minAngle = minAngle / (2*Math.PI) * @arcAngle
-            maxAngle = maxAngle / (2*Math.PI) * @arcAngle
+            minAngle = minAngle / tau * @arcAngle
+            maxAngle = maxAngle / tau * @arcAngle
             if maxAngle < minAngle
                [minAngle, maxAngle] = [maxAngle, minAngle]
 
-            start = (2*Math.PI - @arcAngle)/2 + Math.PI/2
+            start = (tau - @arcAngle)/2 + tau/4
             path = [
                "M",
                @arcCenterX + @arcRadius * Math.cos(start),
@@ -264,25 +267,25 @@ class FigureCircle extends Figure
       # projection is contiguous
       else
          # normalize angles (make positive)
-         minAngle += Math.PI*2 if minAngle < 0
-         maxAngle += Math.PI*2 if maxAngle < 0
+         minAngle += tau if minAngle < 0
+         maxAngle += tau if maxAngle < 0
 
          # screen is horizontal
          if @arcAngle < 0.001
             path = [
                "M",
-               @screen.x - Math.PI*@screen.r + minAngle*@screen.r,
+               @screen.x - tau*@screen.r/2 + minAngle*@screen.r,
                @screen.y - @screen.r,
                "H",
-               @screen.x - Math.PI*@screen.r + maxAngle*@screen.r]
+               @screen.x - tau*@screen.r/2 + maxAngle*@screen.r]
 
          # screen is curved
          else
             # convert angles to the folding arc angles
-            minAngle = minAngle / (2*Math.PI) * @arcAngle
-            maxAngle = maxAngle / (2*Math.PI) * @arcAngle
+            minAngle = minAngle / tau * @arcAngle
+            maxAngle = maxAngle / tau * @arcAngle
 
-            start = (2*Math.PI - @arcAngle)/2 + Math.PI/2
+            start = (tau - @arcAngle)/2 + tau/4
             path = [
                "M",
                @arcCenterX + @arcRadius * Math.cos(start + minAngle),
@@ -307,7 +310,7 @@ class FigureCircle extends Figure
       # the unfolded circle is actually an arc on a larger circle
       # with the following radius and angle coverage
       @arcRadius = (dx*dx+dy*dy)/(2*dy)
-      @arcAngle = 2*Math.PI*@screen.r / @arcRadius
+      @arcAngle = tau*@screen.r / @arcRadius
       @arcCenterX = @screen.x
       @arcCenterY = @screen.y - @screen.r + @arcRadius
 
@@ -315,16 +318,16 @@ class FigureCircle extends Figure
 
       # screen is a circle
       if Math.abs(angle - @screen.foldAngle) < 0.001
-         dt = 2*Math.PI / @screen.n
+         dt = tau / @screen.n
          for i in [0..@screen.n-1]
-            path.push("L", @screen.x + @screen.r * Math.cos(Math.PI/2 + dt*i), 
-                           @screen.y + @screen.r * Math.sin(Math.PI/2 + dt*i))
+            path.push("L", @screen.x + @screen.r * Math.cos(tau/4 + dt*i), 
+                           @screen.y + @screen.r * Math.sin(tau/4 + dt*i))
          path[0] = "M"
          path.push "Z"
 
       # screen is horizontal
       else if dy < 0.001
-         path = ["M", @screen.x-Math.PI*@screen.r,@screen.y-@screen.r, "h", 2*Math.PI*@screen.r]
+         path = ["M", @screen.x-tau/2*@screen.r,@screen.y-@screen.r, "h", tau*@screen.r]
 
       # screen is an arc
       else
@@ -332,7 +335,7 @@ class FigureCircle extends Figure
          ca = @da/2 + @screen.foldAngle
 
          # arc points
-         start = (2*Math.PI - @arcAngle)/2 + Math.PI/2
+         start = (tau - @arcAngle)/2 + tau/4
          x1 = @arcCenterX + @arcRadius * Math.cos(start)
          y1 = @arcCenterY + @arcRadius * Math.sin(start)
          x0 = @arcCenterX + @arcRadius * Math.cos(start+@arcAngle)

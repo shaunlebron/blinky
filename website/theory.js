@@ -14,7 +14,7 @@
   about different projections used in Quake Lenses.
   
   ------------------------------------------------------
-  */  var Ball, Figure, FigureCircle, FigureRect, FigureStereo, bound, camAttr, camFadeSpeed, camIcon, camOpacityMax, camOpacityMin, coneFadeSpeed, coneOpacity, imageThickness, objectRadius, screenAttr, screenFoldSpeed, sign;
+  */  var Ball, Figure, FigureCircle, FigureRect, FigureStereo, bound, camAttr, camFadeSpeed, camIcon, camOpacityMax, camOpacityMin, coneFadeSpeed, coneOpacity, imageThickness, objectRadius, screenAttr, screenFoldSpeed, sign, tau;
   var __hasProp = Object.prototype.hasOwnProperty, __extends = function(child, parent) {
     for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; }
     function ctor() { this.constructor = child; }
@@ -49,6 +49,7 @@
   };
   imageThickness = 5;
   objectRadius = 20;
+  tau = Math.PI * 2;
   Figure = (function() {
     function Figure(id, w, h) {
       this.id = id;
@@ -110,7 +111,7 @@
         obj_count = 1;
       }
       hue = Math.random() * 360;
-      angle = Math.random() * Math.PI / 8 + Math.PI / 6;
+      angle = Math.random() * tau / 16 + tau / 12;
       _results = [];
       for (i = 0, _ref = obj_count - 1; 0 <= _ref ? i <= _ref : i >= _ref; 0 <= _ref ? i++ : i--) {
         dist = Math.random() * this.h / 8 + this.h / 3;
@@ -119,7 +120,7 @@
         if (hue > 360) {
           hue -= 360;
         }
-        _results.push(angle += Math.random() * Math.PI / 4 + Math.PI / 8);
+        _results.push(angle += Math.random() * tau / 8 + tau / 16);
       }
       return _results;
     };
@@ -171,12 +172,12 @@
         r: 50,
         n: 40
       };
-      this.screen.foldAngle = Math.PI - 2 * Math.PI / this.screen.n;
-      this.screen.segLength = Math.sqrt(2 * this.screen.r * this.screen.r * (1 - Math.cos(2 * Math.PI / this.screen.n)));
+      this.screen.foldAngle = tau / 2 - tau / this.screen.n;
+      this.screen.segLength = Math.sqrt(2 * this.screen.r * this.screen.r * (1 - Math.cos(tau / this.screen.n)));
       this.screen.vis = this.R.path().attr(screenAttr);
       this.screen.vis.insertBefore(this.aboveScreen);
-      this.da = Math.PI - this.screen.foldAngle;
-      this.foldScreen(Math.PI);
+      this.da = tau / 2 - this.screen.foldAngle;
+      this.foldScreen(tau / 2);
       this.yoyo.attr({
         x: 1
       });
@@ -199,49 +200,49 @@
       return this.yoyo.animate({
         x: 1
       }, screenFoldSpeed, __bind(function() {
-        return this.foldScreen(Math.PI);
+        return this.foldScreen(tau / 2);
       }, this));
     };
     FigureCircle.prototype.projectBall = function(ball) {
       var maxAngle, minAngle, path, start, _ref, _ref2;
       minAngle = ball.angle - ball.da;
       maxAngle = ball.angle + ball.da;
-      minAngle -= Math.PI / 2;
-      maxAngle -= Math.PI / 2;
+      minAngle -= tau / 4;
+      maxAngle -= tau / 4;
       if ((minAngle < 0 && 0 < maxAngle)) {
         if (minAngle < 0) {
-          minAngle += Math.PI * 2;
+          minAngle += tau;
         }
         if (maxAngle < 0) {
-          maxAngle += Math.PI * 2;
+          maxAngle += tau;
         }
         if (maxAngle < minAngle) {
           _ref = [maxAngle, minAngle], minAngle = _ref[0], maxAngle = _ref[1];
         }
         if (this.arcAngle < 0.001) {
-          path = ["M", this.screen.x - Math.PI * this.screen.r, this.screen.y - this.screen.r, "H", this.screen.x - Math.PI * this.screen.r + minAngle * this.screen.r, "M", this.screen.x - Math.PI * this.screen.r + maxAngle * this.screen.r, this.screen.y - this.screen.r, "H", this.screen.x + Math.PI * this.screen.r];
+          path = ["M", this.screen.x - tau / 2 * this.screen.r, this.screen.y - this.screen.r, "H", this.screen.x - tau / 2 * this.screen.r + minAngle * this.screen.r, "M", this.screen.x - tau / 2 * this.screen.r + maxAngle * this.screen.r, this.screen.y - this.screen.r, "H", this.screen.x + tau / 2 * this.screen.r];
         } else {
-          minAngle = minAngle / (2 * Math.PI) * this.arcAngle;
-          maxAngle = maxAngle / (2 * Math.PI) * this.arcAngle;
+          minAngle = minAngle / tau * this.arcAngle;
+          maxAngle = maxAngle / tau * this.arcAngle;
           if (maxAngle < minAngle) {
             _ref2 = [maxAngle, minAngle], minAngle = _ref2[0], maxAngle = _ref2[1];
           }
-          start = (2 * Math.PI - this.arcAngle) / 2 + Math.PI / 2;
+          start = (tau - this.arcAngle) / 2 + tau / 4;
           path = ["M", this.arcCenterX + this.arcRadius * Math.cos(start), this.arcCenterY + this.arcRadius * Math.sin(start), "A", this.arcRadius, this.arcRadius, 0, 0, 1, this.arcCenterX + this.arcRadius * Math.cos(start + minAngle), this.arcCenterY + this.arcRadius * Math.sin(start + minAngle), "M", this.arcCenterX + this.arcRadius * Math.cos(start + maxAngle), this.arcCenterY + this.arcRadius * Math.sin(start + maxAngle), "A", this.arcRadius, this.arcRadius, 0, 0, 1, this.arcCenterX + this.arcRadius * Math.cos(start + this.arcAngle), this.arcCenterY + this.arcRadius * Math.sin(start + this.arcAngle)];
         }
       } else {
         if (minAngle < 0) {
-          minAngle += Math.PI * 2;
+          minAngle += tau;
         }
         if (maxAngle < 0) {
-          maxAngle += Math.PI * 2;
+          maxAngle += tau;
         }
         if (this.arcAngle < 0.001) {
-          path = ["M", this.screen.x - Math.PI * this.screen.r + minAngle * this.screen.r, this.screen.y - this.screen.r, "H", this.screen.x - Math.PI * this.screen.r + maxAngle * this.screen.r];
+          path = ["M", this.screen.x - tau / 2 * this.screen.r + minAngle * this.screen.r, this.screen.y - this.screen.r, "H", this.screen.x - tau / 2 * this.screen.r + maxAngle * this.screen.r];
         } else {
-          minAngle = minAngle / (2 * Math.PI) * this.arcAngle;
-          maxAngle = maxAngle / (2 * Math.PI) * this.arcAngle;
-          start = (2 * Math.PI - this.arcAngle) / 2 + Math.PI / 2;
+          minAngle = minAngle / tau * this.arcAngle;
+          maxAngle = maxAngle / tau * this.arcAngle;
+          start = (tau - this.arcAngle) / 2 + tau / 4;
           path = ["M", this.arcCenterX + this.arcRadius * Math.cos(start + minAngle), this.arcCenterY + this.arcRadius * Math.sin(start + minAngle), "A", this.arcRadius, this.arcRadius, 0, 0, 1, this.arcCenterX + this.arcRadius * Math.cos(start + maxAngle), this.arcCenterY + this.arcRadius * Math.sin(start + maxAngle)];
         }
       }
@@ -254,22 +255,22 @@
       dx = this.screen.segLength * Math.sin(angle / 2);
       dy = this.screen.segLength * Math.cos(angle / 2);
       this.arcRadius = (dx * dx + dy * dy) / (2 * dy);
-      this.arcAngle = 2 * Math.PI * this.screen.r / this.arcRadius;
+      this.arcAngle = tau * this.screen.r / this.arcRadius;
       this.arcCenterX = this.screen.x;
       this.arcCenterY = this.screen.y - this.screen.r + this.arcRadius;
       path = [];
       if (Math.abs(angle - this.screen.foldAngle) < 0.001) {
-        dt = 2 * Math.PI / this.screen.n;
+        dt = tau / this.screen.n;
         for (i = 0, _ref = this.screen.n - 1; 0 <= _ref ? i <= _ref : i >= _ref; 0 <= _ref ? i++ : i--) {
-          path.push("L", this.screen.x + this.screen.r * Math.cos(Math.PI / 2 + dt * i), this.screen.y + this.screen.r * Math.sin(Math.PI / 2 + dt * i));
+          path.push("L", this.screen.x + this.screen.r * Math.cos(tau / 4 + dt * i), this.screen.y + this.screen.r * Math.sin(tau / 4 + dt * i));
         }
         path[0] = "M";
         path.push("Z");
       } else if (dy < 0.001) {
-        path = ["M", this.screen.x - Math.PI * this.screen.r, this.screen.y - this.screen.r, "h", 2 * Math.PI * this.screen.r];
+        path = ["M", this.screen.x - tau / 2 * this.screen.r, this.screen.y - this.screen.r, "h", tau * this.screen.r];
       } else {
         ca = this.da / 2 + this.screen.foldAngle;
-        start = (2 * Math.PI - this.arcAngle) / 2 + Math.PI / 2;
+        start = (tau - this.arcAngle) / 2 + tau / 4;
         x1 = this.arcCenterX + this.arcRadius * Math.cos(start);
         y1 = this.arcCenterY + this.arcRadius * Math.sin(start);
         x0 = this.arcCenterX + this.arcRadius * Math.cos(start + this.arcAngle);
