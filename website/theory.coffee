@@ -190,13 +190,19 @@ class FigureCircle extends Figure
    # (enables viewing cones and rolls up the screen)
    ballDragStart: ->
       @fadeInCones()
-      @yoyo.animate({x:0},screenFoldSpeed, => @foldScreen(@screen.foldAngle))
+      onYoyo = =>
+         console.log @yoyo.attrs.x
+         @foldScreen(@screen.foldAngle) if @yoyo.attrs.x < 0.1
+      @yoyo.animate({x:0},screenFoldSpeed, onYoyo)
 
    # event that is called when a user stops dragging a ball
    # (clears viewing cones and unrolls the screen)
    ballDragEnd: ->
       @fadeOutCones()
-      @yoyo.animate({x:1},screenFoldSpeed, => @foldScreen(tau/2))
+      onYoyo = =>
+         console.log @yoyo.attrs.x
+         @foldScreen(tau/2) if @yoyo.attrs.x > 0.9
+      @yoyo.animate({x:1},screenFoldSpeed, onYoyo)
 
    # updates a ball's projection on the circular screen, however folded
    projectBall: (ball) ->

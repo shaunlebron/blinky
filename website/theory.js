@@ -188,20 +188,30 @@
       this.ballDragEnd();
     }
     FigureCircle.prototype.ballDragStart = function() {
+      var onYoyo;
       this.fadeInCones();
+      onYoyo = __bind(function() {
+        console.log(this.yoyo.attrs.x);
+        if (this.yoyo.attrs.x < 0.1) {
+          return this.foldScreen(this.screen.foldAngle);
+        }
+      }, this);
       return this.yoyo.animate({
         x: 0
-      }, screenFoldSpeed, __bind(function() {
-        return this.foldScreen(this.screen.foldAngle);
-      }, this));
+      }, screenFoldSpeed, onYoyo);
     };
     FigureCircle.prototype.ballDragEnd = function() {
+      var onYoyo;
       this.fadeOutCones();
+      onYoyo = __bind(function() {
+        console.log(this.yoyo.attrs.x);
+        if (this.yoyo.attrs.x > 0.9) {
+          return this.foldScreen(tau / 2);
+        }
+      }, this);
       return this.yoyo.animate({
         x: 1
-      }, screenFoldSpeed, __bind(function() {
-        return this.foldScreen(tau / 2);
-      }, this));
+      }, screenFoldSpeed, onYoyo);
     };
     FigureCircle.prototype.projectBall = function(ball) {
       var maxAngle, minAngle, path, start, _ref, _ref2;
@@ -220,7 +230,7 @@
           _ref = [maxAngle, minAngle], minAngle = _ref[0], maxAngle = _ref[1];
         }
         if (this.arcAngle < 0.001) {
-          path = ["M", this.screen.x - tau / 2 * this.screen.r, this.screen.y - this.screen.r, "H", this.screen.x - tau / 2 * this.screen.r + minAngle * this.screen.r, "M", this.screen.x - tau / 2 * this.screen.r + maxAngle * this.screen.r, this.screen.y - this.screen.r, "H", this.screen.x + tau / 2 * this.screen.r];
+          path = ["M", this.screen.x - tau * this.screen.r / 2, this.screen.y - this.screen.r, "H", this.screen.x - tau * this.screen.r / 2 + minAngle * this.screen.r, "M", this.screen.x - tau * this.screen.r / 2 + maxAngle * this.screen.r, this.screen.y - this.screen.r, "H", this.screen.x + tau * this.screen.r / 2];
         } else {
           minAngle = minAngle / tau * this.arcAngle;
           maxAngle = maxAngle / tau * this.arcAngle;
@@ -238,7 +248,7 @@
           maxAngle += tau;
         }
         if (this.arcAngle < 0.001) {
-          path = ["M", this.screen.x - tau / 2 * this.screen.r + minAngle * this.screen.r, this.screen.y - this.screen.r, "H", this.screen.x - tau / 2 * this.screen.r + maxAngle * this.screen.r];
+          path = ["M", this.screen.x - tau * this.screen.r / 2 + minAngle * this.screen.r, this.screen.y - this.screen.r, "H", this.screen.x - tau * this.screen.r / 2 + maxAngle * this.screen.r];
         } else {
           minAngle = minAngle / tau * this.arcAngle;
           maxAngle = maxAngle / tau * this.arcAngle;
