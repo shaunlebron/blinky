@@ -1,0 +1,58 @@
+
+NOTES on Quake Lenses plan for Ioquake3:
+
+In Ioquake3, SCR_UpdateScreen is the function that updates the whole screen
+every frame.  It is like our main loop for rendering, and we can see that it
+starts with some OpenGL specific setup commands in RE_BeginFrame, and ends with
+more OpenGL specific commands in RE_EndFrame.  In between, all the drawing 
+is done by creating a command buffer, and then issuing them finally at RE_EndFrame.
+
+In RE_BeginFrame, we can see that anaglyph rendering is done on separate drawing
+buffers.  SDL combines them to create an image made for 3D glasses, so there's
+nothing mystical here.  We cannot use this method for creating alternate proejctions
+because we need to render them to a texture and then apply that texture to a 2d mesh
+that will represent the shape of our projection.
+
+We can trace down the actual rendering calls to a function CG_DrawActiveFrame.
+Here, we can see that the view is calculated from the viewing angles.  From here,
+we can adjust our view to each of the orthogonal view vectors to point to each
+cubemap face.  If we follow another function call to CG_DrawActive, we can see
+the functions for rendering 2D elements and the function for rendering the 3D scene.
+We will have to only call the 3D scene render and ignore the 2D screen elements
+when rendering our cubemap faces.  Perhaps we should not render the 2D elements at 
+all during prototyping.
+
+How to render to a cubemap texture is still unsure.  I was suggested on the #ioquake3
+channel at irc.freenode.net to use VBO or FBO.  Performance hit will be significant
+they said, and it would be a 10x performance increase to use VBOs.  I am uncertain
+if my video card or how many others can support it.  
+
+Once we render to a texture, we have to create our 2D mesh for a desired projection.
+When this is created, we will have to render it, either directly, or by adding it 
+to the command buffer with R_AddDrawSurfCmd.  We can also just use a single quad
+and a fragment shader to map each pixel to the cubemap, but my video does not 
+support these shaders.
+
+================
+
+Trace of rendering stack (bottom-up):
+
+NOTE: RB_ExecuteRenderCommands in renderer/tr_backend.c calls all the OpenGL commands
+      for executing the accumulated render commands.
+
+-R_RenderView in renderer/tr_main.c
+-RE_RenderScene in renderer/tr_scene.c
+-vmMain in client/cl_cgame.c
+-called from syscall(CG_R_RENDERSCENE... in cgame/cg_syscalls.c
+-called from cgame/cg_draw.c in CG_DrawActive 
+   - NOTE: This calls functions for drawing the 2d elements as well as the 3d screen
+      We will have to call only trap_R_RenderScene when rendering the scene cubemap
+-CG_DrawActiveFrame in cgame/cg_view.c
+   - NOTE: This is where CG_CalcViewValues() is called
+         and also where the rendering list is built.
+         In order to render each cubemap face, we will
+         change the view vectors here in cg.refdef
+-vmMain in cgame/cg_main.c
+-called from client/cl_cgame.c in CL_CGameRendering(stereoFrame_t stereo)
+-called from client/cl_scrn.c in SCR_DrawScreenField(stereoFrame_t stereoFrame)
+-called from client/cl_scrn.c in SCR_UpdateScreen()
