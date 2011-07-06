@@ -297,7 +297,7 @@ void L_ShowFovDeprecate(void)
 void L_ColorCube(void)
 {
    colorcube = colorcube ? 0 : 1;
-   Con_Printf("Colored Cube is %s\n", colorcube ? "ON" : "OFF");
+   Con_Printf("Rubix is %s\n", colorcube ? "ON" : "OFF");
 }
 
 /* START CONVERSION LUA HELPER FUNCTIONS */
@@ -584,7 +584,7 @@ void L_Init(void)
    Cmd_AddCommand("dumppal", L_DumpPalette);
    Cmd_AddCommand("savecube", L_CaptureCubeMap);
    Cmd_AddCommand("fov", L_ShowFovDeprecate);
-   Cmd_AddCommand("colorcube", L_ColorCube);
+   Cmd_AddCommand("rubix", L_ColorCube);
    Cmd_AddCommand("hfit", L_HFit);
    Cmd_AddCommand("vfit", L_VFit);
    Cmd_AddCommand("fit", L_Fit);

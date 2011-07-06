@@ -21,10 +21,15 @@
 Quake Lenses is like Surround Sound for your eyes.  It extends your field of view, allowing you to see more of your surroundings in a small amount of screen space.
 </p>
 <p>
-This is a fork of <a href="http://strlen.com/gfxengine/fisheyequake/">Fisheye Quake</a>.  It adds support for custom lenses using Lua scripts.  Several lenses are included.
+This is a fork of <a href="http://strlen.com/gfxengine/fisheyequake/">Fisheye Quake</a> using the <a href="http://disenchant.net/engine.html">TyrQuake</a> source port.  It adds support for custom lenses using Lua scripts.  Several lenses are included.
 </p>
 <p>
-For an interactive description of how this works, check out the <a href="manual.htm">manual</a>.  For a detailed look at different types of lenses, check out the <a href="gallery.htm">gallery</a>.
+Check out the following pages:
+<ul>
+   <li><a href="theory.htm">theory</a> - how it works</li>
+   <li><a href="manual.htm">manual</a> - how to create your own lens</li>
+   <li><a href="gallery.htm">gallery</a> - a look at different types of lenses</li>
+</ul>
 </p>
 
 <h3>Quick Look</h3>
@@ -80,51 +85,42 @@ For an interactive description of how this works, check out the <a href="manual.
 <h3>Commands</h3>
 Commands can be entered via Quake's console by pressing the tilde key (~).
 <ul>
-   <li><samp>lens name</samp> : change the lens (use tab key for completion)</li>
+   <li><samp>lens &lt;name&gt;</samp> : change the lens (use tab key for completion)</li>
    <li><samp>hfov #</samp> : specify <acronym title="Field of View">FOV</acronym> in horizontal degrees</li>
-      <li><samp>vfov #</samp>: specify <acronym title="Field of View">FOV</acronym> in vertical degrees</li>
-      <li><samp>fit</samp> : make the lens image fit the screen</li>
-      <li><samp>hfit</samp> : fit horizontally only</li>
-      <li><samp>vfit</samp> : fit vertically only</li>
+   <li><samp>vfov #</samp>: specify <acronym title="Field of View">FOV</acronym> in vertical degrees</li>
+   <li><samp>fit</samp> : make the lens image fit the screen</li>
+   <li><samp>hfit</samp> : fit horizontally only</li>
+   <li><samp>vfit</samp> : fit vertically only</li>
+   <li><samp>rubix</samp> : visualize lens shape by painting cubemap like a rubix cube</li>
 </ul>
 
 <h3>Lens Files</h3>
 <p>
 In the lenses folder, you will see a collection of Lua files.  These represent the lenses you can use in a game.  If you're interested, you can <a href="manual.htm">create your own</a> and place it in this folder.  Here is an example script: 
 <table><tr><td>
-<div style="padding:3px;background:#333333; color:#fff;margin-left:auto;margin-right:auto;"><font face="monospace">
-<font color="#ffff00">&nbsp;1 </font><font color="#87ceeb">-- Mercator Projection</font><br>
-<font color="#ffff00">&nbsp;2 </font><br>
-<font color="#ffff00">&nbsp;3 </font><font color="#87ceeb">-- horizontal and vertical symmetry</font><br>
-<font color="#ffff00">&nbsp;4 </font>hsym = <font color="#ffa0a0">true</font><br>
-<font color="#ffff00">&nbsp;5 </font>vsym = <font color="#ffa0a0">true</font><br>
-<font color="#ffff00">&nbsp;6 </font><br>
-<font color="#ffff00">&nbsp;7 </font><font color="#87ceeb">-- FOV bounds</font><br>
-<font color="#ffff00">&nbsp;8 </font>max_hfov = <font color="#ffa0a0">360</font><br>
-<font color="#ffff00">&nbsp;9 </font>max_vfov = <font color="#ffa0a0">180</font><br>
-<font color="#ffff00">10 </font><br>
-<font color="#ffff00">11 </font><font color="#87ceeb">-- horizontal fit size</font><br>
-<font color="#ffff00">12 </font>hfit_size = <font color="#ffa0a0">2</font>*pi<br>
-<font color="#ffff00">13 </font><br>
-<font color="#ffff00">14 </font><font color="#87ceeb">-- inverse mapping (screen to environment)</font><br>
-<font color="#ffff00">15 </font><font color="#98fb98">function</font>&nbsp;xy_to_latlon(x,y)<br>
-<font color="#ffff00">16 </font>&nbsp;&nbsp; <font color="#f0e68c"><b>local</b></font>&nbsp;lon = x<br>
-<font color="#ffff00">17 </font>&nbsp;&nbsp; <font color="#f0e68c"><b>local</b></font>&nbsp;lat = atan(sinh(y))<br>
-<font color="#ffff00">18 </font>&nbsp;&nbsp; <font color="#f0e68c"><b>return</b></font>&nbsp;lat, lon<br>
-<font color="#ffff00">19 </font><font color="#98fb98">end</font><br>
-<font color="#ffff00">20 </font><br>
-<font color="#ffff00">21 </font><font color="#87ceeb">-- forward mapping (environment to screen)</font><br>
-<font color="#ffff00">22 </font><font color="#98fb98">function</font>&nbsp;latlon_to_xy(lat,lon)<br>
-<font color="#ffff00">23 </font>&nbsp;&nbsp; <font color="#f0e68c"><b>local</b></font>&nbsp;x = lon<br>
-<font color="#ffff00">24 </font>&nbsp;&nbsp; <font color="#f0e68c"><b>local</b></font>&nbsp;y = log(tan(pi*<font color="#ffa0a0">0.25</font>+lat*<font color="#ffa0a0">0.5</font>))<br>
-<font color="#ffff00">25 </font>&nbsp;&nbsp; <font color="#f0e68c"><b>return</b></font>&nbsp;x,y<br>
-<font color="#ffff00">26 </font><font color="#98fb98">end</font><br>
-<font color="#ffff00">27 </font><br>
-<font color="#ffff00">28 </font><font color="#87ceeb">-- domain test</font><br>
-<font color="#ffff00">29 </font><font color="#98fb98">function</font>&nbsp;xy_isvalid(x,y)<br>
-<font color="#ffff00">30 </font>&nbsp;&nbsp; <font color="#f0e68c"><b>return</b></font>&nbsp;abs(x) &lt;= pi<br>
-<font color="#ffff00">31 </font><font color="#98fb98">end</font><br>
-</font></div>
+         <div style="padding:3px;background:#2a2a2a; color:#efefef; margin-left:auto; margin-right:auto"><font face="monospace">
+<span style="background-color: #202020"><font color="#535353">&nbsp;1 </font></span>hsym = <font color="#ef5939">true</font><br>
+<span style="background-color: #202020"><font color="#535353">&nbsp;2 </font></span>vsym = <font color="#ef5939">true</font><br>
+<span style="background-color: #202020"><font color="#535353">&nbsp;3 </font></span>max_hfov = <font color="#fcaf3e">360</font><br>
+<span style="background-color: #202020"><font color="#535353">&nbsp;4 </font></span>max_vfov = <font color="#fcaf3e">180</font><br>
+<span style="background-color: #202020"><font color="#535353">&nbsp;5 </font></span>hfit_size = <font color="#fcaf3e">2</font>*pi<br>
+<span style="background-color: #202020"><font color="#535353">&nbsp;6 </font></span><br>
+<span style="background-color: #202020"><font color="#535353">&nbsp;7 </font></span><font color="#ad7fa8">function</font>&nbsp;xy_to_latlon(x,y)<br>
+<span style="background-color: #202020"><font color="#535353">&nbsp;8 </font></span>&nbsp;&nbsp; <font color="#ffffff"><b>local</b></font>&nbsp;lon = x<br>
+<span style="background-color: #202020"><font color="#535353">&nbsp;9 </font></span>&nbsp;&nbsp; <font color="#ffffff"><b>local</b></font>&nbsp;lat = atan(sinh(y))<br>
+<span style="background-color: #202020"><font color="#535353">10 </font></span>&nbsp;&nbsp; <font color="#ffffff"><b>return</b></font>&nbsp;lat, lon<br>
+<span style="background-color: #202020"><font color="#535353">11 </font></span><font color="#ad7fa8">end</font><br>
+<span style="background-color: #202020"><font color="#535353">12 </font></span><br>
+<span style="background-color: #202020"><font color="#535353">13 </font></span><font color="#ad7fa8">function</font>&nbsp;latlon_to_xy(lat,lon)<br>
+<span style="background-color: #202020"><font color="#535353">14 </font></span>&nbsp;&nbsp; <font color="#ffffff"><b>local</b></font>&nbsp;x = lon<br>
+<span style="background-color: #202020"><font color="#535353">15 </font></span>&nbsp;&nbsp; <font color="#ffffff"><b>local</b></font>&nbsp;y = log(tan(pi*<font color="#fcaf3e">0.25</font>+lat*<font color="#fcaf3e">0.5</font>))<br>
+<span style="background-color: #202020"><font color="#535353">16 </font></span>&nbsp;&nbsp; <font color="#ffffff"><b>return</b></font>&nbsp;x,y<br>
+<span style="background-color: #202020"><font color="#535353">17 </font></span><font color="#ad7fa8">end</font><br>
+<span style="background-color: #202020"><font color="#535353">18 </font></span><br>
+<span style="background-color: #202020"><font color="#535353">19 </font></span><font color="#ad7fa8">function</font>&nbsp;xy_isvalid(x,y)<br>
+<span style="background-color: #202020"><font color="#535353">20 </font></span>&nbsp;&nbsp; <font color="#ffffff"><b>return</b></font>&nbsp;abs(x) &lt;= pi<br>
+<span style="background-color: #202020"><font color="#535353">21 </font></span><font color="#ad7fa8">end</font><br>
+         </font></div>
 </td></tr></table>
 
 </p>
@@ -197,6 +193,22 @@ If the image produced by the lens is not infinite in size, you can fit the whole
 <p>
 If the lens does not support the current zoom mode, Quake Lenses will give you a blank screen, an error message on the console, and will wait for you to enter a valid zoom mode.  For example, the cube lens does not support FOV; it can only be zoomed to fit the screen.  Another common error happens if the specified FOV is too high for the current lens.
 </p>
+
+<h3>Visualizing the Distortion</h3>
+You can use the <samp>rubix</samp> command to paint the cubemap like a rubix cube as a visual aid for understanding the lens distortion.
+<p>
+<table>
+<tr>
+<td>
+<a href="pics/rubix1.jpg"><img src="pics/rubix1.jpg" width=300 /></a>
+</td>
+<td>
+<a href="pics/rubix0.jpg"><img src="pics/rubix0.jpg" width=300 /></a>
+</td>
+</tr>
+</table>
+</p>
+
 
 </div>
 </body>

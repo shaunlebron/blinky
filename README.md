@@ -20,7 +20,7 @@ All lenses are stored in the /lenses folder of your quake directory.  You can st
     hfit : fit the lens horizontally
     vfit : fit the lens vertically
     fit : fit the whole lens
-    colorcube : paint the cubemap
+    rubix : visualize lens shape by painting cubemap like a rubix cube
 
 #### Motion Sickness:
 Some lenses may induce nausea! I find that the **stereographic** lenses do not, as they are the only true perspective projections here.  I recommend an fov of 180-200 using Stereographic, Panini, or Gumby
