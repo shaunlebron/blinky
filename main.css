@@ -45,15 +45,16 @@ body
 }
 table
 {
-   border-collapse: collapse;
+   border:0;
    margin-left: auto;
    margin-right: auto;
 }
-table, td {
-   border: 1px solid #999;
-}
 td {
-   padding: 5px;
+   border: 2px solid #fff;
+   padding: 10px;
+   background: #5e544b;
+   color: #fff;
+   vertical-align: top;
 }
 h1
 {
@@ -62,13 +63,4 @@ h1
 img
 {
    border:none;
-}
-pre
-{
-   border: 1px dashed #777;
-   background: #FFFACD;
-   padding: 5px;
-   width: 50%;
-   margin-left: auto;
-   margin-right: auto;
 }
