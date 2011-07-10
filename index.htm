@@ -34,7 +34,7 @@
 </tr>
 </table>
 <p>
-Quake Lenses is a small extension to the Quake engine's software renderer.  It is a proof-of-concept for surpassing the narrow <acronym title="Field of View">FOV</acronym> limit imposed by the industry standard Rectilinear Projection. It allows you to explore a variety of alternative projections, which we call lenses, to display full 360&deg; panoramas or a normal 180&deg; view that most people experience in reality.
+Quake Lenses is a small extension to the Quake engine's software renderer.  It is a proof-of-concept for surpassing the narrow <acronym title="Field of View">FOV</acronym> limit inherent to the industry standard Rectilinear Projection. It provides a variety of alternative projections, which we call lenses, allowing normal 180&deg; views that people experience in reality, or even full 360&deg; panoramas.
 </p>
 <p>
 This is an effort to revive and extend the ideas pioneered by <a href="http://strlen.com/gfxengine/fisheyequake/">Fisheye Quake</a>. It is integrated with <a href="http://disenchant.net/engine.html">TyrQuake</a> and uses <a href="http://luajit.org/luajit.html">LuaJIT</a> for lens scripting.  
@@ -118,7 +118,7 @@ Commands can be entered via Quake's console by pressing the tilde key (~).
 
 <h3>Lens Files</h3>
 <p>
-In the lenses folder, you will see a collection of Lua files.  These represent the lenses you can use in a game.  If you're interested, you can <a href="manual.htm">create your own</a> and place it in this folder.  Here is an example script: 
+In the lenses folder (quake directory in Windows, or <samp>$HOME/.tyrquake</samp> in Linux), you will see a collection of Lua files.  These represent the lenses you can use in a game.  If you're interested, you can <a href="manual.htm">create your own</a> and place it in this folder.  Here is an example script: 
 <table><tr><td>
          <div style="padding:3px;background:#2a2a2a; color:#efefef; margin-left:auto; margin-right:auto"><font face="monospace">
 <span style="background-color: #202020"><font color="#535353">&nbsp;1 </font></span>hsym = <font color="#ef5939">true</font><br>
