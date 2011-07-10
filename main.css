@@ -1,13 +1,25 @@
 body
 {
    background: #483C32;
+   line-height: 1.5em;
+}
+acronym
+{
+   text-decoration:none;
+   border:0;
+}
+.caption
+{
+   margin-top: 8px;
+   text-align: center;
 }
 #header, #nav, #container
 {
    padding: 20px;
-   width: 700px;
+   width: 800px;
    margin-left: auto;
    margin-right: auto;
+   font-family: sans-serif;
 }
 #header
 {
@@ -32,10 +44,10 @@ body
 #container
 {
    background: white;
-   width: 700px;
+   width: 800px;
    margin-left: auto;
    margin-right: auto;
-   text-align:justify;
+   /*text-align:justify;*/
 }
 .centerimage
 {
@@ -48,6 +60,7 @@ table
    border:0;
    margin-left: auto;
    margin-right: auto;
+   line-height: 1em;
 }
 td {
    border: 2px solid #fff;
@@ -55,6 +68,7 @@ td {
    background: #5e544b;
    color: #fff;
    vertical-align: top;
+
 }
 h1
 {

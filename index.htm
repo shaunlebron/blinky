@@ -16,23 +16,45 @@
 
 <div id="container">
 
-<h3>Welcome</h3>
+<h3>Surround Sound for your eyes</h3>
+<table>
+<tr>
+<td>
+<a href="pics/index/intro90b.gif"><img src="pics/index/intro90b.gif" width=240 /></a>
+<div class="caption">90&deg; <acronym title="Field of View">FOV</acronym></div>
+</td>
+<td>
+<a href="pics/index/intro180b.gif"><img src="pics/index/intro180b.gif" width=240 /></a>
+<div class="caption">180&deg; <acronym title="Field of View">FOV</acronym></div>
+</td>
+<td>
+<a href="pics/index/intro360b.gif"><img src="pics/index/intro360b.gif" width=240 /></a>
+<div class="caption">360&deg; <acronym title="Field of View">FOV</acronym></div>
+</td>
+</tr>
+</table>
 <p>
-Quake Lenses is like Surround Sound for your eyes.  It extends your field of view, allowing you to see more of your surroundings in a small amount of screen space.
+Quake Lenses is a small extension to the Quake engine's software renderer.  It is a proof-of-concept for surpassing the narrow <acronym title="Field of View">FOV</acronym> limit imposed by the industry standard Rectilinear Projection. It allows you to explore a variety of alternative projections, which we call lenses, to display full 360&deg; panoramas or a normal 180&deg; view that most people experience in reality.
 </p>
 <p>
-This is a fork of <a href="http://strlen.com/gfxengine/fisheyequake/">Fisheye Quake</a> using the <a href="http://disenchant.net/engine.html">TyrQuake</a> source port.  It adds support for custom lenses using Lua scripts.  Several lenses are included.
+This is an effort to revive and extend the ideas pioneered by <a href="http://strlen.com/gfxengine/fisheyequake/">Fisheye Quake</a>. It is integrated with <a href="http://disenchant.net/engine.html">TyrQuake</a> and uses <a href="http://luajit.org/luajit.html">LuaJIT</a> for lens scripting.  
 </p>
 <p>
-Check out the following pages:
+You have the freedom to create your own lenses or modify the packaged ones.  They are written in Lua and are based on panoramic tools and map projections provided by the <a href="http://wiki.panotools.org">PanoTools</a> and <a href="http://proj.osgeo.org">PROJ.4</a> projects, respectively.
+</p>
+<p>
+<h4>Website Contents</h4>
 <ul>
-   <li><a href="theory.htm">theory</a> - how it works</li>
-   <li><a href="manual.htm">manual</a> - how to create your own lens</li>
+   <li><a href="theory.htm">theory</a> - visual explanation of how lenses work</li>
+<li><a href="manual.htm">manual</a> - technical details on how to create a lens with Lua</li>
    <li><a href="gallery.htm">gallery</a> - a look at different types of lenses</li>
 </ul>
 </p>
 
 <h3>Quick Look</h3>
+<p>
+To replicate the view in each of the following screenshots, type the commands listed below them in Quake Lenses.
+</p>
 <table>
 <tr>
    <td>
@@ -134,7 +156,7 @@ To change your lens, use the <samp>lens</samp> command.  For example, if you wis
 </p>
 <h4>Lens Tab Completion</h4>
 <p>
-As a convenience for quickly selecting lenses, you can use the tab-completion feature from <a href="http://disenchant.net/engine.html">TyrQuake</a>.  Begin typing the lens name and press tab to try to complete the rest of the name.  If more than one lenses match, you can press TAB again to list all the matching lenses.  (You can also use this to list all the available lenses, seen below.) 
+As a convenience for quickly selecting lenses, you can use the tab-completion feature.  Begin typing the lens name and press tab to try to complete the rest of the name.  If more than one lenses match, you can press TAB again to list all the matching lenses.  (You can also use this to list all the available lenses, seen below.) 
 </p>
 <table>
    <tr>
@@ -146,9 +168,12 @@ As a convenience for quickly selecting lenses, you can use the tab-completion fe
    </tr>
 </table>
 
-<h3>FOV</h3>
+<h3>Zooming</h3>
+You can zoom in and out by specifying an <acronym title="Field of View">FOV</acronym> or by image-fitting, both explained in the following sections.  If the lens does not support the current zoom mode, Quake Lenses will give you a blank screen, an error message on the console, and will wait for you to enter a valid zoom mode.  For example, the cube lens does not support <acronym title="Field of View">FOV</acronym>; it can only be zoomed to fit the screen.  Another common error happens if the specified <acronym title="Field of View">FOV</acronym> is too high for the current lens.
+
+<h4><acronym title="Field of View">FOV</acronym></h4>
 <p>
-You can zoom in and out by specifying a viewing angle for your Field of View (FOV). Type <samp>hfov 180</samp> if you want your screen to horizontally cover 180 degrees.  Similarly, you can type <samp>vfov 90</samp> to cover 90 degrees vertically.
+You can zoom in and out by specifying a viewing angle for your Field of View (<acronym title="Field of View">FOV</acronym>). Type <samp>hfov 180</samp> if you want your screen to horizontally cover 180 degrees.  Similarly, you can type <samp>vfov 90</samp> to cover 90 degrees vertically.
 </p>
 <table>
    <tr>
@@ -167,9 +192,9 @@ You can zoom in and out by specifying a viewing angle for your Field of View (FO
    </tr>
 </table>
 
-<h3>Fitting</h3>
+<h4>Fitting</h4>
 <p>
-If the image produced by the lens is not infinite in size, you can fit the whole image on the screen by typing <samp>fit</samp>.  Alternately, if you just want the picture to fit the horizontal or vertical bounds of the screen, you can type <samp>hfit</samp> or <samp>vfit</samp>, respectively.
+If the image produced by the lens is not infinite in size, you can fit the whole image in the screen by typing <samp>fit</samp>.  Alternately, if you just want the picture to fit the horizontal or vertical bounds of the screen, you can type <samp>hfit</samp> or <samp>vfit</samp>, respectively.
 </p>
 <p>
 <table>
@@ -192,13 +217,8 @@ If the image produced by the lens is not infinite in size, you can fit the whole
 </table>
 </p>
 
-<h3>Invalid Modes</h3>
-<p>
-If the lens does not support the current zoom mode, Quake Lenses will give you a blank screen, an error message on the console, and will wait for you to enter a valid zoom mode.  For example, the cube lens does not support FOV; it can only be zoomed to fit the screen.  Another common error happens if the specified FOV is too high for the current lens.
-</p>
-
 <h3>Visualizing the Distortion</h3>
-You can use the <samp>rubix</samp> command to paint the cubemap like a rubix cube as a visual aid for understanding the lens distortion.
+You can use the <samp>rubix</samp> command to paint a translucent rubix cube around you. This is a useful visual aid for understanding the lens distortion.
 <p>
 <table>
 <tr>
