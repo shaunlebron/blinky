@@ -113,6 +113,10 @@ static int rValidIndex;
 static int lenschange;
 static int fovchange;
 
+// fast mode
+int fastmode;
+double fast_maxfov;
+double renderfov;
 
 // MAP SYMMETRIES
 static int hsym,vsym;
@@ -154,6 +158,9 @@ static B palmap[6][256];
 
 // retrieves a pointer to a pixel in the palimap
 #define PALIMAP(x,y) (palimap + (x) + (y)*width)
+
+// retrieves a pointer to a pixel in the fastmap (just the 2nd cubeface)
+#define FASTMAP(x,y) CUBEFACE(1,x,y)
 
 // find closest pallete index for color
 int find_closest_pal_index(int r, int g, int b)
@@ -357,6 +364,48 @@ void ray_to_cubemap(vec3_t ray, int *side, double *u, double *v)
 #undef T
 }
 
+int ray_to_fastmap(vec3_t ray, int* side, int* x, int* y)
+{
+   double sx = ray[0], sy=ray[1], sz=ray[2];
+
+   // exit if pointing behind us
+   if (sz <= 0) {
+      return 0;
+   }
+
+   // get screen distance
+   double dist = (cubesize/2) / tan(fast_maxfov/2);
+   int boundsize = (int)(2 * dist * tan(M_PI/4));
+
+   // project vector to the screen
+   double fx = sx / sz * dist;
+   double fy = sy / sz * dist;
+
+   if (abs(fx) < boundsize/2 && abs(fy) < boundsize/2) {
+      // scale up
+      fx = fx / (boundsize/2) * cubesize/2;
+      fy = fy / (boundsize/2) * cubesize/2;
+      *side = 0;
+   }
+   else {
+      *side = 1;
+   }
+
+   // transform to screen coordinates
+   fx += cubesize/2;
+   fy = -fy;
+   fy += cubesize/2;
+
+   *x = (int)fx;
+   *y = (int)fy;
+
+   // outside the fastmap
+   if (*x < 0 || *x >= cubesize || *y < 0 || *y >= cubesize) {
+      return 0;
+   }
+
+   return 1;
+}
 
 /* END CONVERSION LUA HELPER FUNCTIONS */
 
@@ -536,6 +585,12 @@ void L_DFov(void)
    fov = dfov * M_PI / 180;
 }
 
+void L_Fast(void)
+{
+   fovchange = 1;
+   fastmode = fastmode ? 0 : 1;
+   Con_Printf("Fast Mode is %s\n", fastmode ? "ON" : "OFF");
+}
 
 int lua_lens_load(void);
 
@@ -593,10 +648,13 @@ void L_Init(void)
    Cmd_AddCommand("dfov", L_DFov);
    Cmd_AddCommand("lens", L_Lens);
    Cmd_SetCompletion("lens", L_LensArg);
+   Cmd_AddCommand("fast", L_Fast);
 
    // default view state
    Cmd_ExecuteString("lens rectilinear", src_command);
    Cmd_ExecuteString("hfov 90", src_command);
+
+   fast_maxfov = 160 * M_PI / 180;
 
    // create palette maps
    create_palmap();
@@ -1202,8 +1260,8 @@ int clamp(int value, int min, int max)
 // Lens Map Creation
 // ----------------------------------------
 
-// set a pixel on the lensmap
-inline void set_lensmap(int lx, int ly, int cx, int cy, int side)
+// set a pixel on the lensmap from cubemap coordinate
+inline void set_lensmap_from_cubemap(int lx, int ly, int cx, int cy, int side)
 {
    // increase the number of times this side is used
    ++side_count[side];
@@ -1227,19 +1285,31 @@ inline void set_lensmap(int lx, int ly, int cx, int cy, int side)
 }
 
 // set the (lx,ly) pixel on the lensmap to the (sx,sy,sz) view vector
-void setLensPixelToRay(int lx, int ly, double sx, double sy, double sz)
+void set_lensmap_from_ray(int lx, int ly, double sx, double sy, double sz)
 {
-   double xs,ys;
-   int side;
    vec3_t ray = {sx,sy,sz};
-   ray_to_cubemap(ray,&side,&xs,&ys);
 
-   // convert to face coordinates
-   int cx = clamp((int)(xs*cubesize),0,cubesize-1);
-   int cy = clamp((int)(ys*cubesize),0,cubesize-1);
+   if (fastmode) {
+      int side,fx,fy;
+      if (ray_to_fastmap(ray, &side, &fx, &fy)) {
+         *LENSMAP(lx,ly) = CUBEFACE(side,fx,fy);
+      }
+      else {
+         *LENSMAP(lx,ly) = 0;
+      }
+   }
+   else {
+      double xs,ys;
+      int side;
+      ray_to_cubemap(ray,&side,&xs,&ys);
 
-   // map lens pixel to cubeface pixel
-   set_lensmap(lx,ly,cx,cy,side);
+      // convert to face coordinates
+      int cx = clamp((int)(xs*cubesize),0,cubesize-1);
+      int cy = clamp((int)(ys*cubesize),0,cubesize-1);
+
+      // map lens pixel to cubeface pixel
+      set_lensmap_from_cubemap(lx,ly,cx,cy,side);
+   }
 }
 
 void create_lensmap_inverse()
@@ -1292,16 +1362,16 @@ void create_lensmap_inverse()
 
             int cx = clamp((int)(u*(cubesize-1)),0,cubesize-1);
             int cy = clamp((int)(v*(cubesize-1)),0,cubesize-1);
-            set_lensmap(lx,ly,cx,cy,side);
+            set_lensmap_from_cubemap(lx,ly,cx,cy,side);
             continue;
          }
 
-         setLensPixelToRay(lx,ly,ray[0],ray[1],ray[2]);
+         set_lensmap_from_ray(lx,ly,ray[0],ray[1],ray[2]);
 
          // apply symmetries
-         if (hsym) setLensPixelToRay(width-1-lx,ly,-ray[0],ray[1],ray[2]);
-         if (vsym) setLensPixelToRay(lx,height-1-ly,ray[0],-ray[1],ray[2]);
-         if (vsym && hsym) setLensPixelToRay(width-1-lx,height-1-ly,-ray[0],-ray[1],ray[2]);
+         if (hsym) set_lensmap_from_ray(width-1-lx,ly,-ray[0],ray[1],ray[2]);
+         if (vsym) set_lensmap_from_ray(lx,height-1-ly,ray[0],-ray[1],ray[2]);
+         if (vsym && hsym) set_lensmap_from_ray(width-1-lx,height-1-ly,-ray[0],-ray[1],ray[2]);
       }
    }
 }
@@ -1313,6 +1383,7 @@ void create_lensmap_forward()
    int side;
    double nz = cubesize*0.5;
 
+   // TODO: add fastmap option
    for (side=0; side<6; ++side)
    {
       int minx = 0;
@@ -1387,20 +1458,20 @@ void create_lensmap_forward()
             if (lx < 0 || lx >= width || ly < 0 || ly >= height)
                continue;
 
-            set_lensmap(lx,ly,cx,cy,side);
+            set_lensmap_from_cubemap(lx,ly,cx,cy,side);
 
             // apply symmetries
             if (hsym) {
                int oppside = (side == BOX_LEFT) ? BOX_RIGHT : side;
-               set_lensmap(width-1-lx,ly,cubesize-1-cx,cy,oppside);
+               set_lensmap_from_cubemap(width-1-lx,ly,cubesize-1-cx,cy,oppside);
             }
             if (vsym) {
                int oppside = (side == BOX_TOP) ? BOX_BOTTOM : side;
-               set_lensmap(lx,height-1-ly,cx,cubesize-1-cy,oppside);
+               set_lensmap_from_cubemap(lx,height-1-ly,cx,cubesize-1-cy,oppside);
             }
             if (hsym && vsym) {
                int oppside = (side == BOX_TOP) ? BOX_BOTTOM : ((side == BOX_LEFT) ? BOX_RIGHT : side);
-               set_lensmap(width-1-lx,height-1-ly,cubesize-1-cx,cubesize-1-cy,oppside);
+               set_lensmap_from_cubemap(width-1-lx,height-1-ly,cubesize-1-cx,cubesize-1-cy,oppside);
             }
          }
       }
@@ -1524,21 +1595,47 @@ void L_RenderView()
    VectorScale(right, -1, left);
    VectorScale(up, -1, down);
 
-   // render the environment onto a cube map
+   // TODO: do not do this every frame?
+   extern int sb_lines;
+   extern vrect_t scr_vrect;
+   vrect_t vrect;
+   vrect.x = 0;
+   vrect.y = 0;
+   vrect.width = vid.width;
+   vrect.height = vid.height;
+   R_SetVrect(&vrect, &scr_vrect, sb_lines);
+
    int i;
-   for (i=0; i<6; ++i)
-      if (faceDisplay[i]) {
-         B* face = cubemap+cubesize*cubesize*i;
-         switch(i) {
-            //                                     FORWARD  RIGHT   UP
-            case BOX_BEHIND: render_cubeface(face, back,    left,   up);    break;
-            case BOX_BOTTOM: render_cubeface(face, down,    right,  front); break;
-            case BOX_TOP:    render_cubeface(face, up,      right,  back);  break;
-            case BOX_LEFT:   render_cubeface(face, left,    front,  up);    break;
-            case BOX_RIGHT:  render_cubeface(face, right,   back,   up);    break;
-            case BOX_FRONT:  render_cubeface(face, front,   right,  up);    break;
+   if (fastmode) {
+      // render front half of environment only
+
+      renderfov = fast_maxfov;
+      R_ViewChanged(&vrect, sb_lines, vid.aspect);
+      render_cubeface(cubemap+cubesize*cubesize, front, right, up);
+
+      renderfov = M_PI/2;
+      R_ViewChanged(&vrect, sb_lines, vid.aspect);
+      render_cubeface(cubemap, front, right, up);
+   }
+   else {
+      // render the environment onto a cube map
+      renderfov = M_PI/2;
+      R_ViewChanged(&vrect, sb_lines, vid.aspect);
+
+      for (i=0; i<6; ++i)
+         if (faceDisplay[i]) {
+            B* face = cubemap+cubesize*cubesize*i;
+            switch(i) {
+               //                                     FORWARD  RIGHT   UP
+               case BOX_BEHIND: render_cubeface(face, back,    left,   up);    break;
+               case BOX_BOTTOM: render_cubeface(face, down,    right,  front); break;
+               case BOX_TOP:    render_cubeface(face, up,      right,  back);  break;
+               case BOX_LEFT:   render_cubeface(face, left,    front,  up);    break;
+               case BOX_RIGHT:  render_cubeface(face, right,   back,   up);    break;
+               case BOX_FRONT:  render_cubeface(face, front,   right,  up);    break;
+            }
          }
-      }
+   }
 
    // render our view
    Draw_TileClear(0, 0, vid.width, vid.height);
