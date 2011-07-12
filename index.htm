@@ -108,6 +108,7 @@ To replicate the view in each of the following screenshots, type the commands li
 Commands can be entered via Quake's console by pressing the tilde key (~).
 <ul>
    <li><samp>lens &lt;name&gt;</samp> : change the lens (use tab key for completion)</li>
+   <li><samp>fast</samp> : sacrifice the quality of your periphery for faster rendering</li>
    <li><samp>hfov #</samp> : specify <acronym title="Field of View">FOV</acronym> in horizontal degrees</li>
    <li><samp>vfov #</samp>: specify <acronym title="Field of View">FOV</acronym> in vertical degrees</li>
    <li><samp>fit</samp> : make the lens image fit the screen</li>
@@ -167,6 +168,9 @@ As a convenience for quickly selecting lenses, you can use the tab-completion fe
       </td>
    </tr>
 </table>
+
+<h3>Performance</h3>
+You can type <samp>fast</samp> to enable a faster rendering mode.  This only renders 160&deg;, and reduces the quality of everything outside your 90&deg; periphery.
 
 <h3>Zooming</h3>
 You can zoom in and out by specifying an <acronym title="Field of View">FOV</acronym> or by image-fitting, both explained in the following sections.  If the lens does not support the current zoom mode, Quake Lenses will give you a blank screen, an error message on the console, and will wait for you to enter a valid zoom mode.  For example, the cube lens does not support <acronym title="Field of View">FOV</acronym>; it can only be zoomed to fit the screen.  Another common error happens if the specified <acronym title="Field of View">FOV</acronym> is too high for the current lens.
