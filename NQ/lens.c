@@ -1260,15 +1260,8 @@ int clamp(int value, int min, int max)
 // Lens Map Creation
 // ----------------------------------------
 
-// set a pixel on the lensmap from cubemap coordinate
-inline void set_lensmap_from_cubemap(int lx, int ly, int cx, int cy, int side)
+void set_lensmap_grid(int lx, int ly, int cx, int cy, int side)
 {
-   // increase the number of times this side is used
-   ++side_count[side];
-
-   // map the lens pixel to this cubeface pixel
-   *LENSMAP(lx,ly) = CUBEFACE(side,cx,cy);
-
    // designate the palette for this pixel
    // This will set the palette index map such that a grid is shown
    int numdivs = colorcells*colorwfrac+1;
@@ -1284,6 +1277,18 @@ inline void set_lensmap_from_cubemap(int lx, int ly, int cx, int cy, int side)
       *PALIMAP(lx,ly) = side;
 }
 
+// set a pixel on the lensmap from cubemap coordinate
+inline void set_lensmap_from_cubemap(int lx, int ly, int cx, int cy, int side)
+{
+   // increase the number of times this side is used
+   ++side_count[side];
+
+   // map the lens pixel to this cubeface pixel
+   *LENSMAP(lx,ly) = CUBEFACE(side,cx,cy);
+
+   set_lensmap_grid(lx,ly,cx,cy,side);
+}
+
 // set the (lx,ly) pixel on the lensmap to the (sx,sy,sz) view vector
 void set_lensmap_from_ray(int lx, int ly, double sx, double sy, double sz)
 {
@@ -1293,6 +1298,7 @@ void set_lensmap_from_ray(int lx, int ly, double sx, double sy, double sz)
       int side,fx,fy;
       if (ray_to_fastmap(ray, &side, &fx, &fy)) {
          *LENSMAP(lx,ly) = CUBEFACE(side,fx,fy);
+         set_lensmap_grid(lx,ly,fx,fy,side);
       }
       else {
          *LENSMAP(lx,ly) = 0;
