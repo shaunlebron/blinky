@@ -525,6 +525,10 @@ void L_WriteConfig(FILE* f)
    }
 
    fprintf(f,"lens \"%s\"\n",lens);
+
+   if (fastmode) {
+      fprintf(f, "fast");
+   }
 }
 
 void printActiveFov(void)
@@ -1336,40 +1340,45 @@ void create_lensmap_inverse()
 
          // map the current window coordinate to a ray vector
          vec3_t ray = { 0, 0, 1};
-         if (mapCoord == COORD_RADIAL)
+         switch (mapCoord)
          {
-            double r = sqrt(x*x+y*y);
-            double theta;
-            if (!lua_r_to_theta(r, &theta))
-               continue;
-            double s = sin(theta);
-            ray[0] = x/r * s;
-            ray[1] = y/r * s;
-            ray[2] = cos(theta);
-         }
-         else if (mapCoord == COORD_SPHERICAL)
-         {
-            double lat,lon;
-            if (!lua_xy_to_latlon(x,y,&lat,&lon))
-               continue;
-            latlon_to_ray(lat,lon,ray);
-         }
-         else if (mapCoord == COORD_EUCLIDEAN)
-         {
-            if (!lua_xy_to_ray(x,y,ray))
-               continue;
-         }
-         else if (mapCoord == COORD_CUBEMAP)
-         {
-            int side;
-            double u,v;
-            if (!lua_xy_to_cubemap(x,y,&side,&u,&v))
-               continue;
+            case COORD_RADIAL: {
+               double r = sqrt(x*x+y*y);
+               double theta;
+               if (!lua_r_to_theta(r, &theta))
+                  continue;
+               double s = sin(theta);
+               ray[0] = x/r * s;
+               ray[1] = y/r * s;
+               ray[2] = cos(theta);
+               break;
+            }
 
-            int cx = clamp((int)(u*(cubesize-1)),0,cubesize-1);
-            int cy = clamp((int)(v*(cubesize-1)),0,cubesize-1);
-            set_lensmap_from_cubemap(lx,ly,cx,cy,side);
-            continue;
+            case COORD_SPHERICAL: {
+               double lat,lon;
+               if (!lua_xy_to_latlon(x,y,&lat,&lon))
+                  continue;
+               latlon_to_ray(lat,lon,ray);
+               break;
+            }
+
+            case COORD_EUCLIDEAN: {
+               if (!lua_xy_to_ray(x,y,ray))
+                  continue;
+               break;
+            }
+
+            case COORD_CUBEMAP: {
+               int side;
+               double u,v;
+               if (!lua_xy_to_cubemap(x,y,&side,&u,&v))
+                  continue;
+
+               int cx = clamp((int)(u*(cubesize-1)),0,cubesize-1);
+               int cy = clamp((int)(v*(cubesize-1)),0,cubesize-1);
+               set_lensmap_from_cubemap(lx,ly,cx,cy,side);
+               continue;
+            }
          }
 
          set_lensmap_from_ray(lx,ly,ray[0],ray[1],ray[2]);
@@ -1389,21 +1398,42 @@ void create_lensmap_forward()
    int side;
    double nz = cubesize*0.5;
 
-   // TODO: add fastmap option
-   for (side=0; side<6; ++side)
+   double lminx, lmaxx, lminy, lmaxy;
+   lminx = lmaxx = lminy = lmaxy = 0;
+
+   // a hack to minimize changes needed for fast mode
+   // we have to draw the first cube last so it's not drawn over
+   int startside=0, endside=6, incside=1;
+   if (fastmode) {
+      startside = 1;
+      endside = -1;
+      incside = -1;
+   }
+
+   for (side=startside; ; side+=incside)
    {
+      if (side == endside)
+         break;
+
       int minx = 0;
       int miny = 0;
       int maxx = cubesize-1;
       int maxy = cubesize-1;
 
-      if (hsym) {
-         if (side == BOX_RIGHT) continue;
-         if (side != BOX_LEFT) maxx = cubesize/2;
+      if (fastmode) {
+         maxx = cubesize/2;
+         maxy = cubesize/2;
+         nz = (side == 1) ? (cubesize/2) / tan(fast_maxfov/2) : cubesize*0.5;
       }
-      if (vsym) {
-         if (side == BOX_BOTTOM) continue;
-         if (side != BOX_TOP) maxy = cubesize/2;
+      else {
+         if (hsym) {
+            if (side == BOX_RIGHT) continue;
+            if (side != BOX_LEFT) maxx = cubesize/2;
+         }
+         if (vsym) {
+            if (side == BOX_BOTTOM) continue;
+            if (side != BOX_TOP) maxy = cubesize/2;
+         }
       }
 
       for (cy=miny; cy<=maxy; ++cy)
@@ -1413,44 +1443,63 @@ void create_lensmap_forward()
          {
             double nx = cx-cubesize*0.5;
             vec3_t ray;
-            if (side == BOX_FRONT) { ray[0] = nx; ray[1] = ny; ray[2] = nz; }
-            else if (side == BOX_BEHIND) { ray[0] = -nx; ray[1] = ny; ray[2] = -nz; }
-            else if (side == BOX_LEFT) { ray[0] = -nz; ray[1] = ny; ray[2] = nx; }
-            else if (side == BOX_RIGHT) { ray[0] = nz; ray[1] = ny; ray[2] = -nx; }
-            else if (side == BOX_TOP) { ray[0] = nx; ray[1] = nz; ray[2] = -ny; }
-            else if (side == BOX_BOTTOM) { ray[0] = nx; ray[1] = -nz; ray[2] = ny; }
+            if (fastmode) {
+               ray[0] = nx; ray[1] = ny; ray[2] = nz;
+            }
+            else {
+               switch (side)
+               {
+                  case BOX_FRONT: ray[0] = nx; ray[1] = ny; ray[2] = nz; break; 
+                  case BOX_BEHIND: ray[0] = -nx; ray[1] = ny; ray[2] = -nz; break;
+                  case BOX_LEFT: ray[0] = -nz; ray[1] = ny; ray[2] = nx; break;
+                  case BOX_RIGHT: ray[0] = nz; ray[1] = ny; ray[2] = -nx; break;
+                  case BOX_TOP: ray[0] = nx; ray[1] = nz; ray[2] = -ny; break;
+                  case BOX_BOTTOM: ray[0] = nx; ray[1] = -nz; ray[2] = ny; break;
+               }
+            }
 
             double x,y;
-            if (mapCoord == COORD_RADIAL)
+            switch (mapCoord) 
             {
-               double theta = acos(ray[2]/sqrt(ray[0]*ray[0]+ray[1]*ray[1]+ray[2]*ray[2]));
-               double r;
-               if (!lua_theta_to_r(theta, &r))
-                  continue;
+               case COORD_RADIAL: {
+                  double theta = acos(ray[2]/sqrt(ray[0]*ray[0]+ray[1]*ray[1]+ray[2]*ray[2]));
+                  double r;
+                  if (!lua_theta_to_r(theta, &r))
+                     continue;
 
-               double c = r/sqrt(ray[0]*ray[0]+ray[1]*ray[1]);
-               x = ray[0]*c;
-               y = ray[1]*c;
+                  double c = r/sqrt(ray[0]*ray[0]+ray[1]*ray[1]);
+                  x = ray[0]*c;
+                  y = ray[1]*c;
+                  break;
+               }
+
+               case COORD_SPHERICAL: {
+                  double lat,lon;
+                  ray_to_latlon(ray, &lat, &lon);
+                  if (!lua_latlon_to_xy(lat, lon, &x, &y))
+                     continue;
+                  break;
+               }
+
+               case COORD_EUCLIDEAN: {
+                  if (!lua_ray_to_xy(ray, &x, &y))
+                     continue;
+                  break;
+               }
+
+               case COORD_CUBEMAP: {
+                  double u = (double)cx / (cubesize-1);
+                  double v = (double)cy / (cubesize-1);
+                  if (!lua_cubemap_to_xy(side, u, v, &x, &y))
+                     continue;
+                  break;
+               }
             }
-            else if (mapCoord == COORD_SPHERICAL)
-            {
-               double lat,lon;
-               ray_to_latlon(ray, &lat, &lon);
-               if (!lua_latlon_to_xy(lat, lon, &x, &y))
-                  continue;
-            }
-            else if (mapCoord == COORD_EUCLIDEAN)
-            {
-               if (!lua_ray_to_xy(ray, &x, &y))
-                  continue;
-            }
-            else if (mapCoord == COORD_CUBEMAP)
-            {
-               double u = (double)cx / (cubesize-1);
-               double v = (double)cy / (cubesize-1);
-               if (!lua_cubemap_to_xy(side, u, v, &x, &y))
-                  continue;
-            }
+
+            if (x < lminx) lminx = x;
+            if (x > lmaxx) lmaxx = x;
+            if (y < lminy) lminy = y;
+            if (y > lmaxy) lmaxy = y;
 
             x /= scale;
             y /= scale;
@@ -1482,6 +1531,7 @@ void create_lensmap_forward()
          }
       }
    }
+   Con_Printf("x = [%f, %f]\ny = [%f, %f]\n", lminx, lmaxx, lminy, lmaxy);
 }
 
 void create_lensmap()
