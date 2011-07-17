@@ -113,17 +113,6 @@ static int rValidIndex;
 static int lenschange;
 static int fovchange;
 
-// fast mode
-int fastmode;
-double fast_maxfov;
-double renderfov;
-
-// MAP SYMMETRIES
-static int hsym,vsym;
-#define NO_SYMMETRY 0
-#define H_SYMMETRY 1
-#define V_SYMMETRY 2
-
 static int mapType;
 #define MAP_NONE 0
 #define MAP_FORWARD 1
@@ -136,31 +125,17 @@ static int mapCoord;
 #define COORD_EUCLIDEAN 3
 #define COORD_CUBEMAP   4
 
-// cube faces
-#define BOX_FRONT  0
-#define BOX_RIGHT  1
-#define BOX_BEHIND 2
-#define BOX_LEFT   3
-#define BOX_TOP    4
-#define BOX_BOTTOM 5
-
 // the palettes for each cube face used by the rubix filter
 static B palmap[6][256];
 
 // retrieves a pointer to a pixel in the video buffer
 #define VBUFFER(x,y) (vid.buffer + (x) + (y)*vid.rowbytes)
 
-// retrieves a pointer to a pixel in a designated cubemap face
-#define CUBEFACE(side,x,y) (cubemap + (side)*cubesize*cubesize + (x) + (y)*cubesize)
-
 // retrieves a pointer to a pixel in the lensmap
 #define LENSMAP(x,y) (lensmap + (x) + (y)*width)
 
 // retrieves a pointer to a pixel in the palimap
 #define PALIMAP(x,y) (palimap + (x) + (y)*width)
-
-// retrieves a pointer to a pixel in the fastmap (just the 2nd cubeface)
-#define FASTMAP(x,y) CUBEFACE(1,x,y)
 
 // find closest pallete index for color
 int find_closest_pal_index(int r, int g, int b)
@@ -242,43 +217,6 @@ void create_palmap(void)
 // Console Commands
 // -------------------------------------------
 
-void L_CaptureCubeMap(void)
-{
-   char filename[100];
-   int i;
-   sprintf(filename,"%s/cubemaps/cube00_top.pcx",com_gamedir);
-   int len = strlen(filename);
-   for (i=0; i<99; ++i)
-   {
-      filename[len-10] = i/10 + '0';
-      filename[len-9] = i%10 + '0';
-      if (Sys_FileTime(filename) == -1)
-         break;
-   }
-   if (i == 100)
-   {
-      Con_Printf("Too many saved cubemaps, reached limit of 100\n");
-      return;
-   }
-
-   extern void WritePCXfile(char *filename, byte *data, int width, int height, int rowbytes, byte *palette);
-
-#define SET_FILE_FACE(face) sprintf(filename,"cubemaps/cube%02d_" face ".pcx",i);
-#define WRITE_FILE(n) WritePCXfile(filename,cubemap+cubesize*cubesize*n,cubesize,cubesize,cubesize,host_basepal);
-
-   SET_FILE_FACE("front"); WRITE_FILE(BOX_FRONT);
-   SET_FILE_FACE("right"); WRITE_FILE(BOX_RIGHT);
-   SET_FILE_FACE("behind"); WRITE_FILE(BOX_BEHIND);
-   SET_FILE_FACE("left"); WRITE_FILE(BOX_LEFT);
-   SET_FILE_FACE("top"); WRITE_FILE(BOX_TOP);
-   SET_FILE_FACE("bottom"); WRITE_FILE(BOX_BOTTOM);
-
-#undef SET_FILE_FACE
-#undef WRITE_FILE
-
-   Con_Printf("Saved cubemap to cube%02d_XXXX.pcx\n",i);
-}
-
 void L_DumpPalette(void)
 {
    int i;
@@ -326,87 +264,6 @@ void ray_to_latlon(vec3_t ray, double *lat, double *lon)
    *lat = atan2(ray[1], sqrt(ray[0]*ray[0]+ray[2]*ray[2]));
 }
 
-void ray_to_cubemap(vec3_t ray, int *side, double *u, double *v)
-{
-/*
-   +X = RIGHT
-   -X = LEFT
-   +Y = TOP
-   -Y = BOTTOM
-   +Z = FRONT
-   -Z = BEHIND
-*/
-   // determine which side of the box we need
-   double sx = ray[0], sy=ray[1], sz=ray[2];
-   double abs_x = fabs(sx);
-   double abs_y = fabs(sy);
-   double abs_z = fabs(sz);			
-   if (abs_x > abs_y) {
-      if (abs_x > abs_z) { *side = ((sx > 0.0) ? BOX_RIGHT : BOX_LEFT);   }
-      else               { *side = ((sz > 0.0) ? BOX_FRONT : BOX_BEHIND); }
-   } else {
-      if (abs_y > abs_z) { *side = ((sy > 0.0) ? BOX_TOP : BOX_BOTTOM); }
-      else               { *side = ((sz > 0.0) ? BOX_FRONT : BOX_BEHIND); }
-   }
-
-#define T(x) (((x)*0.5) + 0.5)
-
-   // get u,v coordinates
-   switch(*side) {
-      case BOX_FRONT:  *u = T( sx /  sz); *v = T( -sy /  sz); break;
-      case BOX_BEHIND: *u = T(-sx / -sz); *v = T( -sy / -sz); break;
-      case BOX_LEFT:   *u = T( sz / -sx); *v = T( -sy / -sx); break;
-      case BOX_RIGHT:  *u = T(-sz /  sx); *v = T( -sy /  sx); break;
-      case BOX_BOTTOM: *u = T( sx /  -sy); *v = T( -sz / -sy); break;
-      case BOX_TOP:    *u = T(sx /  sy); *v = T( sz / sy); break;
-   }
-
-#undef T
-}
-
-int ray_to_fastmap(vec3_t ray, int* side, int* x, int* y)
-{
-   double sx = ray[0], sy=ray[1], sz=ray[2];
-
-   // exit if pointing behind us
-   if (sz <= 0) {
-      return 0;
-   }
-
-   // get screen distance
-   double dist = (cubesize/2) / tan(fast_maxfov/2);
-   int boundsize = (int)(2 * dist * tan(M_PI/4));
-
-   // project vector to the screen
-   double fx = sx / sz * dist;
-   double fy = sy / sz * dist;
-
-   if (abs(fx) < boundsize/2 && abs(fy) < boundsize/2) {
-      // scale up
-      fx = fx / (boundsize/2) * cubesize/2;
-      fy = fy / (boundsize/2) * cubesize/2;
-      *side = 0;
-   }
-   else {
-      *side = 1;
-   }
-
-   // transform to screen coordinates
-   fx += cubesize/2;
-   fy = -fy;
-   fy += cubesize/2;
-
-   *x = (int)fx;
-   *y = (int)fy;
-
-   // outside the fastmap
-   if (*x < 0 || *x >= cubesize || *y < 0 || *y >= cubesize) {
-      return 0;
-   }
-
-   return 1;
-}
-
 /* END CONVERSION LUA HELPER FUNCTIONS */
 
 void L_InitLua(void)
@@ -445,14 +302,7 @@ void L_InitLua(void)
       "sqrt = math.sqrt\n"
       "exp = math.exp\n"
       "pi = math.pi\n"
-      "pow = math.pow\n"
-
-      "FRONT = 0\n"
-      "RIGHT = 1\n"
-      "BEHIND = 2\n"
-      "LEFT = 3\n"
-      "TOP = 4\n"
-      "BOTTOM = 5\n";
+      "pow = math.pow\n";
 
    error = luaL_loadbuffer(lua, aliases, strlen(aliases), "aliases") ||
       lua_pcall(lua, 0, 0, 0);
@@ -466,9 +316,6 @@ void L_InitLua(void)
 
    lua_pushcfunction(lua, lua_ray_to_latlon);
    lua_setglobal(lua, "ray_to_latlon");
-
-   lua_pushcfunction(lua, lua_ray_to_cubemap);
-   lua_setglobal(lua, "ray_to_cubemap");
 }
 
 void clearFov(void)
@@ -1586,6 +1433,8 @@ void render_lensmap()
 }
 
 // render a specific face on the cubemap
+// TODO: replace with render_plate
+/*
 void render_cubeface(B* cubeface, vec3_t forward, vec3_t right, vec3_t up) 
 {
    // set camera orientation
@@ -1608,6 +1457,7 @@ void render_cubeface(B* cubeface, vec3_t forward, vec3_t right, vec3_t up)
       cubeface += cubesize;
    }
 }
+*/
 
 void L_RenderView() 
 {
@@ -1644,6 +1494,10 @@ void L_RenderView()
       create_lensmap();
    }
 
+   // TODO: get axis vectors from AngleVectors
+   // TODO: for each plate, calculate view and pass to render_plate
+
+   /*
    // get the orientations required to render the cube faces
    vec3_t front, right, up, back, left, down;
    AngleVectors(r_refdef.viewangles, front, right, up);
@@ -1651,7 +1505,7 @@ void L_RenderView()
    VectorScale(right, -1, left);
    VectorScale(up, -1, down);
 
-   // TODO: do not do this every frame?
+   // do not do this every frame?
    extern int sb_lines;
    extern vrect_t scr_vrect;
    vrect_t vrect;
@@ -1692,6 +1546,7 @@ void L_RenderView()
             }
          }
    }
+   */
 
    // render our view
    Draw_TileClear(0, 0, vid.width, vid.height);
