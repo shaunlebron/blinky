@@ -8,45 +8,39 @@ bottom = 5
 -- 6 plates
 plates = {}
 
-plates[0] = {
-   -- forward
-   -- up
-   -- aspect
-   -- hfov
+plates[front] = {
+   { 0, 0, 1 }, -- forward
+   { 0, 1, 0 }, -- up
+   90 -- fov
 }
-plates[1] = {
-   -- forward
-   -- up
-   -- aspect
-   -- hfov
+plates[right] = {
+   { 1, 0, 0 }, -- forward
+   { 0, 1, 0 }, -- up
+   90 -- hfov
 }
-plates[2] = {
-   -- forward
-   -- up
-   -- aspect
-   -- hfov
+plates[left] = {
+   { -1, 0, 0 }, -- forward
+   { 0, 1, 0 }, -- up
+   90 -- hfov
 }
-plates[3] = {
-   -- forward
-   -- up
-   -- aspect
-   -- hfov
+plates[back] = {
+   { 0, 0, -1 }, -- forward
+   { 0, 1, 0 }, -- up
+   90 -- hfov
 }
-plates[4] = {
-   -- forward
-   -- up
-   -- aspect
-   -- hfov
+plates[top] = {
+   { 0, 1, 0 }, -- forward
+   { 0, 0, -1 }, -- up
+   90 -- hfov
 }
-plates[5] = {
-   -- forward
-   -- up
-   -- aspect
-   -- hfov
+plates[bottom] = {
+   { 0, -1, 0 }, -- forward
+   { 0, 0, 1 }, -- up
+   90 -- hfov
 }
 
 -- inverse
-function ray_to_globe(x,y,z)
+function ray_to_plate(x,y,z)
    local plate
    local ax = abs(x)
    local ay = abs(y)
@@ -111,7 +105,7 @@ function ray_to_globe(x,y,z)
 end
 
 -- forward
-function globe_to_ray(plate, u, v)
+function plate_to_ray(plate, u, v)
    local x = u - 0.5
    local y = 0.5 - v
    local z = 0.5

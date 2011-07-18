@@ -53,9 +53,6 @@ static int left, top;
 // size of the view in the vid buffer
 static int width, height, diag;
 
-// size of each rendered cube face in the vid buffer
-static int cubesize;
-
 // desired FOV in radians
 static double fov;
 
@@ -80,13 +77,6 @@ static int* framesize;
 // scale determined from desired zoom level
 // (multiplier used to transform lens coordinates to screen coordinates)
 static double scale;
-
-// the number of pixels used on each cube face
-// (used to skip the rendering of invisible cubefaces)
-static int side_count[6];
-
-// boolean flags set after looking at the final values of side_count
-static int faceDisplay[] = {0,0,0,0,0,0};
 
 // cubemap color display flag
 static int colorcube = 0;
@@ -123,7 +113,7 @@ static int mapCoord;
 #define COORD_RADIAL    1
 #define COORD_SPHERICAL 2
 #define COORD_EUCLIDEAN 3
-#define COORD_CUBEMAP   4
+#define COORD_PLATE     4
 
 // the palettes for each cube face used by the rubix filter
 static B palmap[6][256];
@@ -136,6 +126,28 @@ static B palmap[6][256];
 
 // retrieves a pointer to a pixel in the palimap
 #define PALIMAP(x,y) (palimap + (x) + (y)*width)
+
+// globe plates
+typedef struct {
+   double forward[3];
+   double right[3];
+   double up[3];
+   double fov;
+} plate_t;
+
+#define MAX_PLATES 6
+plate_t plates[MAX_PLATES];
+int numplates;
+
+// the number of pixels used on each cube face
+// (used to skip the rendering of invisible cubefaces)
+static int plate_tally[6];
+
+// boolean flags set after looking at the final values of plate_tally
+static int plate_display[] = {0,0,0,0,0,0};
+
+// size of each rendered square plate in the vid buffer
+static int platesize;
 
 // find closest pallete index for color
 int find_closest_pal_index(int r, int g, int b)
@@ -248,7 +260,6 @@ void L_ColorCube(void)
 /* START CONVERSION LUA HELPER FUNCTIONS */
 int lua_latlon_to_ray(lua_State *L);
 int lua_ray_to_latlon(lua_State *L);
-int lua_ray_to_cubemap(lua_State *L);
 
 void latlon_to_ray(double lat, double lon, vec3_t ray)
 {
@@ -302,6 +313,7 @@ void L_InitLua(void)
       "sqrt = math.sqrt\n"
       "exp = math.exp\n"
       "pi = math.pi\n"
+      "tau = math.pi*2\n"
       "pow = math.pow\n";
 
    error = luaL_loadbuffer(lua, aliases, strlen(aliases), "aliases") ||
@@ -546,22 +558,6 @@ int lua_ray_to_latlon(lua_State *L)
    lua_pushnumber(L, lon);
    return 2;
 }
-int lua_ray_to_cubemap(lua_State *L)
-{
-   double rx = luaL_checknumber(L, 1);
-   double ry = luaL_checknumber(L, 2);
-   double rz = luaL_checknumber(L, 3);
-
-   vec3_t ray = {rx,ry,rz};
-   int side;
-   double u,v;
-   ray_to_cubemap(ray,&side,&u,&v);
-
-   lua_pushinteger(L, side);
-   lua_pushnumber(L, u);
-   lua_pushnumber(L, v);
-   return 3;
-}
 
 int lua_xy_isvalid(double x, double y)
 {
@@ -660,7 +656,7 @@ int lua_xy_to_latlon(double x, double y, double *lat, double *lon)
    return 1;
 }
 
-int lua_xy_to_cubemap(double x, double y, int *side, double *u, double *v)
+int lua_xy_to_plate(double x, double y, int *plate, double *u, double *v)
 {
    if (!lua_xy_isvalid(x,y))
       return 0;
@@ -675,7 +671,7 @@ int lua_xy_to_cubemap(double x, double y, int *side, double *u, double *v)
       return 0;
    }
 
-   *side = lua_tointeger(lua, -3);
+   *plate = lua_tointeger(lua, -3);
    *u = lua_tonumber(lua, -2);
    *v = lua_tonumber(lua, -1);
    lua_pop(lua,3);
@@ -739,10 +735,10 @@ int lua_theta_to_r(double theta, double *r)
    return 1;
 }
 
-int lua_cubemap_to_xy(int side, double u, double v, double *x, double *y)
+int lua_plate_to_xy(int plate, double u, double v, double *x, double *y)
 {
    lua_rawgeti(lua, LUA_REGISTRYINDEX, mapForwardIndex);
-   lua_pushinteger(lua, side);
+   lua_pushinteger(lua, plate);
    lua_pushnumber(lua, u);
    lua_pushnumber(lua, v);
    lua_call(lua, 3, LUA_MULTRET);
@@ -776,8 +772,8 @@ void lua_lens_clear(void)
    CLEARVAR("theta_to_r");
    CLEARVAR("xy_to_ray");
    CLEARVAR("ray_to_xy");
-   CLEARVAR("xy_to_cubemap");
-   CLEARVAR("cubemap_to_xy");
+   CLEARVAR("xy_to_plate");
+   CLEARVAR("plate_to_xy");
    CLEARVAR("xy_isvalid");
    CLEARVAR("r_isvalid");
 #undef CLEARVAR
@@ -844,8 +840,8 @@ int lua_lens_load(void)
       else if (!strcmp(funcname, "theta_to_r"))    { SETFWD_ACTIVE(theta_to_r,   COORD_RADIAL);   }
       else if (!strcmp(funcname, "xy_to_ray"))     { SETINV_ACTIVE(xy_to_ray,    COORD_EUCLIDEAN);    }
       else if (!strcmp(funcname, "ray_to_xy"))     { SETFWD_ACTIVE(ray_to_xy,    COORD_EUCLIDEAN);    }
-      else if (!strcmp(funcname, "xy_to_cubemap")) { SETINV_ACTIVE(xy_to_cubemap,COORD_CUBEMAP); }
-      else if (!strcmp(funcname, "cubemap_to_xy")) { SETFWD_ACTIVE(cubemap_to_xy,COORD_CUBEMAP); }
+      else if (!strcmp(funcname, "xy_to_plate"))   { SETINV_ACTIVE(xy_to_plate,  COORD_PLATE); }
+      else if (!strcmp(funcname, "plate_to_xy"))   { SETFWD_ACTIVE(plate_to_xy,  COORD_PLATE); }
       else {
          Con_Printf("Unsupported map function: %s\n", funcname);
          lua_pop(lua, 1);
@@ -873,8 +869,8 @@ int lua_lens_load(void)
       else if (lua_func_exists( "theta_to_r"))     { SETFWD_ACTIVE(theta_to_r,    COORD_RADIAL);   }
       else if (lua_func_exists( "latlon_to_xy"))   { SETFWD_ACTIVE(latlon_to_xy,  COORD_SPHERICAL); }
       else if (lua_func_exists( "ray_to_xy"))      { SETFWD_ACTIVE(ray_to_xy,     COORD_EUCLIDEAN);    }
-      else if (lua_func_exists( "xy_to_cubemap"))  { SETINV_ACTIVE(xy_to_cubemap, COORD_CUBEMAP); }
-      else if (lua_func_exists( "cubemap_to_xy"))  { SETFWD_ACTIVE(cubemap_to_xy, COORD_CUBEMAP); }
+      else if (lua_func_exists( "xy_to_plate"))    { SETINV_ACTIVE(xy_to_plate,   COORD_PLATE); }
+      else if (lua_func_exists( "plate_to_xy"))    { SETFWD_ACTIVE(plate_to_xy,   COORD_PLATE); }
       else {
          Con_Printf("No map function provided\n");
          lua_pop(lua, 1);
@@ -889,7 +885,7 @@ int lua_lens_load(void)
       if (mapCoord == COORD_RADIAL && lua_func_exists("theta_to_r"))        { SETFWD(theta_to_r);   }
       else if (mapCoord == COORD_SPHERICAL && lua_func_exists("latlon_to_xy")) { SETFWD(latlon_to_xy); }
       else if (mapCoord == COORD_EUCLIDEAN && lua_func_exists("ray_to_xy"))    { SETFWD(ray_to_xy);    }
-      else if (mapCoord == COORD_CUBEMAP && lua_func_exists("cubemap_to_xy")){ SETFWD(cubemap_to_xy); }
+      else if (mapCoord == COORD_PLATE && lua_func_exists("plate_to_xy")){ SETFWD(plate_to_xy); }
       else {
          // TODO: notify if no matching forward function found (meaning no FOV scaling can be done)
       }
@@ -1040,8 +1036,8 @@ int determine_lens_scale(void)
                return 0;
             }
          }
-         else if (mapCoord == COORD_CUBEMAP) {
-            Con_Printf("cubemap_to_xy currently not supported for FOV scaling\n");
+         else if (mapCoord == COORD_PLATE) {
+            Con_Printf("plate_to_xy currently not supported for FOV scaling\n");
             return 0;
          }
       }
@@ -1111,33 +1107,37 @@ int clamp(int value, int min, int max)
 // Lens Map Creation
 // ----------------------------------------
 
-void set_lensmap_grid(int lx, int ly, int cx, int cy, int side)
+void set_lensmap_grid(int lx, int ly, int px, int py, int plate)
 {
    // designate the palette for this pixel
    // This will set the palette index map such that a grid is shown
    int numdivs = colorcells*colorwfrac+1;
-   double divsize = (double)cubesize/numdivs;
+   double divsize = (double)platesize/numdivs;
    double mod = colorwfrac;
 
-   double x = cx/divsize;
-   double y = cy/divsize;
+   double x = px/divsize;
+   double y = py/divsize;
 
    int ongrid = fmod(x,mod) < 1 || fmod(y,mod) < 1;
 
    if (!ongrid)
-      *PALIMAP(lx,ly) = side;
+      *PALIMAP(lx,ly) = plate;
 }
 
-// set a pixel on the lensmap from cubemap coordinate
-inline void set_lensmap_from_cubemap(int lx, int ly, int cx, int cy, int side)
+// set a pixel on the lensmap from plate coordinate
+inline void set_lensmap_from_plate(int lx, int ly, double u, double v, int plate)
 {
    // increase the number of times this side is used
-   ++side_count[side];
+   ++plate_tally[plate];
+
+   // convert to plate coordinates
+   int px = clamp((int)(u*platesize),0,platesize-1);
+   int py = clamp((int)(v*platesize),0,platesize-1);
 
    // map the lens pixel to this cubeface pixel
-   *LENSMAP(lx,ly) = CUBEFACE(side,cx,cy);
+   *LENSMAP(lx,ly) = PLATE(plate,px,py);
 
-   set_lensmap_grid(lx,ly,cx,cy,side);
+   set_lensmap_grid(lx,ly,px,py,plate);
 }
 
 // set the (lx,ly) pixel on the lensmap to the (sx,sy,sz) view vector
@@ -1145,28 +1145,14 @@ void set_lensmap_from_ray(int lx, int ly, double sx, double sy, double sz)
 {
    vec3_t ray = {sx,sy,sz};
 
-   if (fastmode) {
-      int side,fx,fy;
-      if (ray_to_fastmap(ray, &side, &fx, &fy)) {
-         *LENSMAP(lx,ly) = CUBEFACE(side,fx,fy);
-         set_lensmap_grid(lx,ly,fx,fy,side);
-      }
-      else {
-         *LENSMAP(lx,ly) = 0;
-      }
+   double u,v;
+   int plate;
+   if (!lua_ray_to_plate(ray,&plate,&u,&v)) {
+      return;
    }
-   else {
-      double xs,ys;
-      int side;
-      ray_to_cubemap(ray,&side,&xs,&ys);
 
-      // convert to face coordinates
-      int cx = clamp((int)(xs*cubesize),0,cubesize-1);
-      int cy = clamp((int)(ys*cubesize),0,cubesize-1);
-
-      // map lens pixel to cubeface pixel
-      set_lensmap_from_cubemap(lx,ly,cx,cy,side);
-   }
+   // map lens pixel to cubeface pixel
+   set_lensmap_from_plate(lx,ly,u,v,plate);
 }
 
 void create_lensmap_inverse()
@@ -1185,6 +1171,7 @@ void create_lensmap_inverse()
          double x = lx-halfw;
          x *= scale;
 
+         // (use lens)
          // map the current window coordinate to a ray vector
          vec3_t ray = { 0, 0, 1};
          switch (mapCoord)
@@ -1215,96 +1202,45 @@ void create_lensmap_inverse()
                break;
             }
 
-            case COORD_CUBEMAP: {
-               int side;
-               double u,v;
-               if (!lua_xy_to_cubemap(x,y,&side,&u,&v))
-                  continue;
-
-               int cx = clamp((int)(u*(cubesize-1)),0,cubesize-1);
-               int cy = clamp((int)(v*(cubesize-1)),0,cubesize-1);
-               set_lensmap_from_cubemap(lx,ly,cx,cy,side);
+            case COORD_PLATE: {
+               int plate;
+               double u;
+               double v;
+               if (lua_xy_to_plate(x,y,&plate,&u,&v))
+                  set_lensmap_from_plate(lx, ly, u, v, plate);
                continue;
             }
          }
 
+         // (use globe)
          set_lensmap_from_ray(lx,ly,ray[0],ray[1],ray[2]);
-
-         // apply symmetries
-         if (hsym) set_lensmap_from_ray(width-1-lx,ly,-ray[0],ray[1],ray[2]);
-         if (vsym) set_lensmap_from_ray(lx,height-1-ly,ray[0],-ray[1],ray[2]);
-         if (vsym && hsym) set_lensmap_from_ray(width-1-lx,height-1-ly,-ray[0],-ray[1],ray[2]);
       }
    }
 }
 
 void create_lensmap_forward()
 {
-   memset(side_count, 0, sizeof(side_count));
-   int cx, cy;
-   int side;
-   double nz = cubesize*0.5;
+   int px, py;
+   int plate;
 
-   double lminx, lmaxx, lminy, lmaxy;
-   lminx = lmaxx = lminy = lmaxy = 0;
-
-   // a hack to minimize changes needed for fast mode
-   // we have to draw the first cube last so it's not drawn over
-   int startside=0, endside=6, incside=1;
-   if (fastmode) {
-      startside = 1;
-      endside = -1;
-      incside = -1;
-   }
-
-   for (side=startside; ; side+=incside)
+   for (plate = 0; plate < numplates; ++plate)
    {
-      if (side == endside)
-         break;
-
-      int minx = 0;
-      int miny = 0;
-      int maxx = cubesize-1;
-      int maxy = cubesize-1;
-
-      if (fastmode) {
-         maxx = cubesize/2;
-         maxy = cubesize/2;
-         nz = (side == 1) ? (cubesize/2) / tan(fast_maxfov/2) : cubesize*0.5;
-      }
-      else {
-         if (hsym) {
-            if (side == BOX_RIGHT) continue;
-            if (side != BOX_LEFT) maxx = cubesize/2;
-         }
-         if (vsym) {
-            if (side == BOX_BOTTOM) continue;
-            if (side != BOX_TOP) maxy = cubesize/2;
-         }
-      }
-
-      for (cy=miny; cy<=maxy; ++cy)
+      for (py=0; py<platesize; ++py)
       {
-         double ny = -(cy-cubesize*0.5);
-         for (cx=minx; cx<=maxx; ++cx)
+         double v = -(py-platesize*0.5) / platesize;
+         for (px=0; px < platesize; ++px)
          {
-            double nx = cx-cubesize*0.5;
+            double u = (px-cubesize*0.5) / platesize;
+
+            // (use globe)
+            // get ray from plate coordinates
             vec3_t ray;
-            if (fastmode) {
-               ray[0] = nx; ray[1] = ny; ray[2] = nz;
-            }
-            else {
-               switch (side)
-               {
-                  case BOX_FRONT: ray[0] = nx; ray[1] = ny; ray[2] = nz; break; 
-                  case BOX_BEHIND: ray[0] = -nx; ray[1] = ny; ray[2] = -nz; break;
-                  case BOX_LEFT: ray[0] = -nz; ray[1] = ny; ray[2] = nx; break;
-                  case BOX_RIGHT: ray[0] = nz; ray[1] = ny; ray[2] = -nx; break;
-                  case BOX_TOP: ray[0] = nx; ray[1] = nz; ray[2] = -ny; break;
-                  case BOX_BOTTOM: ray[0] = nx; ray[1] = -nz; ray[2] = ny; break;
-               }
+            if (!lua_globe_to_ray(plate, u, v, ray)) {
+               continue;
             }
 
+            // (use lens)
+            // get image coordinates from ray
             double x,y;
             switch (mapCoord) 
             {
@@ -1334,51 +1270,26 @@ void create_lensmap_forward()
                   break;
                }
 
-               case COORD_CUBEMAP: {
-                  double u = (double)cx / (cubesize-1);
-                  double v = (double)cy / (cubesize-1);
-                  if (!lua_cubemap_to_xy(side, u, v, &x, &y))
-                     continue;
-                  break;
-               }
+               // TODO: add COORD_PLATE?
             }
 
-            if (x < lminx) lminx = x;
-            if (x > lmaxx) lmaxx = x;
-            if (y < lminy) lminy = y;
-            if (y > lmaxy) lmaxy = y;
-
+            // transform from image coordinates to lens coordinates
             x /= scale;
             y /= scale;
             y = -y;
             x += width*0.5;
             y += height*0.5;
 
-            int lx = (int)x;
-            int ly = (int)y;
+            int lx = (int)(x/scale + width/2);
+            int ly = (int)(-y/scale + height/2);
 
             if (lx < 0 || lx >= width || ly < 0 || ly >= height)
                continue;
 
-            set_lensmap_from_cubemap(lx,ly,cx,cy,side);
-
-            // apply symmetries
-            if (hsym) {
-               int oppside = (side == BOX_LEFT) ? BOX_RIGHT : side;
-               set_lensmap_from_cubemap(width-1-lx,ly,cubesize-1-cx,cy,oppside);
-            }
-            if (vsym) {
-               int oppside = (side == BOX_TOP) ? BOX_BOTTOM : side;
-               set_lensmap_from_cubemap(lx,height-1-ly,cx,cubesize-1-cy,oppside);
-            }
-            if (hsym && vsym) {
-               int oppside = (side == BOX_TOP) ? BOX_BOTTOM : ((side == BOX_LEFT) ? BOX_RIGHT : side);
-               set_lensmap_from_cubemap(width-1-lx,height-1-ly,cubesize-1-cx,cubesize-1-cy,oppside);
-            }
+            set_lensmap_from_plate(lx,ly,u,v,plate);
          }
       }
    }
-   Con_Printf("x = [%f, %f]\ny = [%f, %f]\n", lminx, lmaxx, lminy, lmaxy);
 }
 
 void create_lensmap()
@@ -1394,7 +1305,7 @@ void create_lensmap()
    }
 
    // clear the side counts
-   memset(side_count, 0, sizeof(side_count));
+   memset(plate_tally, 0, sizeof(plate_tally));
 
    // create lensmap
    if (mapType == MAP_FORWARD)
@@ -1404,8 +1315,8 @@ void create_lensmap()
 
    // update face display flags depending on tallied side counts
    int i;
-   for(i=0; i<6; ++i) {
-      faceDisplay[i] = (side_count[i] > 1);
+   for(i=0; i<numplates; ++i) {
+      plate_display[i] = (plate_tally[i] > 1);
    }
 }
 
@@ -1533,7 +1444,7 @@ void L_RenderView()
       R_ViewChanged(&vrect, sb_lines, vid.aspect);
 
       for (i=0; i<6; ++i)
-         if (faceDisplay[i]) {
+         if (plate_display[i]) {
             B* face = cubemap+cubesize*cubesize*i;
             switch(i) {
                //                                     FORWARD  RIGHT   UP
