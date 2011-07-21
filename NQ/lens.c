@@ -154,7 +154,7 @@ static B palmap[MAX_PLATES][256];
 
 // the number of pixels used on each cube face
 // (used to skip the rendering of invisible cubefaces)
-static int plate_tally[6];
+static int plate_tally[MAX_PLATES];
 
 // boolean flags set after looking at the final values of plate_tally
 static int plate_display[] = {0,0,0,0,0,0};
