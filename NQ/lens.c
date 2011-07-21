@@ -35,7 +35,7 @@ typedef unsigned char B;
 
 // the environment cubemap
 // a large array of pixels that hold all six rendered views
-static B *cubemap = NULL;  
+static B *platemap = NULL;  
 
 // the lookup table
 // an array of pointers to cubemap pixels
@@ -71,6 +71,18 @@ static int vfit;
 // name of the current lens
 static char lens[50];
 
+// indicates if the current lens is valid
+static int valid_lens;
+
+// name of the current globe
+static char globe[50];
+
+// indicates if the current globe is valid
+static int valid_globe;
+
+// indicates if the current globe supports forward lens mapping
+static int globe_forward;
+
 // pointer to the screen dimension (width,height or diag) attached to the desired fov
 static int* framesize;
 
@@ -89,9 +101,6 @@ static double max_vfov;
 // maximum FOV height of the current lens
 static double max_hfov;
 
-// indicates if the current lens is valid
-static int valid_lens;
-
 // lua reference map index (for storing a reference to the map function)
 static int mapForwardIndex;
 static int mapInverseIndex;
@@ -101,6 +110,7 @@ static int rValidIndex;
 
 // change flags
 static int lenschange;
+static int globechange;
 static int fovchange;
 
 static int mapType;
@@ -115,11 +125,11 @@ static int mapCoord;
 #define COORD_EUCLIDEAN 3
 #define COORD_PLATE     4
 
-// the palettes for each cube face used by the rubix filter
-static B palmap[6][256];
-
 // retrieves a pointer to a pixel in the video buffer
 #define VBUFFER(x,y) (vid.buffer + (x) + (y)*vid.rowbytes)
+
+// retrieves a pointer to a pixel in the platemap
+#define PLATEMAP(plate,x,y) (platemap + (plate)*platesize*platesize + (x) + (y)*platesize)
 
 // retrieves a pointer to a pixel in the lensmap
 #define LENSMAP(x,y) (lensmap + (x) + (y)*width)
@@ -138,6 +148,9 @@ typedef struct {
 #define MAX_PLATES 6
 plate_t plates[MAX_PLATES];
 int numplates;
+
+// the palettes for each cube face used by the rubix filter
+static B palmap[MAX_PLATES][256];
 
 // the number of pixels used on each cube face
 // (used to skip the rendering of invisible cubefaces)
@@ -178,27 +191,27 @@ void create_palmap(void)
    int percent = 256/6;
    int tint[3];
 
-   for (j=0; j<6; ++j)
+   for (j=0; j<MAX_PLATES; ++j)
    {
       tint[0] = tint[1] = tint[2] = 0;
       switch (j)
       {
-         case BOX_FRONT:
+         case 0:
             tint[0] = tint[1] = tint[2] = 255;
             break;
-         case BOX_LEFT:
+         case 1:
             tint[2] = 255;
             break;
-         case BOX_BEHIND:
+         case 2:
             tint[0] = 255;
             break;
-         case BOX_RIGHT:
+         case 3:
             tint[0] = tint[1] = 255;
             break;
-         case BOX_TOP:
+         case 4:
             tint[0] = tint[2] = 255;
             break;
-         case BOX_BOTTOM:
+         case 5:
             tint[1] = tint[2] = 255;
             break;
       }
@@ -384,10 +397,7 @@ void L_WriteConfig(FILE* f)
    }
 
    fprintf(f,"lens \"%s\"\n",lens);
-
-   if (fastmode) {
-      fprintf(f, "fast");
-   }
+   fprintf(f,"globe \"%s\"\n", globe);
 }
 
 void printActiveFov(void)
@@ -448,13 +458,6 @@ void L_DFov(void)
    fov = dfov * M_PI / 180;
 }
 
-void L_Fast(void)
-{
-   fovchange = 1;
-   fastmode = fastmode ? 0 : 1;
-   Con_Printf("Fast Mode is %s\n", fastmode ? "ON" : "OFF");
-}
-
 int lua_lens_load(void);
 
 // lens command
@@ -495,6 +498,43 @@ static struct stree_root * L_LensArg(const char *arg)
    return root;
 }
 
+void L_Globe(void)
+{
+   if (Cmd_Argc() < 2) { // no globe name given
+      Con_Printf("globe <name>: use a new globe\n");
+      Con_Printf("Currently: %s\n", globe);
+      return;
+   }
+
+   // trigger change
+   globechange = 1;
+
+   // get name
+   strcpy(globe, Cmd_Argv(1));
+
+   // load globe
+   valid_globe = lua_globe_load();
+   if (!valid_globe) {
+      strcpy(globe,"");
+      Con_Printf("not a valid globe\n");
+   }
+}
+
+// autocompletion for globe names
+static struct stree_root * L_GlobeArg(const char *arg)
+{
+   struct stree_root *root;
+
+   root = Z_Malloc(sizeof(struct stree_root));
+   if (root) {
+      *root = STREE_ROOT;
+
+      STree_AllocInit();
+      COM_ScanDir(root, "../globes", arg, ".lua", true);
+   }
+   return root;
+}
+
 void L_Init(void)
 {
    L_InitLua();
@@ -511,13 +551,13 @@ void L_Init(void)
    Cmd_AddCommand("dfov", L_DFov);
    Cmd_AddCommand("lens", L_Lens);
    Cmd_SetCompletion("lens", L_LensArg);
-   Cmd_AddCommand("fast", L_Fast);
+   Cmd_AddCommand("globe", L_Globe);
+   Cmd_SetCompletion("globe", L_GlobeArg);
 
    // default view state
+   Cmd_ExecuteString("globe cube", src_command);
    Cmd_ExecuteString("lens rectilinear", src_command);
    Cmd_ExecuteString("hfov 90", src_command);
-
-   fast_maxfov = 160 * M_PI / 180;
 
    // create palette maps
    create_palmap();
@@ -755,10 +795,11 @@ int lua_plate_to_xy(int plate, double u, double v, double *x, double *y)
    return 1;
 }
 
+#define CLEARVAR(var) lua_pushnil(lua); lua_setglobal(lua, var);
+
 // used to clear the state when switching lenses
 void lua_lens_clear(void)
 {
-#define CLEARVAR(var) lua_pushnil(lua); lua_setglobal(lua, var);
    CLEARVAR("map");
    CLEARVAR("max_hfov");
    CLEARVAR("max_vfov");
@@ -776,8 +817,19 @@ void lua_lens_clear(void)
    CLEARVAR("plate_to_xy");
    CLEARVAR("xy_isvalid");
    CLEARVAR("r_isvalid");
-#undef CLEARVAR
 }
+
+// used to clear the state when switching globes
+void lua_globe_clear(void)
+{
+   CLEARVAR("plates");
+   CLEARVAR("ray_to_plate");
+   CLEARVAR("plate_to_ray");
+
+   numplates = 0;
+}
+
+#undef CLEARVAR
 
 int lua_func_exists(const char* name)
 {
@@ -785,6 +837,126 @@ int lua_func_exists(const char* name)
    int exists = lua_isfunction(lua,-1);
    lua_pop(lua,1);
    return exists;
+}
+
+int lua_globe_load(void)
+{
+   // clear Lua variables
+   lua_globe_clear();
+
+   // set full filename
+   char filename[100];
+   sprintf(filename, "%s/../globes/%s.lua",com_gamedir,globe);
+
+   // check if loaded correctly
+   if (luaL_dofile(lua, filename) != 0) {
+      Con_Printf("could not load %s\nERROR: %s\n", globe, lua_tostring(lua,-1));
+      lua_pop(lua, 1);
+      return 0;
+   }
+
+   // check for the required function
+   if (!lua_func_exists("ray_to_plate"))
+   {
+      Con_Printf("ray_to_plate function was not found\n");
+      return 0;
+   }
+
+   // check if forward lens maps are supported by this globe
+   globe_forward = lua_func_exists("plate_to_ray");
+
+   // load plates array
+   lua_getglobal(lua, "plates");
+   if (!lua_istable(lua,-1) || lua_objlen(lua,-1) < 1)
+   {
+      Con_Printf("plates must be an array of one or more elements\n");
+      lua_pop(lua, 1);
+      return 0;
+   }
+
+   // iterate plates
+   int i = 0;
+   int j;
+   for (lua_pushnil(lua); lua_next(lua,-2); lua_pop(lua,1), ++i)
+   {
+      // get forward vector
+      lua_rawgeti(lua, -1, 1);
+
+      // verify table of length 3
+      if (!lua_istable(lua,-1) || lua_objlen(lua,-1) != 3 )
+      {
+         Con_Printf("plate %d: forward vector is not a 3d vector\n", i+1);
+         lua_pop(lua,4); // plates, plate key, plate, forward
+         return 0;
+      }
+
+      // get forward vector elements
+      for (j=0; j<3; ++j) {
+         lua_rawgeti(lua, -1, j+1);
+         if (!lua_isnumber(lua,-1))
+         {
+            Con_Printf("plate %d: forward vector: element %d not a number\n", i+1, j+1);
+            lua_pop(lua, 5); // plates, plate key, plate, forward, forward[i]
+            return 0;
+         }
+         plates[i].forward[j] = lua_tonumber(lua,-1);
+         lua_pop(lua,1); // forward[i]
+      }
+      lua_pop(lua,1); // forward
+
+      // get up vector
+      lua_rawgeti(lua, -1, 2);
+
+      // verify table of length 3
+      if (!lua_istable(lua,-1) || lua_objlen(lua,-1) != 3 )
+      {
+         Con_Printf("plate %d: up vector is not a 3d vector\n", i+1);
+         lua_pop(lua,4); // plates, plate key, plate, up
+         return 0;
+      }
+
+      // get up vector elements
+      for (j=0; j<3; ++j) {
+         lua_rawgeti(lua, -1, j+1);
+         if (!lua_isnumber(lua,-1))
+         {
+            Con_Printf("plate %d: up vector: element %d not a number\n", i+1, j+1);
+            lua_pop(lua, 5); // plates, plate key, plate, up, up[i]
+            return 0;
+         }
+         plates[i].up[j] = lua_tonumber(lua,-1);
+         lua_pop(lua,1); // up[i]
+      }
+      lua_pop(lua,1); // up
+
+      // calculate right vector (and correct up vector)
+      CrossProduct(plates[i].forward, plates[i].up, plates[i].right);
+      VectorInverse(plates[i].right); // scale by -1 because we're using left hand coordinates
+      CrossPRoduct(plates[i].forward, plates[i].right, plates[i].up);
+
+      // get fov
+      lua_rawgeti(lua,-1,3);
+      if (!lua_isnumber(lua,-1))
+      {
+         Con_Printf("plate %d: fov not a number\n", i+1);
+         lua_pop(lua,4); // plates, plate key, plate, fov
+      }
+      plates[i].fov = lua_tonumber(lua,-1) * M_PI / 180;
+      lua_pop(lua,1); // fov
+
+      if (plates[i].fov <= 0)
+      {
+         Con_Printf("plate %d: fov must > 0\n", i+1);
+         lua_pop(lua, 3); // plates, plate key, plate
+         return 0;
+      }
+   }
+
+   // pop table key and table
+   lua_pop(lua,2);
+   numplates = i;
+
+   return 1;
 }
 
 int lua_lens_load(void)
@@ -942,7 +1114,6 @@ int lua_lens_load(void)
 
    return 1;
 }
-
 
 // -----------------------------------
 // End Lua Functions
@@ -1135,7 +1306,7 @@ inline void set_lensmap_from_plate(int lx, int ly, double u, double v, int plate
    int py = clamp((int)(v*platesize),0,platesize-1);
 
    // map the lens pixel to this cubeface pixel
-   *LENSMAP(lx,ly) = PLATE(plate,px,py);
+   *LENSMAP(lx,ly) = PLATEMAP(plate,px,py);
 
    set_lensmap_grid(lx,ly,px,py,plate);
 }
@@ -1230,12 +1401,12 @@ void create_lensmap_forward()
          double v = -(py-platesize*0.5) / platesize;
          for (px=0; px < platesize; ++px)
          {
-            double u = (px-cubesize*0.5) / platesize;
+            double u = (px-platesize*0.5) / platesize;
 
             // (use globe)
             // get ray from plate coordinates
             vec3_t ray;
-            if (!lua_globe_to_ray(plate, u, v, ray)) {
+            if (!lua_plate_to_ray(plate, u, v, ray)) {
                continue;
             }
 
@@ -1294,8 +1465,8 @@ void create_lensmap_forward()
 
 void create_lensmap()
 {
-   // render nothing if current lens is invalid
-   if (!valid_lens)
+   // render nothing if current lens or globe is invalid
+   if (!valid_lens || !valid_globe)
       return;
 
    // test if this lens can support the current fov
@@ -1308,7 +1479,7 @@ void create_lensmap()
    memset(plate_tally, 0, sizeof(plate_tally));
 
    // create lensmap
-   if (mapType == MAP_FORWARD)
+   if (mapType == MAP_FORWARD && globe_forward)
       create_lensmap_forward();
    else if (mapType == MAP_INVERSE)
       create_lensmap_inverse();
@@ -1326,8 +1497,8 @@ void render_lensmap()
    B **lmap = lensmap;
    B *pmap = palimap;
    int x, y;
-   for(y=0; y<height; y++) {
-      for(x=0; x<width; x++,lmap++,pmap++) {
+   for(y=0; y<height; y++)
+      for(x=0; x<width; x++,lmap++,pmap++)
          if (*lmap) {
             int lx = x+left;
             int ly = y+top;
@@ -1339,14 +1510,10 @@ void render_lensmap()
                *VBUFFER(lx,ly) = **lmap;
             }
          }
-      }
-   }
 }
 
-// render a specific face on the cubemap
-// TODO: replace with render_plate
-/*
-void render_cubeface(B* cubeface, vec3_t forward, vec3_t right, vec3_t up) 
+// render a specific plate
+void render_plate(B* plate, vec3_t forward, vec3_t right, vec3_t up) 
 {
    // set camera orientation
    VectorCopy(forward, r_refdef.forward);
@@ -1360,15 +1527,14 @@ void render_cubeface(B* cubeface, vec3_t forward, vec3_t right, vec3_t up)
    // copy from vid buffer to cubeface, row by row
    B *vbuffer = VBUFFER(left,top);
    int y;
-   for(y = 0;y<cubesize;y++) {
-      memcpy(cubeface, vbuffer, cubesize);
+   for(y = 0;y<platesize;y++) {
+      memcpy(plate, vbuffer, platesize);
 
       // advance to the next row
       vbuffer += vid.rowbytes;
-      cubeface += cubesize;
+      plate += platesize;
    }
 }
-*/
 
 void L_RenderView() 
 {
@@ -1380,7 +1546,7 @@ void L_RenderView()
    top = scr_vrect.y;
    width = scr_vrect.width; 
    height = scr_vrect.height;
-   cubesize = (width < height) ? width : height;
+   platesize = (width < height) ? width : height;
    diag = sqrt(width*width+height*height);
    int area = width*height;
    int sizechange = pwidth!=width || pheight!=height;
@@ -1388,33 +1554,31 @@ void L_RenderView()
    // allocate new buffers if size changes
    if(sizechange)
    {
-      if(cubemap) free(cubemap);
+      if(platemap) free(platemap);
       if(lensmap) free(lensmap);
       if(palimap) free(palimap);
 
-      cubemap = (B*)malloc(cubesize*cubesize*6*sizeof(B));
+      platemap = (B*)malloc(platesize*platesize*MAX_PLATES*sizeof(B));
       lensmap = (B**)malloc(area*sizeof(B*));
       palimap = (B*)malloc(area*sizeof(B));
-      if(!cubemap || !lensmap || !palimap) exit(1); // the rude way
+      
+      // the rude way
+      if(!platemap || !lensmap || !palimap) {
+         Con_Printf("Quake-Lenses: could not allocate enough memory\n");
+         exit(1); 
+      }
    }
 
    // recalculate lens
-   if (sizechange || fovchange || lenschange) {
+   if (sizechange || fovchange || lenschange || globechange) {
       memset(lensmap, 0, area*sizeof(B*));
       memset(palimap, 255, area*sizeof(B));
       create_lensmap();
    }
 
-   // TODO: get axis vectors from AngleVectors
-   // TODO: for each plate, calculate view and pass to render_plate
-
-   /*
-   // get the orientations required to render the cube faces
-   vec3_t front, right, up, back, left, down;
-   AngleVectors(r_refdef.viewangles, front, right, up);
-   VectorScale(front, -1, back);
-   VectorScale(right, -1, left);
-   VectorScale(up, -1, down);
+   // get the orientations required to render the plates
+   vec3_t forward, right, up;
+   AngleVectors(r_refdef.viewangles, forward, right, up);
 
    // do not do this every frame?
    extern int sb_lines;
@@ -1426,38 +1590,43 @@ void L_RenderView()
    vrect.height = vid.height;
    R_SetVrect(&vrect, &scr_vrect, sb_lines);
 
+   // render plates
    int i;
-   if (fastmode) {
-      // render front half of environment only
+   for (i=0; i<numplates; ++i)
+   {
+      if (plate_display[i]) {
 
-      renderfov = fast_maxfov;
-      R_ViewChanged(&vrect, sb_lines, vid.aspect);
-      render_cubeface(cubemap+cubesize*cubesize, front, right, up);
+         B* plate = platemap+platesize*i;
 
-      renderfov = M_PI/2;
-      R_ViewChanged(&vrect, sb_lines, vid.aspect);
-      render_cubeface(cubemap, front, right, up);
+         // set view to change plate FOV
+         renderfov = plates[i].fov;
+         R_ViewChanged(&vrect, sb_lines, vid.aspect);
+
+         // compute absolute view vectors
+         // right = x
+         // top = y
+         // forward = z
+
+         plate_t *p = plates+i;
+
+         vec3_t r = { 0,0,0};
+         VectorMA(r, p->right[0], right, r);
+         VectorMA(r, p->right[1], up, r);
+         VectorMA(r, p->right[2], forward, r);
+
+         vec3_t u = { 0,0,0};
+         VectorMA(u, p->up[0], right, u);
+         VectorMA(u, p->up[1], up, u);
+         VectorMA(u, p->up[2], forward, u);
+
+         vec3_t f = { 0,0,0};
+         VectorMA(f, p->forward[0], right, f);
+         VectorMA(f, p->forward[1], up, f);
+         VectorMA(f, p->forward[2], forward, f);
+
+         render_plate(plate, f,r,u);
+      }
    }
-   else {
-      // render the environment onto a cube map
-      renderfov = M_PI/2;
-      R_ViewChanged(&vrect, sb_lines, vid.aspect);
-
-      for (i=0; i<6; ++i)
-         if (plate_display[i]) {
-            B* face = cubemap+cubesize*cubesize*i;
-            switch(i) {
-               //                                     FORWARD  RIGHT   UP
-               case BOX_BEHIND: render_cubeface(face, back,    left,   up);    break;
-               case BOX_BOTTOM: render_cubeface(face, down,    right,  front); break;
-               case BOX_TOP:    render_cubeface(face, up,      right,  back);  break;
-               case BOX_LEFT:   render_cubeface(face, left,    front,  up);    break;
-               case BOX_RIGHT:  render_cubeface(face, right,   back,   up);    break;
-               case BOX_FRONT:  render_cubeface(face, front,   right,  up);    break;
-            }
-         }
-   }
-   */
 
    // render our view
    Draw_TileClear(0, 0, vid.width, vid.height);
@@ -1468,6 +1637,6 @@ void L_RenderView()
    pheight = height;
 
    // reset change flags
-   lenschange = fovchange = 0;
+   lenschange = globechange = fovchange = 0;
 }
 
