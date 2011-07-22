@@ -6,37 +6,13 @@ top = 4
 bottom = 5
 
 -- 6 plates
-plates = {}
-
-plates[front] = {
-   { 0, 0, 1 }, -- forward
-   { 0, 1, 0 }, -- up
-   90 -- fov
-}
-plates[right] = {
-   { 1, 0, 0 }, -- forward
-   { 0, 1, 0 }, -- up
-   90 -- hfov
-}
-plates[left] = {
-   { -1, 0, 0 }, -- forward
-   { 0, 1, 0 }, -- up
-   90 -- hfov
-}
-plates[back] = {
-   { 0, 0, -1 }, -- forward
-   { 0, 1, 0 }, -- up
-   90 -- hfov
-}
-plates[top] = {
-   { 0, 1, 0 }, -- forward
-   { 0, 0, -1 }, -- up
-   90 -- hfov
-}
-plates[bottom] = {
-   { 0, -1, 0 }, -- forward
-   { 0, 0, 1 }, -- up
-   90 -- hfov
+plates = {
+{ { 0, 0, 1 }, { 0, 1, 0 }, 90 },
+{ { 1, 0, 0 }, { 0, 1, 0 }, 90 },
+{ { -1, 0, 0 }, { 0, 1, 0 }, 90 },
+{ { 0, 0, -1 }, { 0, 1, 0 }, 90 },
+{ { 0, 1, 0 }, { 0, 0, -1 }, 90 },
+{ { 0, -1, 0 }, { 0, 0, 1 }, 90 }
 }
 
 -- inverse
@@ -55,7 +31,7 @@ function ray_to_plate(x,y,z)
             plate = left
          end
       else
-         if z > o then
+         if z > 0 then
             plate = front
          else
             plate = back
@@ -81,8 +57,8 @@ function ray_to_plate(x,y,z)
    local u,v
    if plate == front then
       u = x/z
-      v = y/z
-   elseif plate == behind then
+      v = -y/z
+   elseif plate == back then
       u = -x/-z
       v = -y/-z
    elseif plate == left then

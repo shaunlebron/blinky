@@ -1670,20 +1670,19 @@ void L_RenderView()
    int i;
    for (i=0; i<numplates; ++i)
    {
-      if (plate_display[i]) {
+      //if (plate_display[i]) {
 
-         B* plate = platemap+platesize*i;
+         B* plate = platemap+platesize*platesize*i;
+         plate_t *p = &plates[i];
 
          // set view to change plate FOV
-         renderfov = plates[i].fov;
+         renderfov = p->fov;
          R_ViewChanged(&vrect, sb_lines, vid.aspect);
 
          // compute absolute view vectors
          // right = x
          // top = y
          // forward = z
-
-         plate_t *p = plates+i;
 
          vec3_t r = { 0,0,0};
          VectorMA(r, p->right[0], right, r);
@@ -1700,8 +1699,8 @@ void L_RenderView()
          VectorMA(f, p->forward[1], up, f);
          VectorMA(f, p->forward[2], forward, f);
 
-         render_plate(plate, f,r,u);
-      }
+         render_plate(plate, f, r, u);
+      //}
    }
 
    // render our view

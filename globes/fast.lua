@@ -3,37 +3,27 @@ big = 1
 big_fov = 160
 
 -- 6 plates
-plates = {}
-
-plates[0] = {
-   -- forward
-   -- up
-   -- aspect
-   -- hfov
-}
-plates[1] = {
-   -- forward
-   -- up
-   -- aspect
-   -- hfov
+plates = {
+{ {0,0,1}, {0,1,0}, 90 },
+{ {0,0,1}, {0,1,0}, big_fov}
 }
 
 -- inverse
-function ray_to_globe(x,y,z)
-   if z < 0 then
+function ray_to_plate(x,y,z)
+   if z <= 0 then
       return nil
    end
 
-   local dist = 0.5 / tan(big_fov/2)
+   local dist = 0.5 / tan(big_fov*pi/180/2)
    local size = 2*dist*tan(pi/4)
 
    local u = x/z*dist
-   local v = y/z*dst
+   local v = y/z*dist
 
    local plate
    if abs(u) < size/2 and abs(v) < size/2 then
-      u = u/(size/2)
-      v = v/(size/2)
+      u = u/(size/2) * 0.5
+      v = v/(size/2) * 0.5
       plate = small
    else
       plate = big
@@ -50,7 +40,7 @@ function ray_to_globe(x,y,z)
 end
 
 -- forward
-function globe_to_ray(plate, u, v)
+function plate_to_ray(plate, u, v)
    local x = u - 0.5
    local y = 0.5 - v
    local z
