@@ -33,12 +33,12 @@ lua_State *lua;
 // type to represent one pixel (one byte)
 typedef unsigned char B;
 
-// the environment cubemap
-// a large array of pixels that hold all six rendered views
+// the environment map
+// a large array of pixels that hold all rendered views
 static B *platemap = NULL;  
 
 // the lookup table
-// an array of pointers to cubemap pixels
+// an array of pointers to platemap pixels
 // (the view constructed by the lens)
 static B **lensmap = NULL;
 
@@ -58,6 +58,9 @@ static double fov;
 
 // specific desired FOVs in degrees
 static double hfov, vfov, dfov;
+
+// render FOV for each plate
+double renderfov;
 
 // fit sizes
 static double hfit_size;
@@ -108,6 +111,9 @@ static int mapInverseIndex;
 static int xyValidIndex;
 static int rValidIndex;
 
+static int globeForwardIndex;
+static int globeInverseIndex;
+
 // change flags
 static int lenschange;
 static int globechange;
@@ -139,10 +145,10 @@ static int mapCoord;
 
 // globe plates
 typedef struct {
-   double forward[3];
-   double right[3];
-   double up[3];
-   double fov;
+   vec3_t forward;
+   vec3_t right;
+   vec3_t up;
+   vec_t fov;
 } plate_t;
 
 #define MAX_PLATES 6
@@ -333,7 +339,7 @@ void L_InitLua(void)
       lua_pcall(lua, 0, 0, 0);
    if (error) {
       fprintf(stderr, "%s", lua_tostring(lua, -1));
-      lua_pop(lua, 1);  /* pop error message from the stack */
+      lua_pop(lua, 1);  // pop error message from the stack
    }
 
    lua_pushcfunction(lua, lua_latlon_to_ray);
@@ -498,6 +504,8 @@ static struct stree_root * L_LensArg(const char *arg)
    return root;
 }
 
+int lua_globe_load(void);
+
 void L_Globe(void)
 {
    if (Cmd_Argc() < 2) { // no globe name given
@@ -540,7 +548,6 @@ void L_Init(void)
    L_InitLua();
 
    Cmd_AddCommand("dumppal", L_DumpPalette);
-   Cmd_AddCommand("savecube", L_CaptureCubeMap);
    Cmd_AddCommand("fov", L_ShowFovDeprecate);
    Cmd_AddCommand("rubix", L_ColorCube);
    Cmd_AddCommand("hfit", L_HFit);
@@ -555,7 +562,6 @@ void L_Init(void)
    Cmd_SetCompletion("globe", L_GlobeArg);
 
    // default view state
-   Cmd_ExecuteString("globe cube", src_command);
    Cmd_ExecuteString("lens rectilinear", src_command);
    Cmd_ExecuteString("hfov 90", src_command);
 
@@ -795,6 +801,48 @@ int lua_plate_to_xy(int plate, double u, double v, double *x, double *y)
    return 1;
 }
 
+// Globe Functions
+
+int lua_ray_to_plate(vec3_t ray, int *plate, double *u, double *v)
+{
+   lua_rawgeti(lua, LUA_REGISTRYINDEX, globeInverseIndex);
+   lua_pushnumber(lua, ray[0]);
+   lua_pushnumber(lua, ray[1]);
+   lua_pushnumber(lua, ray[2]);
+   lua_call(lua, 3, LUA_MULTRET);
+
+   if (!lua_isnumber(lua, -1))
+   {
+      lua_pop(lua,1);
+      return 0;
+   }
+
+   *plate = lua_tointeger(lua,-3);
+   *u = lua_tonumber(lua,-2);
+   *v = lua_tonumber(lua,-1);
+   return 1;
+}
+
+int lua_plate_to_ray(int plate, double u, double v, vec3_t ray)
+{
+   lua_rawgeti(lua, LUA_REGISTRYINDEX, globeForwardIndex);
+   lua_pushinteger(lua, plate);
+   lua_pushnumber(lua, u);
+   lua_pushnumber(lua, v);
+   lua_call(lua, 3, LUA_MULTRET);
+
+   if (!lua_isnumber(lua, -1))
+   {
+      lua_pop(lua,1);
+      return 0;
+   }
+
+   ray[0] = lua_tonumber(lua, -3);
+   ray[1] = lua_tonumber(lua, -2);
+   ray[2] = lua_tonumber(lua, -1);
+   return 1;
+}
+
 #define CLEARVAR(var) lua_pushnil(lua); lua_setglobal(lua, var);
 
 // used to clear the state when switching lenses
@@ -842,13 +890,19 @@ int lua_func_exists(const char* name)
 int lua_globe_load(void)
 {
    // clear Lua variables
-   lua_globe_clear();
+   //lua_globe_clear();
 
    // set full filename
    char filename[100];
    sprintf(filename, "%s/../globes/%s.lua",com_gamedir,globe);
 
    // check if loaded correctly
+   if (luaL_loadfile(lua, filename) != 0) {
+      Con_Printf("could not loadfile \nERROR: %s\n", lua_tostring(lua,-1));
+      lua_pop(lua,1);
+      return 0;
+   }
+
    if (luaL_dofile(lua, filename) != 0) {
       Con_Printf("could not load %s\nERROR: %s\n", globe, lua_tostring(lua,-1));
       lua_pop(lua, 1);
@@ -862,8 +916,19 @@ int lua_globe_load(void)
       return 0;
    }
 
+   // store reference to function
+   lua_getglobal(lua, "ray_to_plate");
+   globeInverseIndex = luaL_ref(lua, LUA_REGISTRYINDEX);
+   lua_pop(lua,1);
+
    // check if forward lens maps are supported by this globe
-   globe_forward = lua_func_exists("plate_to_ray");
+   if ((globe_forward = lua_func_exists("plate_to_ray")))
+   {
+      // store reference to function
+      lua_getglobal(lua, "plate_to_ray");
+      globeForwardIndex = luaL_ref(lua, LUA_REGISTRYINDEX);
+      lua_pop(lua,1);
+   }
 
    // load plates array
    lua_getglobal(lua, "plates");
@@ -932,7 +997,7 @@ int lua_globe_load(void)
       // calculate right vector (and correct up vector)
       CrossProduct(plates[i].forward, plates[i].up, plates[i].right);
       VectorInverse(plates[i].right); // scale by -1 because we're using left hand coordinates
-      CrossPRoduct(plates[i].forward, plates[i].right, plates[i].up);
+      CrossProduct(plates[i].forward, plates[i].right, plates[i].up);
 
       // get fov
       lua_rawgeti(lua,-1,3);
@@ -969,6 +1034,11 @@ int lua_lens_load(void)
    sprintf(filename,"%s/../lenses/%s.lua",com_gamedir,lens);
 
    // check if loaded correctly
+   if (luaL_loadfile(lua, filename) != 0) {
+      Con_Printf("could not load %s\nERROR: %s\n", lens, lua_tostring(lua,-1));
+      lua_pop(lua,1);
+      return 0;
+   }
    if (luaL_dofile(lua, filename) != 0) {
       Con_Printf("could not load %s\nERROR: %s\n", lens, lua_tostring(lua,-1));
       lua_pop(lua, 1);
@@ -1096,6 +1166,7 @@ int lua_lens_load(void)
    max_vfov *= M_PI / 180;
    lua_pop(lua,1);
 
+   /*
    lua_getglobal(lua, "vsym");
    vsym = lua_isboolean(lua,-1) ? lua_toboolean(lua,-1) : 0;
    lua_pop(lua,1);
@@ -1103,6 +1174,7 @@ int lua_lens_load(void)
    lua_getglobal(lua, "hsym");
    hsym = lua_isboolean(lua,-1) ? lua_toboolean(lua,-1) : 0;
    lua_pop(lua,1);
+   */
 
    lua_getglobal(lua, "hfit_size");
    hfit_size = lua_isnumber(lua,-1) ? lua_tonumber(lua,-1) : 0;
@@ -1330,8 +1402,12 @@ void create_lensmap_inverse()
 {
    int halfw = width/2;
    int halfh = height/2;
+   /*
    int maxx = hsym ? halfw : width;
    int maxy = vsym ? halfh : height;
+   */
+   int maxx = width;
+   int maxy = height;
 
    int lx,ly;
 
