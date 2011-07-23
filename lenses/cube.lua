@@ -2,7 +2,10 @@ cols = 4
 rows = 3
 
 hfit_size = cols
-vfit_size = rows
+
+-- ignore the top half of the top row
+--   and the bottom half of the bottom row
+vfit_size = rows-1
 
 function col(x)
    local nx = x+cols/2
@@ -22,32 +25,39 @@ function row(y)
    return i,f
 end
 
-function xy_to_cubemap(x,y)
+function xy_to_plate(x,y)
+   local front = 0 
+   local right = 1
+   local left = 2
+   local back = 3
+   local top = 4
+   local bottom = 5
+
    local r,v = row(y)
    local c,u = col(x)
    if r == 0 then
       if c == 1 then
-         return TOP,u,v
+         return top,u,v
       end
-      return TOP,1-u,1-v
+      return top,1-u,1-v
    end
    if r == 2 then
       if c == 1 then
-         return BOTTOM,u,v
+         return bottom,u,v
       end
-      return BOTTOM,1-u,1-v
+      return bottom,1-u,1-v
    end
    if c == 0 then
-      return LEFT,u,v
+      return left,u,v
    end
    if c == 1 then
-      return FRONT,u,v
+      return front,u,v
    end
    if c == 2 then
-      return RIGHT,u,v
+      return right,u,v
    end
    if c == 3 then
-      return BEHIND,u,v
+      return back,u,v
    end
 
    return nil

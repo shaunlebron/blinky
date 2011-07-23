@@ -8,7 +8,7 @@ vsym = true
 max_hfov = 360
 max_vfov = 180
 
--- width of the image
+-- horizontal fit size
 hfit_size = 2*pi
 
 -- inverse mapping (screen to environment)
@@ -18,12 +18,14 @@ function xy_to_latlon(x,y)
    return lat, lon
 end
 
+-- forward mapping (environment to screen)
 function latlon_to_xy(lat,lon)
    local x = lon
    local y = log(tan(pi*0.25+lat*0.5))
    return x,y
 end
 
+-- inverse domain test
 function xy_isvalid(x,y)
    return abs(x) <= pi
 end

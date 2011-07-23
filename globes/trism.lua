@@ -21,13 +21,13 @@ function ray_to_plate(x,y,z)
 
    local a
 
-   if abs(lon) > pi/3 then
+   if abs(lon) > 2*pi/3 then
       plate = back
       a = pi
    elseif lon > 0 then
       plate = right
       a = pi/3
-   else
+   elseif lon <= 0 then
       plate = left
       a = -pi/3
    end
@@ -37,7 +37,9 @@ function ray_to_plate(x,y,z)
    u = x/z*dist + 0.5
    v = -y/z*dist + 0.5
 
-   if u < 0 or u > 1 or v < 0 or v > 1 then
+   if u < 0 or u > 1 then
+      return nil
+   elseif v < 0 or v > 1 then
       return nil
    else
       return plate, u, v
