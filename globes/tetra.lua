@@ -27,17 +27,17 @@ z =-f + h*e/(r+e)
 
 plates = {
    {
-      {0,y/e,z/e},
+      {0,y/f,z/f},
       {0,(e-y)/e,(-f-z)/e}, 
       fovd
    },
    {
-      {-y/e*sin(d120),y/e*cos(d120),z/e},
+      {-y/f*sin(d120),y/f*cos(d120),z/f},
       {-(e-y)/e*sin(d120),(e-y)/e*cos(d120),(-f-z)/e}, 
       fovd
    },
    {
-      {-y/e*sin(-d120),y/e*cos(-d120),z/e},
+      {-y/f*sin(-d120),y/f*cos(-d120),z/f},
       {-(e-y)/e*sin(-d120),(e-y)/e*cos(-d120),(-f-z)/e}, 
       fovd
    },
@@ -74,7 +74,7 @@ function ray_to_plate(x,y,z)
    -- get texture coordinates
    local dist = 0.5 / tan(fovr/2)
    local u = nx/nz*dist+0.5
-   local v = ny/nz*dist+0.5
+   local v = -ny/nz*dist+0.5
 
    return plate-1, u, v
 end
