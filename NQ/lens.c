@@ -95,7 +95,7 @@ static double scale;
 
 // cubemap color display flag
 static int colorcube = 0;
-static int colorcells = 5;
+static int colorcells = 10;
 static int colorwfrac = 5;
 
 // maximum FOV width of the current lens

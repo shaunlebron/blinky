@@ -18,7 +18,8 @@ d = s/2/tan(theta) -- center to edge
 e = r*cos(d60) -- face to edge
 f = h-c -- center to face
 
-fovr = 2*atan(s/2/f)
+-- having to add 0.1 
+fovr = 2*atan(s/2/f)+0.1
 fovd = fovr * 180 / pi
 
 local y,z
@@ -58,10 +59,27 @@ function ray_to_plate(x,y,z)
          plate = i
       end
    end
+   i = plate
+
+   -- temporary solution 
+   -- problem: the rotation matrix below wasn't working for left and right faces
+   --         for reasons unknown
+   -- solution: just rotate to the top face, which seems to be working
+   if plate-1 == left then
+      x,y = x*cos(-d120) - y*sin(-d120), y*cos(-d120) + x*sin(-d120)
+      i = top+1
+   elseif plate-1 == right then
+      x,y = x*cos(d120) - y*sin(d120), y*cos(d120) + x*sin(d120)
+      i = top+1
+   end
 
    -- rotate ray such that the plate's forward is (0,0,1) and up is (0,1,0)
-   local u = plates[plate][2]
-   local f = plates[plate][1]
+   -- solution: get the current ray vector as a linear combination of the
+   --           plate's right,up,forward vectors
+   -- problem: only works for the top and back faces, which have trivial
+   --           right vectors
+   local u = plates[i][2]
+   local f = plates[i][1]
    local r = {
       u[2]*f[3]-u[3]*f[2],
       u[1]*f[3]-u[3]*f[1],
@@ -75,6 +93,10 @@ function ray_to_plate(x,y,z)
    local dist = 0.5 / tan(fovr/2)
    local u = nx/nz*dist+0.5
    local v = -ny/nz*dist+0.5
+
+   if u < 0 or u > 1 or v <0 or v > 1 then
+      return nil
+   end
 
    return plate-1, u, v
 end
