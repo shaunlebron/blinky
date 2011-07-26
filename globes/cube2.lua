@@ -1,49 +1,47 @@
-top = 0
-left = 1
-right = 2
+front = 0 
+right = 1
+left = 2
 back = 3
+top = 4
+bottom = 5
 
--- degrees
-d120 = tau/3
-d60 = d120 / 2
-d30 = d60 / 2
-
--- tetrahedron dimensions
-r = 1 -- face to vertex
-s = 2*r*sin(d60) -- side length
-h = sqrt(s*s-r*r) -- face to vertex opposite face
-theta = acos(r/s) -- face to vertex to vertex opposite face
-c = s/2/sin(theta) -- center to vertex
-d = s/2/tan(theta) -- center to edge
-e = r*cos(d60) -- face to edge
-f = h-c -- center to face
-
--- having to add 0.1 
-fovr = 2*atan(s/2/f)+0.1
-fovd = fovr * 180 / pi
-
-local y,z
-y = e - e*e/(r+e)
-z =-f + h*e/(r+e)
-
+-- 6 plates
 plates = {
-   {
-      {0,y/f,z/f},
-      {0,(e-y)/e,(-f-z)/e}, 
-      fovd
-   },
-   {
-      {-y/f*sin(d120),y/f*cos(d120),z/f},
-      {-(e-y)/e*sin(d120),(e-y)/e*cos(d120),(-f-z)/e}, 
-      fovd
-   },
-   {
-      {-y/f*sin(-d120),y/f*cos(-d120),z/f},
-      {-(e-y)/e*sin(-d120),(e-y)/e*cos(-d120),(-f-z)/e}, 
-      fovd
-   },
-   {{0,0,-1},{0,1,0},fovd}
+{ { 0, 0, 1 }, { 0, 1, 0 }, 90 },
+{ { 1, 0, 0 }, { 0, 1, 0 }, 90 },
+{ { -1, 0, 0 }, { 0, 1, 0 }, 90 },
+{ { 0, 0, -1 }, { 0, 1, 0 }, 90 },
+{ { 0, 1, 0 }, { 0, 0, -1 }, 90 },
+{ { 0, -1, 0 }, { 0, 0, 1 }, 90 }
 }
+
+fovr = pi/2
+
+local i
+for i=1,6 do
+   local x,y,z
+   local a = pi/4
+
+   local p = plates[i][1]
+   x = p[1]
+   z = p[3]
+   p[1] = x*cos(a)-z*sin(a)
+   p[3] = x*sin(a)+z*cos(a)
+   y = p[2]
+   z = p[3]
+   p[2] = y*cos(a)-z*sin(a)
+   p[3] = y*sin(a)+z*cos(a)
+
+   local p = plates[i][2]
+   x = p[1]
+   z = p[3]
+   p[1] = x*cos(a)-z*sin(a)
+   p[3] = x*sin(a)+z*cos(a)
+   y = p[2]
+   z = p[3]
+   p[2] = y*cos(a)-z*sin(a)
+   p[3] = y*sin(a)+z*cos(a)
+end
 
 function ray_to_plate(x,y,z)
 
@@ -51,7 +49,7 @@ function ray_to_plate(x,y,z)
    local plate = 1
    local mina = tau
    local i
-   for i=1,4 do
+   for i=1,6 do
       -- note: we are assuming the ray (x,y,z) is normalized. but is it?
       local a = abs(acos(x*plates[i][1][1]+y*plates[i][1][2]+z*plates[i][1][3]))
       if a < mina then
