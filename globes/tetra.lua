@@ -28,18 +28,18 @@ z =-f + h*e/(r+e)
 
 plates = {
    {
-      {0,y/f,z/f},
-      {0,(e-y)/e,(-f-z)/e}, 
+      {0,-y/f,z/f},
+      {0,-(e-y)/e,(-f-z)/e}, 
       fovd
    },
    {
-      {-y/f*sin(d120),y/f*cos(d120),z/f},
-      {-(e-y)/e*sin(d120),(e-y)/e*cos(d120),(-f-z)/e}, 
+      {y/f*sin(d120),-y/f*cos(d120),z/f},
+      {(e-y)/e*sin(d120),-(e-y)/e*cos(d120),(-f-z)/e}, 
       fovd
    },
    {
-      {-y/f*sin(-d120),y/f*cos(-d120),z/f},
-      {-(e-y)/e*sin(-d120),(e-y)/e*cos(-d120),(-f-z)/e}, 
+      {y/f*sin(-d120),-y/f*cos(-d120),z/f},
+      {(e-y)/e*sin(-d120),-(e-y)/e*cos(-d120),(-f-z)/e}, 
       fovd
    },
    {{0,0,-1},{0,1,0},fovd}
