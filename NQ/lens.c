@@ -108,11 +108,7 @@ static double max_hfov;
 static int mapForwardIndex;
 static int mapInverseIndex;
 
-static int xyValidIndex;
-static int rValidIndex;
-
-static int globeForwardIndex;
-static int globeInverseIndex;
+static int globePlateIndex;
 
 // change flags
 static int lenschange;
@@ -123,13 +119,6 @@ static int mapType;
 #define MAP_NONE 0
 #define MAP_FORWARD 1
 #define MAP_INVERSE 2
-
-static int mapCoord;
-#define COORD_NONE      0
-#define COORD_RADIAL    1
-#define COORD_SPHERICAL 2
-#define COORD_EUCLIDEAN 3
-#define COORD_PLATE     4
 
 // retrieves a pointer to a pixel in the video buffer
 #define VBUFFER(x,y) (vid.buffer + (x) + (y)*vid.rowbytes)
@@ -149,6 +138,7 @@ typedef struct {
    vec3_t right;
    vec3_t up;
    vec_t fov;
+   vec_t dist;
 } plate_t;
 
 #define MAX_PLATES 6
@@ -279,6 +269,7 @@ void L_ColorCube(void)
 /* START CONVERSION LUA HELPER FUNCTIONS */
 int lua_latlon_to_ray(lua_State *L);
 int lua_ray_to_latlon(lua_State *L);
+int lua_plate_to_ray(lua_State *L);
 
 void latlon_to_ray(double lat, double lon, vec3_t ray)
 {
@@ -293,6 +284,8 @@ void ray_to_latlon(vec3_t ray, double *lat, double *lon)
    *lon = atan2(ray[0], ray[2]);
    *lat = atan2(ray[1], sqrt(ray[0]*ray[0]+ray[2]*ray[2]));
 }
+
+void plate_uv_to_ray(plate_t *plate, double u, double v, vec3_t ray);
 
 /* END CONVERSION LUA HELPER FUNCTIONS */
 
@@ -347,6 +340,9 @@ void L_InitLua(void)
 
    lua_pushcfunction(lua, lua_ray_to_latlon);
    lua_setglobal(lua, "ray_to_latlon");
+
+   lua_pushcfunction(lua, lua_plate_to_ray);
+   lua_setglobal(lua, "plate_to_ray");
 }
 
 void clearFov(void)
@@ -605,43 +601,26 @@ int lua_ray_to_latlon(lua_State *L)
    return 2;
 }
 
-int lua_xy_isvalid(double x, double y)
+int lua_plate_to_ray(lua_State *L)
 {
-   if (xyValidIndex == -1) {
+   int plate_index = luaL_checknumber(L,1);
+   double u = luaL_checknumber(L,2);
+   double v = luaL_checknumber(L,3);
+   vec3_t ray;
+   if (plate_index < 0 || plate_index >= MAX_PLATES) {
+      lua_pushnil(L);
       return 1;
    }
 
-   lua_rawgeti(lua, LUA_REGISTRYINDEX, xyValidIndex);
-   lua_pushnumber(lua,x);
-   lua_pushnumber(lua,y);
-   lua_call(lua, 2, 1);
-
-   int valid = lua_toboolean(lua,-1);
-   lua_pop(lua,1);
-   return valid;
+   plate_uv_to_ray(&plates[plate_index],u,v,ray);
+   lua_pushnumber(L, ray[0]);
+   lua_pushnumber(L, ray[1]);
+   lua_pushnumber(L, ray[2]);
+   return 3;
 }
 
-int lua_r_isvalid(double r)
+int lua_lens_inverse(double x, double y, vec3_t ray)
 {
-   if (rValidIndex == -1)
-      return 1;
-
-   lua_rawgeti(lua, LUA_REGISTRYINDEX, rValidIndex);
-   lua_pushnumber(lua,r);
-   lua_call(lua, 1, 1);
-
-   int valid = lua_toboolean(lua,-1);
-   lua_pop(lua,1);
-   return valid;
-}
-
-// Inverse Map Functions
-
-int lua_xy_to_ray(double x, double y, vec3_t ray)
-{
-   if (!lua_xy_isvalid(x,y))
-      return 0;
-
    lua_rawgeti(lua, LUA_REGISTRYINDEX, mapInverseIndex);
    lua_pushnumber(lua, x);
    lua_pushnumber(lua, y);
@@ -660,73 +639,7 @@ int lua_xy_to_ray(double x, double y, vec3_t ray)
    return 1;
 }
 
-int lua_r_to_theta(double r, double *theta)
-{
-   if (!lua_r_isvalid(r))
-      return 0;
-
-   lua_rawgeti(lua, LUA_REGISTRYINDEX, mapInverseIndex);
-   lua_pushnumber(lua, r);
-   lua_call(lua, 1, LUA_MULTRET);
-
-   if (!lua_isnumber(lua, -1)) {
-      lua_pop(lua,1);
-      return 0;
-   }
-
-   *theta = lua_tonumber(lua,-1);
-   lua_pop(lua,1);
-
-   return 1;
-}
-
-int lua_xy_to_latlon(double x, double y, double *lat, double *lon)
-{
-   if (!lua_xy_isvalid(x,y))
-      return 0;
-
-   lua_rawgeti(lua, LUA_REGISTRYINDEX, mapInverseIndex);
-   lua_pushnumber(lua, x);
-   lua_pushnumber(lua, y);
-   lua_call(lua, 2, LUA_MULTRET);
-
-   if (!lua_isnumber(lua, -1)) {
-      lua_pop(lua,1);
-      return 0;
-   }
-
-   *lat = lua_tonumber(lua, -2);
-   *lon = lua_tonumber(lua, -1);
-   lua_pop(lua,2);
-
-   return 1;
-}
-
-int lua_xy_to_plate(double x, double y, int *plate, double *u, double *v)
-{
-   if (!lua_xy_isvalid(x,y))
-      return 0;
-
-   lua_rawgeti(lua, LUA_REGISTRYINDEX, mapInverseIndex);
-   lua_pushnumber(lua, x);
-   lua_pushnumber(lua, y);
-   lua_call(lua, 2, LUA_MULTRET);
-
-   if (!lua_isnumber(lua, -1)) {
-      lua_pop(lua,1);
-      return 0;
-   }
-
-   *plate = lua_tointeger(lua, -3);
-   *u = lua_tonumber(lua, -2);
-   *v = lua_tonumber(lua, -1);
-   lua_pop(lua,3);
-   return 1;
-}
-
-// Forward Map Functions
-
-int lua_ray_to_xy(vec3_t ray, double *x, double *y)
+int lua_lens_forward(vec3_t ray, double *x, double *y)
 {
    lua_rawgeti(lua, LUA_REGISTRYINDEX, mapForwardIndex);
    lua_pushnumber(lua,ray[0]);
@@ -746,66 +659,9 @@ int lua_ray_to_xy(vec3_t ray, double *x, double *y)
    return 1;
 }
 
-int lua_latlon_to_xy(double lat, double lon, double *x, double *y)
+int lua_globe_plate(vec3_t ray, int *plate)
 {
-   lua_rawgeti(lua, LUA_REGISTRYINDEX, mapForwardIndex);
-   lua_pushnumber(lua,lat);
-   lua_pushnumber(lua,lon);
-   lua_call(lua, 2, LUA_MULTRET);
-
-   if (!lua_isnumber(lua, -1)) {
-      lua_pop(lua,1);
-      return 0;
-   }
-
-   *x = lua_tonumber(lua, -2);
-   *y = lua_tonumber(lua, -1);
-   lua_pop(lua,2);
-   return 1;
-}
-
-int lua_theta_to_r(double theta, double *r)
-{
-   lua_rawgeti(lua, LUA_REGISTRYINDEX, mapForwardIndex);
-   lua_pushnumber(lua, theta);
-   lua_call(lua, 1, LUA_MULTRET);
-
-   if (!lua_isnumber(lua, -1))
-   {
-      lua_pop(lua,1);
-      return 0;
-   }
-
-   *r = lua_tonumber(lua,-1);
-   lua_pop(lua,1);
-   return 1;
-}
-
-int lua_plate_to_xy(int plate, double u, double v, double *x, double *y)
-{
-   lua_rawgeti(lua, LUA_REGISTRYINDEX, mapForwardIndex);
-   lua_pushinteger(lua, plate);
-   lua_pushnumber(lua, u);
-   lua_pushnumber(lua, v);
-   lua_call(lua, 3, LUA_MULTRET);
-
-   if (!lua_isnumber(lua, -1))
-   {
-      lua_pop(lua,1);
-      return 0;
-   }
-
-   *x = lua_tonumber(lua,-2);
-   *y = lua_tonumber(lua,-1);
-   lua_pop(lua,2);
-   return 1;
-}
-
-// Globe Functions
-
-int lua_ray_to_plate(vec3_t ray, int *plate, double *u, double *v)
-{
-   lua_rawgeti(lua, LUA_REGISTRYINDEX, globeInverseIndex);
+   lua_rawgeti(lua, LUA_REGISTRYINDEX, globePlateIndex);
    lua_pushnumber(lua, ray[0]);
    lua_pushnumber(lua, ray[1]);
    lua_pushnumber(lua, ray[2]);
@@ -817,31 +673,11 @@ int lua_ray_to_plate(vec3_t ray, int *plate, double *u, double *v)
       return 0;
    }
 
-   *plate = lua_tointeger(lua,-3);
-   *u = lua_tonumber(lua,-2);
-   *v = lua_tonumber(lua,-1);
+   *plate = lua_tointeger(lua,-1);
+   lua_pop(lua,1);
    return 1;
 }
 
-int lua_plate_to_ray(int plate, double u, double v, vec3_t ray)
-{
-   lua_rawgeti(lua, LUA_REGISTRYINDEX, globeForwardIndex);
-   lua_pushinteger(lua, plate);
-   lua_pushnumber(lua, u);
-   lua_pushnumber(lua, v);
-   lua_call(lua, 3, LUA_MULTRET);
-
-   if (!lua_isnumber(lua, -1))
-   {
-      lua_pop(lua,1);
-      return 0;
-   }
-
-   ray[0] = lua_tonumber(lua, -3);
-   ray[1] = lua_tonumber(lua, -2);
-   ray[2] = lua_tonumber(lua, -1);
-   return 1;
-}
 
 #define CLEARVAR(var) lua_pushnil(lua); lua_setglobal(lua, var);
 
@@ -855,24 +691,15 @@ void lua_lens_clear(void)
    CLEARVAR("vsym");
    CLEARVAR("hfit_size");
    CLEARVAR("vfit_size");
-   CLEARVAR("xy_to_latlon");
-   CLEARVAR("latlon_to_xy");
-   CLEARVAR("r_to_theta");
-   CLEARVAR("theta_to_r");
-   CLEARVAR("xy_to_ray");
-   CLEARVAR("ray_to_xy");
-   CLEARVAR("xy_to_plate");
-   CLEARVAR("plate_to_xy");
-   CLEARVAR("xy_isvalid");
-   CLEARVAR("r_isvalid");
+   CLEARVAR("lens_inverse");
+   CLEARVAR("lens_forward");
 }
 
 // used to clear the state when switching globes
 void lua_globe_clear(void)
 {
    CLEARVAR("plates");
-   CLEARVAR("ray_to_plate");
-   CLEARVAR("plate_to_ray");
+   CLEARVAR("globe_plate");
 
    numplates = 0;
 }
@@ -890,44 +717,25 @@ int lua_func_exists(const char* name)
 int lua_globe_load(void)
 {
    // clear Lua variables
-   //lua_globe_clear();
+   lua_globe_clear();
 
    // set full filename
    char filename[100];
    sprintf(filename, "%s/../globes/%s.lua",com_gamedir,globe);
 
    // check if loaded correctly
-   if (luaL_loadfile(lua, filename) != 0) {
+   if (luaL_loadfile(lua, filename) || lua_pcall(lua, 0, 0, 0)) {
       Con_Printf("could not loadfile \nERROR: %s\n", lua_tostring(lua,-1));
       lua_pop(lua,1);
       return 0;
    }
 
-   if (luaL_dofile(lua, filename) != 0) {
-      Con_Printf("could not load %s\nERROR: %s\n", globe, lua_tostring(lua,-1));
-      lua_pop(lua, 1);
-      return 0;
-   }
-
-   // check for the required function
-   if (!lua_func_exists("ray_to_plate"))
+   // check for the globe_plate function
+   globePlateIndex = -1;
+   if (lua_func_exists("globe_plate"))
    {
-      Con_Printf("ray_to_plate function was not found\n");
-      return 0;
-   }
-
-   // store reference to function
-   lua_getglobal(lua, "ray_to_plate");
-   globeInverseIndex = luaL_ref(lua, LUA_REGISTRYINDEX);
-   lua_pop(lua,1);
-
-   // check if forward lens maps are supported by this globe
-   if ((globe_forward = lua_func_exists("plate_to_ray")))
-   {
-      // store reference to function
-      lua_getglobal(lua, "plate_to_ray");
-      globeForwardIndex = luaL_ref(lua, LUA_REGISTRYINDEX);
-      lua_pop(lua,1);
+      lua_getglobal(lua, "globe_plate");
+      globePlateIndex = luaL_ref(lua, LUA_REGISTRYINDEX);
    }
 
    // load plates array
@@ -995,8 +803,7 @@ int lua_globe_load(void)
       lua_pop(lua,1); // up
 
       // calculate right vector (and correct up vector)
-      CrossProduct(plates[i].forward, plates[i].up, plates[i].right);
-      VectorInverse(plates[i].right); // scale by -1 because we're using left hand coordinates
+      CrossProduct(plates[i].up, plates[i].forward, plates[i].right);
       CrossProduct(plates[i].forward, plates[i].right, plates[i].up);
 
       // get fov
@@ -1015,6 +822,9 @@ int lua_globe_load(void)
          lua_pop(lua, 3); // plates, plate key, plate
          return 0;
       }
+
+      // calculate distance to camera
+      plates[i].dist = 0.5/tan(plates[i].fov/2);
    }
 
    // pop table key and table
@@ -1048,25 +858,28 @@ int lua_lens_load(void)
    // clear current maps
    mapType = MAP_NONE;
    mapForwardIndex = mapInverseIndex = -1;
-   mapCoord = COORD_NONE;
 
-#define SETFWD(map) \
-   lua_getglobal(lua,#map); \
-   mapForwardIndex = luaL_ref(lua, LUA_REGISTRYINDEX);\
+   // check if the inverse map function is provided
+   lua_getglobal(lua, "lens_inverse");
+   if (!lua_isfunction(lua,-1)) {
+      Con_Printf("lens_inverse is not found\n");
+      lua_pop(lua,1);
+      return 0;
+   }
+   else {
+      mapInverseIndex = luaL_ref(lua, LUA_REGISTRYINDEX);
+      mapType = MAP_INVERSE;
+   }
 
-#define SETINV(map) \
-   lua_getglobal(lua,#map); \
-   mapInverseIndex = luaL_ref(lua, LUA_REGISTRYINDEX);\
-
-#define SETFWD_ACTIVE(map,coord) \
-   mapCoord = coord; \
-   SETFWD(map); \
-   mapType = MAP_FORWARD;
-
-#define SETINV_ACTIVE(map,coord) \
-   mapCoord = coord; \
-   SETINV(map); \
-   mapType = MAP_INVERSE;
+   // check if the forward map function is provided
+   lua_getglobal(lua, "lens_forward");
+   if (!lua_isfunction(lua,-1)) {
+      Con_Printf("lens_forward is not found\n");
+      lua_pop(lua,1);
+   }
+   else {
+      mapForwardIndex = luaL_ref(lua, LUA_REGISTRYINDEX);
+   }
 
    // get map function preference if provided
    lua_getglobal(lua, "map");
@@ -1076,88 +889,25 @@ int lua_lens_load(void)
       const char* funcname = lua_tostring(lua, -1);
 
       // check for valid map function name
-      if (!strcmp(funcname, "xy_to_latlon"))       { SETINV_ACTIVE(xy_to_latlon, COORD_SPHERICAL); }
-      else if (!strcmp(funcname, "latlon_to_xy"))  { SETFWD_ACTIVE(latlon_to_xy, COORD_SPHERICAL); }
-      else if (!strcmp(funcname, "r_to_theta"))    { SETINV_ACTIVE(r_to_theta,   COORD_RADIAL);   }
-      else if (!strcmp(funcname, "theta_to_r"))    { SETFWD_ACTIVE(theta_to_r,   COORD_RADIAL);   }
-      else if (!strcmp(funcname, "xy_to_ray"))     { SETINV_ACTIVE(xy_to_ray,    COORD_EUCLIDEAN);    }
-      else if (!strcmp(funcname, "ray_to_xy"))     { SETFWD_ACTIVE(ray_to_xy,    COORD_EUCLIDEAN);    }
-      else if (!strcmp(funcname, "xy_to_plate"))   { SETINV_ACTIVE(xy_to_plate,  COORD_PLATE); }
-      else if (!strcmp(funcname, "plate_to_xy"))   { SETFWD_ACTIVE(plate_to_xy,  COORD_PLATE); }
+      if (!strcmp(funcname, "lens_inverse")) {
+         mapType = MAP_INVERSE;
+      }
+      else if (!strcmp(funcname, "lens_forward")) {
+         mapType = MAP_FORWARD;
+      }
       else {
          Con_Printf("Unsupported map function: %s\n", funcname);
          lua_pop(lua, 1);
          return 0;
       }
 
-      // check if the desired map function is provided
-      lua_getglobal(lua, funcname);
-      if (!lua_isfunction(lua,-1)) {
-         Con_Printf("%s is not found\n", funcname);
-         lua_pop(lua,1);
-         return 0;
-      }
-
-      lua_pop(lua,1);
-   }
-   else
-   {
-      // deduce the map function if preference is not provided
-
-      // search for provided map functions, choosing based on priority
-      if (lua_func_exists( "r_to_theta"))          { SETINV_ACTIVE(r_to_theta,    COORD_RADIAL);   }
-      else if (lua_func_exists( "xy_to_latlon"))   { SETINV_ACTIVE(xy_to_latlon,  COORD_SPHERICAL); }
-      else if (lua_func_exists( "xy_to_ray"))      { SETINV_ACTIVE(xy_to_ray,     COORD_EUCLIDEAN);    }
-      else if (lua_func_exists( "theta_to_r"))     { SETFWD_ACTIVE(theta_to_r,    COORD_RADIAL);   }
-      else if (lua_func_exists( "latlon_to_xy"))   { SETFWD_ACTIVE(latlon_to_xy,  COORD_SPHERICAL); }
-      else if (lua_func_exists( "ray_to_xy"))      { SETFWD_ACTIVE(ray_to_xy,     COORD_EUCLIDEAN);    }
-      else if (lua_func_exists( "xy_to_plate"))    { SETINV_ACTIVE(xy_to_plate,   COORD_PLATE); }
-      else if (lua_func_exists( "plate_to_xy"))    { SETFWD_ACTIVE(plate_to_xy,   COORD_PLATE); }
-      else {
-         Con_Printf("No map function provided\n");
-         lua_pop(lua, 1);
-         return 0;
-      }
       lua_pop(lua,1);
    }
 
-   // resolve a forward map function if not already defined
-   if (mapForwardIndex == -1)
-   {
-      if (mapCoord == COORD_RADIAL && lua_func_exists("theta_to_r"))        { SETFWD(theta_to_r);   }
-      else if (mapCoord == COORD_SPHERICAL && lua_func_exists("latlon_to_xy")) { SETFWD(latlon_to_xy); }
-      else if (mapCoord == COORD_EUCLIDEAN && lua_func_exists("ray_to_xy"))    { SETFWD(ray_to_xy);    }
-      else if (mapCoord == COORD_PLATE && lua_func_exists("plate_to_xy")){ SETFWD(plate_to_xy); }
-      else {
-         // TODO: notify if no matching forward function found (meaning no FOV scaling can be done)
-      }
-   }
-
-#undef SETFWD
-#undef SETINV
-#undef SETFWD_ACTIVE
-#undef SETINV_ACTIVE
-
-   // set inverse coordinate checks
-   rValidIndex = xyValidIndex = -1;
-   if (mapInverseIndex != -1)
-   {
-      if (mapCoord == COORD_RADIAL) {
-         if (lua_func_exists("r_isvalid")) {
-            lua_getglobal(lua, "r_isvalid");
-            rValidIndex = luaL_ref(lua, LUA_REGISTRYINDEX);
-         }
-      }
-      else if (mapCoord != COORD_NONE) { // all other maps currently use x,y
-         if (lua_func_exists("xy_isvalid")) {
-            lua_getglobal(lua, "xy_isvalid");
-            xyValidIndex = luaL_ref(lua, LUA_REGISTRYINDEX);
-         }
-      }
-   }
 
    lua_getglobal(lua, "max_hfov");
    max_hfov = lua_isnumber(lua,-1) ? lua_tonumber(lua,-1) : 0;
+   // TODO: use degrees to prevent roundoff errors (e.g. capping at 179 instead of 180)
    max_hfov *= M_PI / 180;
    lua_pop(lua,1);
 
@@ -1216,71 +966,30 @@ int determine_lens_scale(void)
 
       // try to scale based on FOV using the forward map
       if (mapForwardIndex != -1) {
-         if (mapCoord == COORD_RADIAL) {
-            double r;
-            if (lua_theta_to_r(fov*0.5, &r)) {
-               scale = r / (*framesize * 0.5);
+         vec3_t ray;
+         double x,y;
+         if (*framesize == width) {
+            latlon_to_ray(0,fov*0.5,ray);
+            if (lua_lens_forward(ray,&x,&y)) {
+               scale = x / (*framesize * 0.5);
             }
             else {
-               Con_Printf("theta_to_r did not return a valid r value for determining FOV scale\n");
+               Con_Printf("ray_to_xy did not return a valid r value for determining FOV scale\n");
                return 0;
             }
          }
-         else if (mapCoord == COORD_SPHERICAL) {
-            double x,y;
-            if (*framesize == width) {
-               if (lua_latlon_to_xy(0,fov*0.5,&x,&y)) {
-                  scale = x / (*framesize * 0.5);
-               }
-               else {
-                  Con_Printf("latlon_to_xy did not return a valid r value for determining FOV scale\n");
-                  return 0;
-               }
-            }
-            else if (*framesize == height) {
-               if (lua_latlon_to_xy(fov*0.5,0,&x,&y)) {
-                  scale = y / (*framesize * 0.5);
-               }
-               else {
-                  Con_Printf("latlon_to_xy did not return a valid r value for determining FOV scale\n");
-                  return 0;
-               }
+         else if (*framesize == height) {
+            latlon_to_ray(fov*0.5,0,ray);
+            if (lua_lens_forward(ray,&x,&y)) {
+               scale = y / (*framesize * 0.5);
             }
             else {
-               Con_Printf("latlon_to_xy does not support diagonal FOVs\n");
+               Con_Printf("ray_to_xy did not return a valid r value for determining FOV scale\n");
                return 0;
             }
          }
-         else if (mapCoord == COORD_EUCLIDEAN) {
-            vec3_t ray;
-            double x,y;
-            if (*framesize == width) {
-               latlon_to_ray(0,fov*0.5,ray);
-               if (lua_ray_to_xy(ray,&x,&y)) {
-                  scale = x / (*framesize * 0.5);
-               }
-               else {
-                  Con_Printf("ray_to_xy did not return a valid r value for determining FOV scale\n");
-                  return 0;
-               }
-            }
-            else if (*framesize == height) {
-               latlon_to_ray(fov*0.5,0,ray);
-               if (lua_ray_to_xy(ray,&x,&y)) {
-                  scale = y / (*framesize * 0.5);
-               }
-               else {
-                  Con_Printf("ray_to_xy did not return a valid r value for determining FOV scale\n");
-                  return 0;
-               }
-            }
-            else {
-               Con_Printf("ray_to_xy does not support diagonal FOVs\n");
-               return 0;
-            }
-         }
-         else if (mapCoord == COORD_PLATE) {
-            Con_Printf("plate_to_xy currently not supported for FOV scaling\n");
+         else {
+            Con_Printf("ray_to_xy does not support diagonal FOVs\n");
             return 0;
          }
       }
@@ -1350,7 +1059,7 @@ int clamp(int value, int min, int max)
 // Lens Map Creation
 // ----------------------------------------
 
-void set_lensmap_grid(int lx, int ly, int px, int py, int plate)
+void set_lensmap_grid(int lx, int ly, int px, int py, int plate_index)
 {
    // designate the palette for this pixel
    // This will set the palette index map such that a grid is shown
@@ -1364,23 +1073,79 @@ void set_lensmap_grid(int lx, int ly, int px, int py, int plate)
    int ongrid = fmod(x,mod) < 1 || fmod(y,mod) < 1;
 
    if (!ongrid)
-      *PALIMAP(lx,ly) = plate;
+      *PALIMAP(lx,ly) = plate_index;
 }
 
 // set a pixel on the lensmap from plate coordinate
-inline void set_lensmap_from_plate(int lx, int ly, double u, double v, int plate)
+inline void set_lensmap_from_plate(int lx, int ly, double u, double v, int plate_index)
 {
    // increase the number of times this side is used
-   ++plate_tally[plate];
+   ++plate_tally[plate_index];
 
    // convert to plate coordinates
    int px = clamp((int)(u*platesize),0,platesize-1);
    int py = clamp((int)(v*platesize),0,platesize-1);
 
    // map the lens pixel to this cubeface pixel
-   *LENSMAP(lx,ly) = PLATEMAP(plate,px,py);
+   *LENSMAP(lx,ly) = PLATEMAP(plate_index,px,py);
 
-   set_lensmap_grid(lx,ly,px,py,plate);
+   set_lensmap_grid(lx,ly,px,py,plate_index);
+}
+
+// retrieves the plate closest to the given ray
+int ray_to_plate_index(vec3_t ray)
+{
+   int i;
+   int min_i = 0; // minimum plate index
+   double min_a = 100000; // minimum angle
+
+   for (i=0; i<numplates; ++i) {
+
+      // get angle between the plate's view and the ray
+      double a = fabs(acos(DotProduct(ray, plates[i].forward))/(Length(ray)*Length(plates[i].forward)));
+
+      // update minimum angle
+      if (a < min_a) {
+         min_a = a;
+         min_i = i;
+      }
+   }
+
+   return min_i;
+}
+
+void plate_uv_to_ray(plate_t *plate, double u, double v, vec3_t ray)
+{
+   // transform to image coordinates
+   u -= 0.5;
+   v -= 0.5;
+   v *= -1;
+
+   // clear ray
+   ray[0] = ray[1] = ray[2] = 0;
+
+   // get euclidean coordinate from texture uv
+   VectorMA(ray, plate->dist, plate->forward, ray);
+   VectorMA(ray, u, plate->right, ray);
+   VectorMA(ray, v, plate->up, ray);
+
+   VectorNormalize(ray);
+}
+
+int ray_to_plate_uv(plate_t *plate, vec3_t ray, double *u, double *v)
+{
+   // get ray in the plate's relative view frame
+   double x = DotProduct(plate->right, ray);
+   double y = DotProduct(plate->up, ray);
+   double z = DotProduct(plate->forward, ray);
+
+   // project ray to the texture
+   double dist = 0.5 / tan(plate->fov/2);
+   *u = x/z*dist + 0.5;
+   *v = -y/z*dist + 0.5;
+
+   // return true if valid texture coordinates
+   return *u>=0 && *u<=1 && *v>=0 && *v<=1;
 }
 
 // set the (lx,ly) pixel on the lensmap to the (sx,sy,sz) view vector
@@ -1388,78 +1153,48 @@ void set_lensmap_from_ray(int lx, int ly, double sx, double sy, double sz)
 {
    vec3_t ray = {sx,sy,sz};
 
+   // get plate index
+   int plate_index;
+   if (globePlateIndex != -1) {
+      // use user-defined plate selection function
+      if (!lua_globe_plate(ray, &plate_index)) {
+         return;
+      }
+   }
+   else {
+      // find closest plate
+      plate_index = ray_to_plate_index(ray);
+   }
+
+   // get texture coordinates
    double u,v;
-   int plate;
-   if (!lua_ray_to_plate(ray,&plate,&u,&v)) {
+   if (!ray_to_plate_uv(&plates[plate_index], ray, &u, &v)) {
       return;
    }
 
-   // map lens pixel to cubeface pixel
-   set_lensmap_from_plate(lx,ly,u,v,plate);
+   // map lens pixel to plate pixel
+   set_lensmap_from_plate(lx,ly,u,v,plate_index);
 }
 
 void create_lensmap_inverse()
 {
-   int halfw = width/2;
-   int halfh = height/2;
-   /*
-   int maxx = hsym ? halfw : width;
-   int maxy = vsym ? halfh : height;
-   */
-   int maxx = width;
-   int maxy = height;
+   double x,y; // image coordinates
+   int lx,ly; // lens coordinates
 
-   int lx,ly;
+   for(ly = 0;ly<height;++ly) 
+   {
+      y = -(ly-height/2) * scale;
 
-   for(ly = 0;ly<maxy;++ly) {
-      double y = -(ly-halfh);
-      y *= scale;
-      for(lx = 0;lx<maxx;++lx) {
-         double x = lx-halfw;
-         x *= scale;
+      for(lx = 0;lx<width;++lx)
+      {
+         x = (lx-width/2) * scale;
 
-         // (use lens)
-         // map the current window coordinate to a ray vector
-         vec3_t ray = { 0, 0, 1};
-         switch (mapCoord)
-         {
-            case COORD_RADIAL: {
-               double r = sqrt(x*x+y*y);
-               double theta;
-               if (!lua_r_to_theta(r, &theta))
-                  continue;
-               double s = sin(theta);
-               ray[0] = x/r * s;
-               ray[1] = y/r * s;
-               ray[2] = cos(theta);
-               break;
-            }
+         // determine which light ray to follow
+         vec3_t ray;
+         if (!lua_lens_inverse(x,y,ray))
+            continue;
 
-            case COORD_SPHERICAL: {
-               double lat,lon;
-               if (!lua_xy_to_latlon(x,y,&lat,&lon))
-                  continue;
-               latlon_to_ray(lat,lon,ray);
-               break;
-            }
-
-            case COORD_EUCLIDEAN: {
-               if (!lua_xy_to_ray(x,y,ray))
-                  continue;
-               break;
-            }
-
-            case COORD_PLATE: {
-               int plate;
-               double u;
-               double v;
-               if (lua_xy_to_plate(x,y,&plate,&u,&v))
-                  set_lensmap_from_plate(lx, ly, u, v, plate);
-               continue;
-            }
-         }
-
-         // (use globe)
+         // get the pixel belonging to the light ray
          set_lensmap_from_ray(lx,ly,ray[0],ray[1],ray[2]);
       }
    }
@@ -1468,9 +1203,9 @@ void create_lensmap_inverse()
 void create_lensmap_forward()
 {
    int px, py;
-   int plate;
+   int plate_index;
 
-   for (plate = 0; plate < numplates; ++plate)
+   for (plate_index = 0; plate_index < numplates; ++plate_index)
    {
       for (py=0; py<platesize; ++py)
       {
@@ -1482,43 +1217,12 @@ void create_lensmap_forward()
             // (use globe)
             // get ray from plate coordinates
             vec3_t ray;
-            if (!lua_plate_to_ray(plate, u, v, ray)) {
-               continue;
-            }
+            plate_uv_to_ray(&plates[plate_index], u, v, ray);
 
             // (use lens)
             // get image coordinates from ray
             double x,y;
-            switch (mapCoord) 
-            {
-               case COORD_RADIAL: {
-                  double theta = acos(ray[2]/sqrt(ray[0]*ray[0]+ray[1]*ray[1]+ray[2]*ray[2]));
-                  double r;
-                  if (!lua_theta_to_r(theta, &r))
-                     continue;
-
-                  double c = r/sqrt(ray[0]*ray[0]+ray[1]*ray[1]);
-                  x = ray[0]*c;
-                  y = ray[1]*c;
-                  break;
-               }
-
-               case COORD_SPHERICAL: {
-                  double lat,lon;
-                  ray_to_latlon(ray, &lat, &lon);
-                  if (!lua_latlon_to_xy(lat, lon, &x, &y))
-                     continue;
-                  break;
-               }
-
-               case COORD_EUCLIDEAN: {
-                  if (!lua_ray_to_xy(ray, &x, &y))
-                     continue;
-                  break;
-               }
-
-               // TODO: add COORD_PLATE?
-            }
+            lua_lens_forward(ray,&x,&y);
 
             // transform from image coordinates to lens coordinates
             x /= scale;
@@ -1533,7 +1237,7 @@ void create_lensmap_forward()
             if (lx < 0 || lx >= width || ly < 0 || ly >= height)
                continue;
 
-            set_lensmap_from_plate(lx,ly,u,v,plate);
+            set_lensmap_from_plate(lx,ly,u,v,plate_index);
          }
       }
    }

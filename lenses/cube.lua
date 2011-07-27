@@ -25,7 +25,18 @@ function row(y)
    return i,f
 end
 
-function xy_to_plate(x,y)
+function lens_inverse(x,y)
+   local r = row(y)
+   local c = col(x)
+   if r < 0 or r >= rows or c < 0 or c >= cols then
+      return nil
+   end
+   if r == 0 or r == 2 then
+      if not (c == 1 or c == 3) then
+         return nil
+      end
+   end
+
    local front = 0 
    local right = 1
    local left = 2
@@ -33,44 +44,32 @@ function xy_to_plate(x,y)
    local top = 4
    local bottom = 5
 
+   local plate
    local r,v = row(y)
    local c,u = col(x)
    if r == 0 then
       if c == 1 then
-         return top,u,v
+         plate = top
+      else
+         plate,u,v = top,1-u,1-v
       end
-      return top,1-u,1-v
-   end
-   if r == 2 then
+   elseif r == 2 then
       if c == 1 then
-         return bottom,u,v
+         plate = bottom
+      else
+         plate,u,v = bottom,1-u,1-v
       end
-      return bottom,1-u,1-v
-   end
-   if c == 0 then
-      return left,u,v
-   end
-   if c == 1 then
-      return front,u,v
-   end
-   if c == 2 then
-      return right,u,v
-   end
-   if c == 3 then
-      return back,u,v
+   elseif c == 0 then
+      plate = left
+   elseif c == 1 then
+      plate = front
+   elseif c == 2 then
+      plate = right
+   elseif c == 3 then
+      plate = back
+   else
+      return nil
    end
 
-   return nil
-end
-
-function xy_isvalid(x,y)
-   local r = row(y)
-   local c = col(x)
-   if r < 0 or r >= rows or c < 0 or c >= cols then
-      return false
-   end
-   if r == 0 or r == 2 then
-      return c == 1 or c == 3
-   end
-   return true
+   return plate_to_ray(plate,u,v)
 end

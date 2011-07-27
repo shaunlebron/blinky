@@ -19,12 +19,12 @@ function projectcube(x,y,z)
    return x / mag, y / mag, z / mag
 end
 
-function ray_to_xy(rx,ry,rz)
+function lens_forward(rx,ry,rz)
    x,y,z = projectcube(rx,ry,rz)
    return x/(z+1)*2, y/(z+1)*2
 end
 
-function xy_to_ray(x,y)
+function lens_inverse(x,y)
    local rx,ry,rz
 
    local magx = abs(x)

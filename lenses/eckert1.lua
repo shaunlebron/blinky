@@ -8,7 +8,8 @@ max_vfov = 180
 hfit_size = FC * pi * 2
 vfit_size = FC * pi
 
-function latlon_to_xy(lat,lon)
+function lens_forward(x,y,z)
+   local lat,lon = ray_to_latlon(x,y,z)
    local x = FC * lon * (1 - RP * abs(lat))
    local y = FC * lat
    return x,y

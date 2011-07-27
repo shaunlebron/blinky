@@ -50,7 +50,8 @@ function proj_acos(v)
    return acos(v)
 end
 
-function latlon_to_xy(lat,lon)
+function lens_forward(x,y,z)
+   local lat,lon = ray_to_latlon(x,y,z)
    local m,n
    local a = 0
    local b = 0
