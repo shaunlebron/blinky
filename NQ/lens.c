@@ -517,11 +517,15 @@ void L_Globe(void)
    strcpy(globe, Cmd_Argv(1));
 
    // load globe
+   int top = lua_gettop(lua);
+   Con_Printf("TOP: %d\n",top);
    valid_globe = lua_globe_load();
    if (!valid_globe) {
       strcpy(globe,"");
       Con_Printf("not a valid globe\n");
    }
+   top = lua_gettop(lua);
+   Con_Printf("TOP: %d\n",top);
 }
 
 // autocompletion for globe names
@@ -710,24 +714,36 @@ int lua_func_exists(const char* name)
 {
    lua_getglobal(lua, name);
    int exists = lua_isfunction(lua,-1);
-   lua_pop(lua,1);
+   lua_pop(lua, 1); // pop name
    return exists;
 }
 
 int lua_globe_load(void)
 {
+   Con_Printf("loading globe...\n");
    // clear Lua variables
    lua_globe_clear();
+   Con_Printf("cleared variables...\n");
 
    // set full filename
    char filename[100];
    sprintf(filename, "%s/../globes/%s.lua",com_gamedir,globe);
+   Con_Printf("created filename...\n");
+   Con_Printf("lua: %d, filename: %s\n",lua,filename);
 
    // check if loaded correctly
-   if (luaL_loadfile(lua, filename) || lua_pcall(lua, 0, 0, 0)) {
-      Con_Printf("could not loadfile \nERROR: %s\n", lua_tostring(lua,-1));
-      lua_pop(lua,1);
+   int errcode = 0;
+   if ((errcode=luaL_loadfile(lua, filename))) {
+      Con_Printf("could not loadfile (%d) \nERROR: %s", errcode, lua_tostring(lua,-1));
+      lua_pop(lua,1); // pop error message
       return 0;
+   }
+   else {
+      if ((errcode=lua_pcall(lua, 0, 0, 0))) {
+         Con_Printf("could not pcall (%d) \nERROR: %s", errcode, lua_tostring(lua,-1));
+         lua_pop(lua,1); // pop error message
+         return 0;
+      }
    }
 
    // check for the globe_plate function
@@ -743,7 +759,7 @@ int lua_globe_load(void)
    if (!lua_istable(lua,-1) || lua_objlen(lua,-1) < 1)
    {
       Con_Printf("plates must be an array of one or more elements\n");
-      lua_pop(lua, 1);
+      lua_pop(lua, 1); // pop plates
       return 0;
    }
 
@@ -759,7 +775,7 @@ int lua_globe_load(void)
       if (!lua_istable(lua,-1) || lua_objlen(lua,-1) != 3 )
       {
          Con_Printf("plate %d: forward vector is not a 3d vector\n", i+1);
-         lua_pop(lua,4); // plates, plate key, plate, forward
+         lua_pop(lua, 3); // pop forward vector, plate, and plates
          return 0;
       }
 
@@ -769,13 +785,13 @@ int lua_globe_load(void)
          if (!lua_isnumber(lua,-1))
          {
             Con_Printf("plate %d: forward vector: element %d not a number\n", i+1, j+1);
-            lua_pop(lua, 5); // plates, plate key, plate, forward, forward[i]
+            lua_pop(lua, 4); // pop element, vector, plate, and plates
             return 0;
          }
          plates[i].forward[j] = lua_tonumber(lua,-1);
-         lua_pop(lua,1); // forward[i]
+         lua_pop(lua, 1); // pop element
       }
-      lua_pop(lua,1); // forward
+      lua_pop(lua,1); // pop forward vector
 
       // get up vector
       lua_rawgeti(lua, -1, 2);
@@ -784,7 +800,7 @@ int lua_globe_load(void)
       if (!lua_istable(lua,-1) || lua_objlen(lua,-1) != 3 )
       {
          Con_Printf("plate %d: up vector is not a 3d vector\n", i+1);
-         lua_pop(lua,4); // plates, plate key, plate, up
+         lua_pop(lua, 3); // pop forward vector, plate, and plates
          return 0;
       }
 
@@ -794,13 +810,13 @@ int lua_globe_load(void)
          if (!lua_isnumber(lua,-1))
          {
             Con_Printf("plate %d: up vector: element %d not a number\n", i+1, j+1);
-            lua_pop(lua, 5); // plates, plate key, plate, up, up[i]
+            lua_pop(lua, 4); // pop element, vector, plate, and plates
             return 0;
          }
          plates[i].up[j] = lua_tonumber(lua,-1);
-         lua_pop(lua,1); // up[i]
+         lua_pop(lua,1); // pop element
       }
-      lua_pop(lua,1); // up
+      lua_pop(lua, 1); // pop up vector
 
       // calculate right vector (and correct up vector)
       CrossProduct(plates[i].up, plates[i].forward, plates[i].right);
@@ -811,24 +827,21 @@ int lua_globe_load(void)
       if (!lua_isnumber(lua,-1))
       {
          Con_Printf("plate %d: fov not a number\n", i+1);
-         lua_pop(lua,4); // plates, plate key, plate, fov
       }
       plates[i].fov = lua_tonumber(lua,-1) * M_PI / 180;
-      lua_pop(lua,1); // fov
+      lua_pop(lua, 1); // pop fov
 
       if (plates[i].fov <= 0)
       {
          Con_Printf("plate %d: fov must > 0\n", i+1);
-         lua_pop(lua, 3); // plates, plate key, plate
          return 0;
       }
 
       // calculate distance to camera
       plates[i].dist = 0.5/tan(plates[i].fov/2);
    }
+   lua_pop(lua, 1); // pop plates
 
-   // pop table key and table
-   lua_pop(lua,2);
    numplates = i;
 
    return 1;
@@ -844,15 +857,18 @@ int lua_lens_load(void)
    sprintf(filename,"%s/../lenses/%s.lua",com_gamedir,lens);
 
    // check if loaded correctly
-   if (luaL_loadfile(lua, filename) != 0) {
-      Con_Printf("could not load %s\nERROR: %s\n", lens, lua_tostring(lua,-1));
-      lua_pop(lua,1);
+   int errcode = 0;
+   if ((errcode=luaL_loadfile(lua, filename))) {
+      Con_Printf("could not loadfile (%d) \nERROR: %s", errcode, lua_tostring(lua,-1));
+      lua_pop(lua,1); // pop error message
       return 0;
    }
-   if (luaL_dofile(lua, filename) != 0) {
-      Con_Printf("could not load %s\nERROR: %s\n", lens, lua_tostring(lua,-1));
-      lua_pop(lua, 1);
-      return 0;
+   else {
+      if ((errcode=lua_pcall(lua, 0, 0, 0))) {
+         Con_Printf("could not pcall (%d) \nERROR: %s", errcode, lua_tostring(lua,-1));
+         lua_pop(lua,1); // pop error message
+         return 0;
+      }
    }
 
    // clear current maps
@@ -863,7 +879,7 @@ int lua_lens_load(void)
    lua_getglobal(lua, "lens_inverse");
    if (!lua_isfunction(lua,-1)) {
       Con_Printf("lens_inverse is not found\n");
-      lua_pop(lua,1);
+      lua_pop(lua,1); // pop lens_inverse
       return 0;
    }
    else {
@@ -875,7 +891,7 @@ int lua_lens_load(void)
    lua_getglobal(lua, "lens_forward");
    if (!lua_isfunction(lua,-1)) {
       Con_Printf("lens_forward is not found\n");
-      lua_pop(lua,1);
+      lua_pop(lua,1); // pop lens_forward
    }
    else {
       mapForwardIndex = luaL_ref(lua, LUA_REGISTRYINDEX);
@@ -897,24 +913,22 @@ int lua_lens_load(void)
       }
       else {
          Con_Printf("Unsupported map function: %s\n", funcname);
-         lua_pop(lua, 1);
+         lua_pop(lua, 1); // pop map
          return 0;
       }
-
-      lua_pop(lua,1);
    }
-
+   lua_pop(lua,1); // pop map
 
    lua_getglobal(lua, "max_hfov");
    max_hfov = lua_isnumber(lua,-1) ? lua_tonumber(lua,-1) : 0;
    // TODO: use degrees to prevent roundoff errors (e.g. capping at 179 instead of 180)
    max_hfov *= M_PI / 180;
-   lua_pop(lua,1);
+   lua_pop(lua,1); // pop max_hfov
 
    lua_getglobal(lua, "max_vfov");
    max_vfov = lua_isnumber(lua,-1) ? lua_tonumber(lua,-1) : 0;
    max_vfov *= M_PI / 180;
-   lua_pop(lua,1);
+   lua_pop(lua,1); // pop max_vfov
 
    /*
    lua_getglobal(lua, "vsym");
@@ -928,11 +942,11 @@ int lua_lens_load(void)
 
    lua_getglobal(lua, "hfit_size");
    hfit_size = lua_isnumber(lua,-1) ? lua_tonumber(lua,-1) : 0;
-   lua_pop(lua,1);
+   lua_pop(lua,1); // pop hfit_size
 
    lua_getglobal(lua, "vfit_size");
    vfit_size = lua_isnumber(lua,-1) ? lua_tonumber(lua,-1) : 0;
-   lua_pop(lua,1);
+   lua_pop(lua,1); // pop vfit_size
 
    return 1;
 }
