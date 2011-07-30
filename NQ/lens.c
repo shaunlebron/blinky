@@ -517,15 +517,12 @@ void L_Globe(void)
    strcpy(globe, Cmd_Argv(1));
 
    // load globe
-   int top = lua_gettop(lua);
-   Con_Printf("TOP: %d\n",top);
    valid_globe = lua_globe_load();
    if (!valid_globe) {
       strcpy(globe,"");
       Con_Printf("not a valid globe\n");
    }
    top = lua_gettop(lua);
-   Con_Printf("TOP: %d\n",top);
 }
 
 // autocompletion for globe names
@@ -720,16 +717,12 @@ int lua_func_exists(const char* name)
 
 int lua_globe_load(void)
 {
-   Con_Printf("loading globe...\n");
    // clear Lua variables
    lua_globe_clear();
-   Con_Printf("cleared variables...\n");
 
    // set full filename
    char filename[100];
    sprintf(filename, "%s/../globes/%s.lua",com_gamedir,globe);
-   Con_Printf("created filename...\n");
-   Con_Printf("lua: %d, filename: %s\n",lua,filename);
 
    // check if loaded correctly
    int errcode = 0;
