@@ -7,7 +7,7 @@ vsym = true
 max_hfov = 360
 max_vfov = 180
 
-function xy_to_latlon(x,y)
+function lens_inverse(x,y)
    local k = x*x/((d+1)*(d+1))
    local dscr = k*k*d*d - (k+1)*(k*d*d-1)
    local clon = (-k*d+sqrt(dscr))/(k+1)
@@ -16,10 +16,11 @@ function xy_to_latlon(x,y)
    local lat = atan2(y,S)
    lon = lon*gumbyScaleInv
    lat = lat*gumbyScaleInv
-   return lat,lon
+   return latlon_to_ray(lat,lon)
 end
 
-function latlon_to_xy(lat,lon)
+function lens_forward(x,y,z)
+   local lat,lon = ray_to_latlon(x,y,z)
    lon = lon*gumbyScale
    lat = lat*gumbyScale
    local S = (d+1)/(d+cos(lon))
@@ -28,8 +29,8 @@ function latlon_to_xy(lat,lon)
    return x,y
 end
 
-local x,y = latlon_to_xy(pi/2,0)
+local x,y = lens_forward(latlon_to_ray(pi/2,0))
 vfit_size = y*2
 
-x,y = latlon_to_xy(0,pi)
+x,y = lens_forward(latlon_to_ray(0,pi))
 hfit_size = x*2

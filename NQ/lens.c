@@ -83,9 +83,6 @@ static char globe[50];
 // indicates if the current globe is valid
 static int valid_globe;
 
-// indicates if the current globe supports forward lens mapping
-static int globe_forward;
-
 // pointer to the screen dimension (width,height or diag) attached to the desired fov
 static int* framesize;
 
@@ -622,42 +619,90 @@ int lua_plate_to_ray(lua_State *L)
 
 int lua_lens_inverse(double x, double y, vec3_t ray)
 {
+   int top = lua_gettop(lua);
    lua_rawgeti(lua, LUA_REGISTRYINDEX, mapInverseIndex);
    lua_pushnumber(lua, x);
    lua_pushnumber(lua, y);
    lua_call(lua, 2, LUA_MULTRET);
 
-   if (!lua_isnumber(lua, -1)) {
-      lua_pop(lua,1);
-      return 0;
+   int numret = lua_gettop(lua) - top;
+   int status;
+
+   switch(numret) {
+      case 3:
+         if (lua_isnumber(lua,-3) && lua_isnumber(lua,-2) && lua_isnumber(lua,-1)) {
+            ray[0] = lua_tonumber(lua, -3);
+            ray[1] = lua_tonumber(lua, -2);
+            ray[2] = lua_tonumber(lua, -1);
+            status = 1;
+         }
+         else {
+            Con_Printf("lens_inverse returned a non-number value for x,y,z\n");
+            status = -1;
+         }
+         break;
+
+      case 1:
+         if (lua_isnil(lua,-1)) {
+            status = 0;
+         }
+         else {
+            status = -1;
+            Con_Printf("lens_inverse returned a single non-nil value\n");
+         }
+         break;
+
+      default:
+         Con_Printf("lens_inverse returned %d values instead of 3\n", numret);
+         status = -1;
    }
 
-   ray[0] = lua_tonumber(lua, -3);
-   ray[1] = lua_tonumber(lua, -2);
-   ray[2] = lua_tonumber(lua, -1);
-   lua_pop(lua,3);
-
-   return 1;
+   lua_pop(lua, numret);
+   return status;
 }
 
 int lua_lens_forward(vec3_t ray, double *x, double *y)
 {
+   int top = lua_gettop(lua);
    lua_rawgeti(lua, LUA_REGISTRYINDEX, mapForwardIndex);
    lua_pushnumber(lua,ray[0]);
    lua_pushnumber(lua,ray[1]);
    lua_pushnumber(lua,ray[2]);
    lua_call(lua, 3, LUA_MULTRET);
 
-   if (!lua_isnumber(lua, -1)) {
-      lua_pop(lua,1);
-      return 0;
+   int numret = lua_gettop(lua) - top;
+   int status;
+
+   switch (numret) {
+      case 2:
+         if (lua_isnumber(lua,-2) && lua_isnumber(lua,-1)) {
+            *x = lua_tonumber(lua, -2);
+            *y = lua_tonumber(lua, -1);
+            status = 1;
+         }
+         else {
+            Con_Printf("lens_forward returned a non-number value for x,y\n");
+            status = -1;
+         }
+         break;
+
+      case 1:
+         if (lua_isnil(lua,-1)) {
+            status = 0;
+         }
+         else {
+            status = -1;
+            Con_Printf("lens_forward returned a single non-nil value\n");
+         }
+         break;
+
+      default:
+         Con_Printf("lens_forward returned %d values instead of 2\n", numret);
+         status = -1;
    }
 
-   *x = lua_tonumber(lua, -2);
-   *y = lua_tonumber(lua, -1);
-   lua_pop(lua,2);
-
-   return 1;
+   lua_pop(lua,numret);
+   return status;
 }
 
 int lua_globe_plate(vec3_t ray, int *plate)
@@ -873,7 +918,6 @@ int lua_lens_load(void)
    if (!lua_isfunction(lua,-1)) {
       Con_Printf("lens_inverse is not found\n");
       lua_pop(lua,1); // pop lens_inverse
-      return 0;
    }
    else {
       mapInverseIndex = luaL_ref(lua, LUA_REGISTRYINDEX);
@@ -888,6 +932,9 @@ int lua_lens_load(void)
    }
    else {
       mapForwardIndex = luaL_ref(lua, LUA_REGISTRYINDEX);
+      if (mapType == MAP_NONE) {
+         mapType = MAP_FORWARD;
+      }
    }
 
    // get map function preference if provided
@@ -1198,8 +1245,13 @@ void create_lensmap_inverse()
 
          // determine which light ray to follow
          vec3_t ray;
-         if (!lua_lens_inverse(x,y,ray))
+         int status = lua_lens_inverse(x,y,ray);
+         if (status == 0) {
             continue;
+         }
+         else if (status == -1) {
+            return;
+         }
 
          // get the pixel belonging to the light ray
          set_lensmap_from_ray(lx,ly,ray[0],ray[1],ray[2]);
@@ -1229,7 +1281,13 @@ void create_lensmap_forward()
             // (use lens)
             // get image coordinates from ray
             double x,y;
-            lua_lens_forward(ray,&x,&y);
+            int status = lua_lens_forward(ray,&x,&y);
+            if (status == 0) {
+               continue;
+            }
+            else if (status == -1) {
+               return;
+            }
 
             // transform from image coordinates to lens coordinates
             x /= scale;
@@ -1266,10 +1324,13 @@ void create_lensmap()
    memset(plate_tally, 0, sizeof(plate_tally));
 
    // create lensmap
-   if (mapType == MAP_FORWARD && globe_forward)
+   if (mapType == MAP_FORWARD)
       create_lensmap_forward();
    else if (mapType == MAP_INVERSE)
       create_lensmap_inverse();
+   else { // MAP_NONE
+      Con_Printf("no inverse or forward map being used\n");
+   }
 
    // update face display flags depending on tallied side counts
    int i;

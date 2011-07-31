@@ -13,18 +13,18 @@ max_vfov = 180
 hfit_size = maxx*2
 vfit_size = maxy*2
 
-function latlon_to_xy(lat,lon)
+function lens_forward(x,y,z)
+   if abs(x) > maxx or abs(y) > maxy then
+      return nil
+   end
+   local lat,lon = ray_to_latlon(x,y,z)
    local x = XF * lon
    local y = YF * tan(0.5 * lat)
    return x,y
 end
 
-function xy_to_latlon(x,y)
+function lens_inverse(x,y)
    local lon = RXF * x
    local lat = 2 * atan(y * RYF)
-   return lat,lon
-end
-
-function xy_isvalid(x,y)
-   return abs(x) < maxx and abs(y) < maxy
+   return latlon_to_ray(lat,lon)
 end
