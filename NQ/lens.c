@@ -1173,7 +1173,7 @@ void plate_uv_to_ray(plate_t *plate, double u, double v, vec3_t ray)
    // transform to image coordinates
    u -= 0.5;
    v -= 0.5;
-   v *= -1;
+   v = -v;
 
    // clear ray
    ray[0] = ray[1] = ray[2] = 0;
@@ -1268,10 +1268,10 @@ void create_lensmap_forward()
    {
       for (py=0; py<platesize; ++py)
       {
-         double v = -(py-platesize*0.5) / platesize;
+         double v = (double)py / platesize;
          for (px=0; px < platesize; ++px)
          {
-            double u = (px-platesize*0.5) / platesize;
+            double u = (double)px / platesize;
 
             // (use globe)
             // get ray from plate coordinates
@@ -1290,12 +1290,6 @@ void create_lensmap_forward()
             }
 
             // transform from image coordinates to lens coordinates
-            x /= scale;
-            y /= scale;
-            y = -y;
-            x += width*0.5;
-            y += height*0.5;
-
             int lx = (int)(x/scale + width/2);
             int ly = (int)(-y/scale + height/2);
 
@@ -1324,10 +1318,14 @@ void create_lensmap()
    memset(plate_tally, 0, sizeof(plate_tally));
 
    // create lensmap
-   if (mapType == MAP_FORWARD)
+   if (mapType == MAP_FORWARD) {
+      Con_Printf("using forward map\n");
       create_lensmap_forward();
-   else if (mapType == MAP_INVERSE)
+   }
+   else if (mapType == MAP_INVERSE) {
+      Con_Printf("using inverse map\n");
       create_lensmap_inverse();
+   }
    else { // MAP_NONE
       Con_Printf("no inverse or forward map being used\n");
    }
