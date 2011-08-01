@@ -17,20 +17,20 @@ function solveTheta(lat)
    return t/2
 end
 
-function xy_to_latlon(x,y)
+function lens_inverse(x,y)
+   if x*x/8 + y*y/2 > 1 then
+      return nil
+   end
    local t = asin(y/root2);
    local lon = pi*x/(2*root2*cos(t))
    local lat = asin((2*t+sin(2*t))/pi)
-   return lat,lon
+   return latlon_to_ray(lat,lon)
 end
 
-function latlon_to_xy(lat,lon)
+function lens_forward(x,y,z)
+   local lat,lon = ray_to_latlon(x,y,z)
    local t = solveTheta(lat)
    local x = 2*sqrt(2)/pi*lon*cos(t)
    local y = sqrt(2)*sin(t)
    return x,y
-end
-
-function xy_isvalid(x,y)
-   return x*x/8 + y*y/2 <= 1
 end

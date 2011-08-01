@@ -4,7 +4,8 @@ vsym = true
 max_hfov = 360
 max_vfov = 180
 
-function latlon_to_xy(lat,lon)
+function lens_forward(x,y,z)
+   local lat,lon = ray_to_latlon(x,y,z)
    if lat == 0 then
       return lon,0
    end

@@ -6,7 +6,8 @@ vsym = true
 max_hfov = 360
 max_vfov = 180
 
-function latlon_to_xy(lat,lon)
+function lens_forward(x,y,z)
+   local lat,lon = ray_to_latlon(x,y,z)
    local clat = cos(lat)
    local temp = clat*cos(lon*0.5)
    local D = acos(temp)
@@ -19,8 +20,8 @@ function latlon_to_xy(lat,lon)
    return x,y
 end
 
-local x,y = latlon_to_xy(pi/2,0)
+local x,y = lens_forward(latlon_to_ray(pi/2,0))
 vfit_size = 2*y
 
-x,y = latlon_to_xy(0,pi)
+x,y = lens_forward(latlon_to_ray(0,pi))
 hfit_size = 2*x

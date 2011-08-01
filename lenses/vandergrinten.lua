@@ -4,7 +4,8 @@ vsym = true
 max_hfov = 360
 max_vfov = 180
 
-function latlon_to_xy(lat,lon)
+function lens_forward(x,y,z)
+   local lat,lon = ray_to_latlon(x,y,z)
    if lat == 0 then
       return lon, 0
    end
@@ -33,10 +34,6 @@ function latlon_to_xy(lat,lon)
    return x,y
 end
 
-function xy_isvalid(x,y)
-   return x*x+y*y<=maxr*maxr
-end
-
 TOL		= 1.e-10
 THIRD		= .33333333333333333333
 TWO_THRD	= .66666666666666666666
@@ -46,7 +43,10 @@ PISQ		= 9.86960440108935861869
 TPISQ		= 19.73920880217871723738
 HPISQ		= 4.93480220054467930934
 
-function xy_to_latlon(x,y)
+function lens_inverse(x,y)
+   if x*x+y*y > maxr*maxr then
+      return nil
+   end
    local lat,lon
    local t, c0, c1, c2, c3, al, r2, r, m, d, ay, x2, y2
 
@@ -60,7 +60,7 @@ function xy_to_latlon(x,y)
       else
          lon = 0.5 * (x2 - PISQ + sqrt(t)) / x
       end
-      return lat,lon
+      return latlon_to_ray(lat,lon)
    end
 
    y2 = y*y
@@ -103,9 +103,9 @@ function xy_to_latlon(x,y)
    else
       return nil
    end
-   return lat,lon
+   return latlon_to_ray(lat,lon)
 end
 
-maxr = latlon_to_xy(0,pi)
+maxr = lens_forward(latlon_to_ray(0,pi))
 vfit_size = 2*maxr
 hfit_size = 2*maxr
