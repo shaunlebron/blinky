@@ -605,7 +605,7 @@ int lua_plate_to_ray(lua_State *L)
    double u = luaL_checknumber(L,2);
    double v = luaL_checknumber(L,3);
    vec3_t ray;
-   if (plate_index < 0 || plate_index >= MAX_PLATES) {
+   if (plate_index < 0 || plate_index >= numplates) {
       lua_pushnil(L);
       return 1;
    }
