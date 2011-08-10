@@ -1,0 +1,285 @@
+
+<!doctype html>
+<html>
+<head>
+<title>Quake Lenses - Home</title>
+<link rel="stylesheet" href="main.css" />
+</head>
+<body>
+
+<div id="header">
+</div>
+
+<div id="nav">
+<a href="index.htm">home</a> | <a href="theory.htm">theory</a> | <a href="manual.htm">manual</a> | <a href="gallery.htm">gallery</a> | <a href="faq.htm">f.a.q.</a> | <a href="download.htm">download</a> | <a href="contact.htm">contact</a>
+</div>
+
+<div id="container">
+
+<h3>Surround Sound for your eyes</h3>
+<table>
+<tr>
+<td>
+<a href="pics/index/intro90b.gif"><img src="pics/index/intro90b.gif" width=240 /></a>
+<div class="caption">90&deg; <acronym title="Field of View">FOV</acronym></div>
+</td>
+<td>
+<a href="pics/index/intro180b.gif"><img src="pics/index/intro180b.gif" width=240 /></a>
+<div class="caption">180&deg; <acronym title="Field of View">FOV</acronym></div>
+</td>
+<td>
+<a href="pics/index/intro360b.gif"><img src="pics/index/intro360b.gif" width=240 /></a>
+<div class="caption">360&deg; <acronym title="Field of View">FOV</acronym></div>
+</td>
+</tr>
+</table>
+<p>
+Quake Lenses is a small extension to the Quake engine's software renderer.  It is a proof-of-concept for surpassing the narrow <acronym title="Field of View">FOV</acronym> limit inherent to the industry standard Rectilinear Projection. It provides a variety of alternative projections, which we call lenses, allowing normal 180&deg; views that people experience in reality, or even full 360&deg; panoramas.
+</p>
+<p>
+This is an effort to revive and extend the ideas pioneered by <a href="http://strlen.com/gfxengine/fisheyequake/">Fisheye Quake</a>. It is integrated with <a href="http://disenchant.net/engine.html">TyrQuake</a> and uses <a href="http://luajit.org/luajit.html">LuaJIT</a> for lens scripting.  
+</p>
+<p>
+You have the freedom to create your own lenses or modify the packaged ones.  They are written in Lua and are based on panoramic tools and map projections provided by the <a href="http://wiki.panotools.org">PanoTools</a> and <a href="http://proj.osgeo.org">PROJ.4</a> projects, respectively.
+</p>
+<p>
+<h4>Website Contents</h4>
+<ul>
+   <li><a href="theory.htm">theory</a> - visual explanation of how lenses work</li>
+<li><a href="manual.htm">manual</a> - technical details on how to create a lens with Lua</li>
+   <li><a href="gallery.htm">gallery</a> - a look at different types of lenses</li>
+</ul>
+</p>
+
+<h3>Quick Look</h3>
+<p>
+To replicate the view in each of the following screenshots, type the commands listed below them in Quake Lenses.
+</p>
+<table>
+<tr>
+   <td>
+      <a href="pics/index/fish2b.gif"><img src="pics/index/fish2b.gif" width=300 /></a>
+      <pre>
+&gt; lens fisheye2
+&gt; fit </pre>
+   </td>
+   <td>
+      <a href="pics/index/paninib.gif"><img src="pics/index/paninib.gif" width=300 /></a>
+      <pre>
+&gt; lens panini
+&gt; hfov 200
+</pre>
+   </td>
+</tr>
+<tr>
+   <td>
+      <a href="pics/index/vandgb.gif"><img src="pics/index/vandgb.gif" width=300 /></a>
+      <pre>
+&gt; lens vandergrinten
+&gt; fit
+</pre>
+   </td>
+   <td>
+      <a href="pics/index/mercb.gif"><img src="pics/index/mercb.gif" width=300 /></a>
+      <pre>
+&gt; lens mercator
+&gt; fit
+</pre>
+   </td>
+</tr>
+<tr>
+   <td>
+      <a href="pics/index/winktrib.gif"><img src="pics/index/winktrib.gif" width=300 /></a>
+      <pre>
+&gt; lens winkeltripel
+&gt; fit
+</pre>
+   </td>
+   <td>
+      <a href="pics/index/cubeb.gif"><img src="pics/index/cubeb.gif" width=300 /></a>
+      <pre>
+&gt; lens cube
+&gt; fit</pre>
+   </td>
+</tr>
+</table>
+
+<h3>Commands</h3>
+Commands can be entered via Quake's console by pressing the tilde key (~).
+<ul>
+   <li><samp>lens &lt;name&gt;</samp> : change the lens (use tab key for completion)</li>
+   <li><samp>fast</samp> : sacrifice the quality of your periphery for faster rendering</li>
+   <li><samp>hfov #</samp> : specify <acronym title="Field of View">FOV</acronym> in horizontal degrees</li>
+   <li><samp>vfov #</samp>: specify <acronym title="Field of View">FOV</acronym> in vertical degrees</li>
+   <li><samp>fit</samp> : make the lens image fit the screen</li>
+   <li><samp>hfit</samp> : fit horizontally only</li>
+   <li><samp>vfit</samp> : fit vertically only</li>
+   <li><samp>rubix</samp> : visualize lens shape by painting cubemap like a rubix cube</li>
+</ul>
+
+<h3>Lens Files</h3>
+<p>
+In the lenses folder (quake directory in Windows, or <samp>$HOME/.tyrquake</samp> in Linux), you will see a collection of Lua files.  These represent the lenses you can use in a game.  If you're interested, you can <a href="manual.htm">create your own</a> and place it in this folder.  Here is an example script: 
+<table><tr><td>
+         <div style="padding:3px;background:#2a2a2a; color:#efefef; margin-left:auto; margin-right:auto"><font face="monospace">
+<span style="background-color: #202020"><font color="#535353">&nbsp;1 </font></span>hsym = <font color="#ef5939">true</font><br>
+<span style="background-color: #202020"><font color="#535353">&nbsp;2 </font></span>vsym = <font color="#ef5939">true</font><br>
+<span style="background-color: #202020"><font color="#535353">&nbsp;3 </font></span>max_hfov = <font color="#fcaf3e">360</font><br>
+<span style="background-color: #202020"><font color="#535353">&nbsp;4 </font></span>max_vfov = <font color="#fcaf3e">180</font><br>
+<span style="background-color: #202020"><font color="#535353">&nbsp;5 </font></span>hfit_size = <font color="#fcaf3e">2</font>*pi<br>
+<span style="background-color: #202020"><font color="#535353">&nbsp;6 </font></span><br>
+<span style="background-color: #202020"><font color="#535353">&nbsp;7 </font></span><font color="#ad7fa8">function</font>&nbsp;xy_to_latlon(x,y)<br>
+<span style="background-color: #202020"><font color="#535353">&nbsp;8 </font></span>&nbsp;&nbsp; <font color="#ffffff"><b>local</b></font>&nbsp;lon = x<br>
+<span style="background-color: #202020"><font color="#535353">&nbsp;9 </font></span>&nbsp;&nbsp; <font color="#ffffff"><b>local</b></font>&nbsp;lat = atan(sinh(y))<br>
+<span style="background-color: #202020"><font color="#535353">10 </font></span>&nbsp;&nbsp; <font color="#ffffff"><b>return</b></font>&nbsp;lat, lon<br>
+<span style="background-color: #202020"><font color="#535353">11 </font></span><font color="#ad7fa8">end</font><br>
+<span style="background-color: #202020"><font color="#535353">12 </font></span><br>
+<span style="background-color: #202020"><font color="#535353">13 </font></span><font color="#ad7fa8">function</font>&nbsp;latlon_to_xy(lat,lon)<br>
+<span style="background-color: #202020"><font color="#535353">14 </font></span>&nbsp;&nbsp; <font color="#ffffff"><b>local</b></font>&nbsp;x = lon<br>
+<span style="background-color: #202020"><font color="#535353">15 </font></span>&nbsp;&nbsp; <font color="#ffffff"><b>local</b></font>&nbsp;y = log(tan(pi*<font color="#fcaf3e">0.25</font>+lat*<font color="#fcaf3e">0.5</font>))<br>
+<span style="background-color: #202020"><font color="#535353">16 </font></span>&nbsp;&nbsp; <font color="#ffffff"><b>return</b></font>&nbsp;x,y<br>
+<span style="background-color: #202020"><font color="#535353">17 </font></span><font color="#ad7fa8">end</font><br>
+<span style="background-color: #202020"><font color="#535353">18 </font></span><br>
+<span style="background-color: #202020"><font color="#535353">19 </font></span><font color="#ad7fa8">function</font>&nbsp;xy_isvalid(x,y)<br>
+<span style="background-color: #202020"><font color="#535353">20 </font></span>&nbsp;&nbsp; <font color="#ffffff"><b>return</b></font>&nbsp;abs(x) &lt;= pi<br>
+<span style="background-color: #202020"><font color="#535353">21 </font></span><font color="#ad7fa8">end</font><br>
+         </font></div>
+<pre> 
+Lua script for the Mercator lens
+</pre>
+</td></tr></table>
+
+</p>
+
+<h3>Selecting a Lens</h3>
+<p>
+To change your lens, use the <samp>lens</samp> command.  For example, if you wish to use the "panini" lens, type <samp>lens panini</samp>. The game will then load the file called "panini.lua" from the lenses folder.
+</p>
+<h4>Lens Tab Completion</h4>
+<p>
+As a convenience for quickly selecting lenses, you can use the tab-completion feature.  Begin typing the lens name and press tab to try to complete the rest of the name.  If more than one lenses match, you can press TAB again to list all the matching lenses.  (You can also use this to list all the available lenses, seen below.) 
+</p>
+<table>
+   <tr>
+      <td>
+         <img src="pics/index/lensesb.gif" />
+         <pre>
+&gt; lens &lt;TAB&gt;&lt;TAB&gt;</pre>
+      </td>
+   </tr>
+</table>
+
+<h3>Performance</h3>
+You can type <samp>fast</samp> to enable a faster rendering mode.  This only renders 160&deg;, and reduces the quality of everything outside your 90&deg; periphery.
+
+<h3>Zooming</h3>
+You can zoom in and out by specifying an <acronym title="Field of View">FOV</acronym> or by image-fitting, both explained in the following sections.  If the lens does not support the current zoom mode, Quake Lenses will give you a blank screen, an error message on the console, and will wait for you to enter a valid zoom mode.  For example, the cube lens does not support <acronym title="Field of View">FOV</acronym>; it can only be zoomed to fit the screen.  Another common error happens if the specified <acronym title="Field of View">FOV</acronym> is too high for the current lens.
+
+<h4><acronym title="Field of View">FOV</acronym></h4>
+<p>
+You can zoom in and out by specifying a viewing angle for your Field of View (<acronym title="Field of View">FOV</acronym>). Type <samp>hfov 180</samp> if you want your screen to horizontally cover 180 degrees.  Similarly, you can type <samp>vfov 90</samp> to cover 90 degrees vertically.
+</p>
+<table>
+   <tr>
+      <td>
+      <a href="pics/index/fov90b.gif"><img src="pics/index/fov90b.gif" width=300></a>
+         <pre>
+&gt; lens panini
+&gt; hfov 90</pre>
+      </td>
+      <td>
+      <a href="pics/index/fov180b.gif"><img src="pics/index/fov180b.gif" width=300></a>
+         <pre>
+&gt; lens panini
+&gt; hfov 180</pre>
+      </td>
+   </tr>
+</table>
+
+<h4>Fitting</h4>
+<p>
+If the image produced by the lens is not infinite in size, you can fit the whole image in the screen by typing <samp>fit</samp>.  Alternately, if you just want the picture to fit the horizontal or vertical bounds of the screen, you can type <samp>hfit</samp> or <samp>vfit</samp>, respectively.
+</p>
+<p>
+<table>
+<tr>
+   <td>
+      <a href="pics/index/hfitb.gif"><img src="pics/index/hfitb.gif" width=300 /></a>
+      <pre>
+&gt; lens hammer
+&gt; hfit
+</pre>
+   </td>
+   <td>
+      <a href="pics/index/vfitb.gif"><img src="pics/index/vfitb.gif" width=300 /></a>
+      <pre>
+&gt; lens hammer
+&gt; vfit
+</pre>
+   </td>
+</tr>
+</table>
+</p>
+
+<h3>Visualizing the Distortion</h3>
+You can use the <samp>rubix</samp> command to paint a translucent rubix cube around you. This is a useful visual aid for understanding the lens distortion.
+<p>
+<table>
+<tr>
+<td>
+<a href="pics/index/rubix/stereo0.gif"><img src="pics/index/rubix/stereo0.gif" width=300 /></a>
+<pre>
+&gt; lens stereographic
+&gt; hfov 180
+</pre>
+</td>
+<td>
+<a href="pics/index/rubix/stereo1.gif"><img src="pics/index/rubix/stereo1.gif" width=300 /></a>
+<pre>
+&gt; lens stereographic
+&gt; hfov 180
+&gt; rubix
+</pre>
+</td>
+</tr>
+<tr>
+<td>
+<a href="pics/index/rubix/panini0.gif"><img src="pics/index/rubix/panini0.gif" width=300 /></a>
+<pre>
+&gt; lens panini
+&gt; hfov 180
+</pre>
+</td>
+<td>
+<a href="pics/index/rubix/panini1.gif"><img src="pics/index/rubix/panini1.gif" width=300 /></a>
+<pre>
+&gt; lens panini
+&gt; hfov 180
+&gt; rubix
+</pre>
+</td>
+</tr>
+<tr>
+<td>
+<a href="pics/index/rubix/hammer0.gif"><img src="pics/index/rubix/hammer0.gif" width=300 /></a>
+<pre>
+&gt; lens hammer
+&gt; hfov 180
+</pre>
+</td>
+<td>
+<a href="pics/index/rubix/hammer1.gif"><img src="pics/index/rubix/hammer1.gif" width=300 /></a>
+<pre>
+&gt; lens hammer
+&gt; hfov 180
+&gt; rubix
+</pre>
+</td>
+</tr>
+</table>
+</p>
+
+
+</div>
+</body>
+</html>
