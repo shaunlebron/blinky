@@ -1,0 +1,33 @@
+
+<!doctype html>
+<html>
+<title>blinky - a fisheye mod for Quake</title>
+
+<head>
+</head>
+
+<body>
+<h1>blinky</h1>
+a fisheye mod for Quake
+
+<hr/>
+
+<h2>abstract</h2>
+<p>
+<strong>background</strong> Fisheye Quake was created by Aardappel in 1999.  It allows you to play Quake with a very wide Field of View.  It does this by rendering six standard 90&deg; views to a cubemap, thereby capturing all surrounding pixels like a Skybox.  All pixels are then mapped to the screen using a fisheye projection.  
+</p>
+<p>
+<strong>results</strong> Blinky is a new mod that extends Fisheye Quake by allowing user-customizable views in the form of Lua scripts.  We do this by introducing the concept of "Globes and Lenses", formally known as environment maps and projections, respectively.  A Globe script defines how to capture the surrounding pixels (like a cubemap), and a Lens script defines how to project those pixels to the screen (like a fisheye projection).  By using this generic interface, we are able to experiment with bizarre new views.  Many Lens scripts are created from existing map projections from geography and panoramic photography tools.
+</p>
+<p>
+<strong>conclusions</strong> We find that a tetrahedron Globe renders faster than a cubemap but at the cost of picture quality.  We also find that stereographic and Panini Lenses seem the most practical in real gameplay in comparison with other wide-angle Lenses that seem more nauseating.
+</p>
+
+<hr/>
+
+<h2>media</h2>
+
+
+</body>
+
+</html>
