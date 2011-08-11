@@ -556,6 +556,7 @@ void L_Init(void)
    Cmd_SetCompletion("globe", L_GlobeArg);
 
    // default view state
+   Cmd_ExecuteString("globe tetra", src_command);
    Cmd_ExecuteString("lens rectilinear", src_command);
    Cmd_ExecuteString("hfov 90", src_command);
 
@@ -1130,20 +1131,38 @@ void set_lensmap_grid(int lx, int ly, int px, int py, int plate_index)
       *PALIMAP(lx,ly) = plate_index;
 }
 
-// set a pixel on the lensmap from plate coordinate
-inline void set_lensmap_from_plate(int lx, int ly, double u, double v, int plate_index)
+// set a pixel on the lensmap from plate coordinates
+void set_lensmap_from_plate(int lx, int ly, int px, int py, int plate_index)
 {
+   // check valid lens coordinates
+   if (lx < 0 || lx >= width || ly < 0 || ly >= height) {
+      return;
+   }
+
+   // check valid plate coordinates
+   if (px <0 || px >= platesize || py < 0 || py >= platesize) {
+      return;
+   }
+
    // increase the number of times this side is used
    ++plate_tally[plate_index];
-
-   // convert to plate coordinates
-   int px = clamp((int)(u*platesize),0,platesize-1);
-   int py = clamp((int)(v*platesize),0,platesize-1);
 
    // map the lens pixel to this cubeface pixel
    *LENSMAP(lx,ly) = PLATEMAP(plate_index,px,py);
 
    set_lensmap_grid(lx,ly,px,py,plate_index);
+}
+
+// set a pixel on the lensmap from plate uv coordinates
+void set_lensmap_from_plate_uv(int lx, int ly, double u, double v, int plate_index)
+{
+   // convert to plate coordinates
+   //int px = clamp((int)(u*platesize),0,platesize-1);
+   //int py = clamp((int)(v*platesize),0,platesize-1);
+   int px = (int)(u*platesize);
+   int py = (int)(v*platesize);
+   
+   set_lensmap_from_plate(lx,ly,px,py,plate_index);
 }
 
 // retrieves the plate closest to the given ray
@@ -1227,7 +1246,7 @@ void set_lensmap_from_ray(int lx, int ly, double sx, double sy, double sz)
    }
 
    // map lens pixel to plate pixel
-   set_lensmap_from_plate(lx,ly,u,v,plate_index);
+   set_lensmap_from_plate_uv(lx,ly,u,v,plate_index);
 }
 
 void create_lensmap_inverse()
@@ -1259,11 +1278,192 @@ void create_lensmap_inverse()
    }
 }
 
+// convenience function for forward map calculation:
+//    maps uv coordinate on a texture to a screen coordinate
+int uv_to_screen(int plate_index, double u, double v, int *lx, int *ly)
+{
+   // get ray from uv coordinates
+   vec3_t ray;
+   plate_uv_to_ray(&plates[plate_index], u, v, ray);
+
+   // map ray to image coordinates
+   double x,y;
+   int status = lua_lens_forward(ray,&x,&y);
+   if (status == 0 || status == -1) { return status; }
+
+   // map image to screen coordinates
+   *lx = (int)(x/scale + width/2);
+   *ly = (int)(-y/scale + height/2);
+
+   return status;
+}
+
+// fills a quad on the lensmap using the given plate coordinate
+void drawQuad(int *tl, int *tr, int *bl, int *br,
+      int plate_index, int px, int py)
+{
+   // array for quad corners in clockwise order
+   int *p[] = { tl, tr, br, bl };
+
+   // get bounds
+   int x = tl[0], y = tl[1];
+   int miny=y, maxy=y;
+   int minx=x, maxx=x;
+   int i;
+   for (i=1; i<4; i++) {
+      int tx = p[i][0];
+      if (tx < minx) { minx = tx; }
+      else if (tx > maxx) { maxx = tx; }
+
+      int ty = p[i][1];
+      if (ty < miny) { miny = ty; }
+      else if (ty > maxy) { maxy = ty; }
+   }
+
+   // temp solution for keeping quads from wrapping around
+   //    the boundaries of the image. I guess that quads
+   //    will not get very big unless they're doing wrapping.
+   // actual clipping will require knowledge of the boundary.
+   const int maxdiff = 20;
+   if (abs(minx-maxx) > maxdiff || abs(miny-maxy) > maxdiff) {
+      return;
+   }
+
+   // pixel
+   if (miny == maxy && minx == maxx) {
+      set_lensmap_from_plate(x,y,px,py,plate_index);
+      return;
+   }
+
+   // horizontal line
+   if (miny == maxy) {
+      int tx;
+      for (tx=minx; tx<=maxx; ++tx) {
+         set_lensmap_from_plate(tx,miny,px,py,plate_index);
+      }
+      return;
+   }
+
+   // vertical line
+   if (minx == maxx) {
+      int ty;
+      for (ty=miny; ty<=maxy; ++ty) {
+         set_lensmap_from_plate(x,ty,px,py,plate_index);
+      }
+      return;
+   }
+
+   // quad
+   for (y=miny; y<=maxy; ++y) {
+
+      // get x points
+      int tx[2] = {minx,maxx};
+      int txi=0; // tx index
+      int j=3;
+      for (i=0; i<4; ++i) {
+         int ix = p[i][0], iy = p[i][1];
+         int jx = p[j][0], jy = p[j][1];
+         if ((iy < y && y <= jy) || (jy < y && y <= iy)) {
+            double dy = jy-iy;
+            double dx = jx-ix;
+            tx[txi] = (int)(ix + (y-iy)/dy*dx);
+            if (++txi == 2) break;
+         }
+         j=i;
+      }
+
+      // order x points
+      if (tx[0] > tx[1]) {
+         int temp = tx[0];
+         tx[0] = tx[1];
+         tx[1] = temp;
+      }
+
+      // sanity check on distance
+      if (tx[1] - tx[0] > maxdiff)
+      {
+         Con_Printf("%d > maxdiff\n", tx[1]-tx[0]);
+         return;
+      }
+
+      // draw horizontal line between x points
+      for (x=tx[0]; x<=tx[1]; ++x) {
+         set_lensmap_from_plate(x,y,px,py,plate_index);
+      }
+   }
+}
+
 void create_lensmap_forward()
 {
-   int px, py;
-   int plate_index;
+   int *rowa = malloc((platesize+1)*sizeof(int[2]));
+   int *rowb = malloc((platesize+1)*sizeof(int[2]));
+   int *top = rowa;
+   int *bot = rowb;
 
+   int plate_index;
+   for (plate_index = 0; plate_index < numplates; ++plate_index)
+   {
+      int px, py;
+      for (py = 0; py < platesize; ++py) {
+
+         // FIND ALL DESTINATION SCREEN COORDINATES FOR THIS TEXTURE ROW ********************
+
+         // compute upper points
+         if (py == 0) {
+            double v = (py - 0.5) / platesize;
+            for (px = 0; px < platesize; ++px) {
+               // compute left point
+               if (px == 0) {
+                  double u = (px - 0.5) / platesize;
+                  int status = uv_to_screen(plate_index, u, v, &top[0], &top[1]);
+                  if (status == 0) continue; else if (status == -1) return;
+               }
+               // compute right point
+               double u = (px + 0.5) / platesize;
+               int index = 2*(px+1);
+               int status = uv_to_screen(plate_index, u, v, &top[index], &top[index+1]);
+               if (status == 0) continue; else if (status == -1) return;
+            }
+         }
+         else {
+            // swap references so that the previous bottom becomes our current top
+            int *temp = top;
+            top = bot;
+            bot = temp;
+         }
+
+         // compute lower points
+         double v = (py + 0.5) / platesize;
+         for (px = 0; px < platesize; ++px) {
+            // compute left point
+            if (px == 0) {
+               double u = (px - 0.5) / platesize;
+               int status = uv_to_screen(plate_index, u, v, &bot[0], &bot[1]);
+               if (status == 0) continue; else if (status == -1) return;
+            }
+            // compute right point
+            double u = (px + 0.5) / platesize;
+            int index = 2*(px+1);
+            int status = uv_to_screen(plate_index, u, v, &bot[index], &bot[index+1]);
+            if (status == 0) continue; else if (status == -1) return;
+         }
+
+         // DRAW QUAD FOR EACH PIXEL IN THIS TEXTURE ROW ***********************************
+
+         for (px = 0; px < platesize; ++px) {
+            int index = 2*px;
+            drawQuad(&top[index], &top[index+2], &bot[index], &bot[index+2], plate_index,px,py);
+         }
+
+      }
+   }
+
+   free(top);
+   free(bot);
+
+   // old method for 1-to-1 mapping of texture pixels to screen pixels.
+   //    this leaves holes in the screen.
+   /*
    for (plate_index = 0; plate_index < numplates; ++plate_index)
    {
       for (py=0; py<platesize; ++py)
@@ -1296,10 +1496,11 @@ void create_lensmap_forward()
             if (lx < 0 || lx >= width || ly < 0 || ly >= height)
                continue;
 
-            set_lensmap_from_plate(lx,ly,u,v,plate_index);
+            set_lensmap_from_plate(lx,ly,px,py,plate_index);
          }
       }
    }
+   */
 }
 
 void create_lensmap()
