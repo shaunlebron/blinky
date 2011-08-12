@@ -8,19 +8,21 @@
 
 <body>
 <h1>blinky</h1>
-a fisheye experiment for wide FOV gameplay
-
+a fisheye experiment for panoramic gaming <br/>
+Shaun Williams</br>
+<hr/>
+<strong>NOTE</strong>: This research page is under construction but the project is complete and available for download below.
 <hr/>
 
 <h2>Abstract</h2>
 <p>
-<strong>background</strong> Fisheye Quake was created by Aardappel in 1999.  It allows you to play Quake with a very wide Field of View.  It does this by rendering six standard 90&deg; views to a cubemap, thereby capturing all surrounding pixels like a Skybox.  All pixels are then mapped to the screen using a fisheye projection.
+It is known that the limitations of a camera's Field of View (FOV) can be overcome by using fisheye lenses or by "stitching" multiple photographs together to form a panorama.  Both are commonly used in photography and cinema but have not seen wide use in computer graphics.  We experiment with applying these techniques in this context by building a generic interface to the open-source Fisheye Quake.
 </p>
 <p>
-<strong>results</strong> Blinky is a new mod that extends Fisheye Quake by allowing user-customizable views in the form of Lua scripts.  We do this by introducing the concept of "Globes and Lenses", formally known as environment maps and projections, respectively.  A Globe script defines how to capture the surrounding pixels (like a cubemap), and a Lens script defines how to project those pixels to the screen (like a fisheye projection).  By using this generic interface, we are able to experiment with bizarre new views.  Many Lens scripts are created from existing map projections from cartography and panoramic photography tools.
+We introduce a "Globe" as a collection of camera configurations for capturing the entire surrounding image.  We also introduce a "Lens" as a function that shapes the final panorama.  All of the provided "Lenses" are implemented from existing map projections used in cartography and panoramic photography tools.  
 </p>
 <p>
-<strong>conclusions</strong> We find that a tetrahedron Globe renders faster than a cubemap but at the cost of picture quality.  We also find that stereographic and Panini Lenses seem the most practical in real gameplay in comparison with other wide-angle Lenses that seem more nauseating.
+In conclusion, we find that a tetrahedron Globe renders faster than a cube but at the cost of picture quality.  We also find that stereographic and Panini Lenses seem the most practical in comparison with other wide-angle Lenses that may induce nausea.
 </p>
 
 <hr/>
@@ -97,6 +99,69 @@ fit
 </pre>
 
 <hr/>
+
+<h2>Globes</h2>
+<p>
+A Globe script contains a collection of square plates.  Each plate provides a piece of the surrounding image.  The script describes where to point the camera and how far to zoom for each plate image.  It is called a Globe because you can imagine morphing these plates into a sphere of pixels around you. 
+</p>
+<p>
+Blinky comes bundled with the following Globes.  The previews show a Mercator Lens with a colored grid showing how each plate fits into the final image.
+</p>
+
+<h3>Cube</h3>
+This is the standard cubemap that renders six 90&deg; views.  It functions like a Skybox and has no overlap.  It is the highest quality Globe, but has the overhead of having to render six views per frame.
+<table>
+
+<tr>
+<td>
+   <a href="shots/cube_mercator.gif"><img src="shots/cube_mercator.gif" width=350/></a>
+</td>
+<td>
+   <a href="shots/cube_mercator_rubix.gif"><img src="shots/cube_mercator_rubix.gif" width=350/></a>
+</td>
+</tr>
+
+</table>
+
+<h3>Triangular Prism</h3>
+This is a triangular prism that renders a total of five views:  three 120&deg; views and two 128&deg; views for the top and bottom, with some overlap between the plates.  It is second to the Cube Globe for image quality, but slightly faster in rendering.
+
+<table>
+<tr>
+<td>
+   <a href="shots/trism_mercator.gif"><img src="shots/trism_mercator.gif" width=350/></a>
+</td>
+<td>
+   <a href="shots/trism_mercator_rubix.gif"><img src="shots/trism_mercator_rubix.gif" width=350/></a>
+</td>
+</tr>
+</table>
+
+<h3>Tetrahedron</h3>
+This is a tetrahedron that renders a total of four 142&deg; views, which is the minimum amount of plates required to capture the whole environment.  There is some overlap between the plates.  It is the fastest, but lowest quality Globe.
+
+<table>
+<tr>
+<td>
+   <a href="shots/tetra_mercator.gif"><img src="shots/tetra_mercator.gif" width=350/></a>
+</td>
+<td>
+   <a href="shots/tetra_mercator_rubix.gif"><img src="shots/tetra_mercator_rubix.gif" width=350/></a>
+</td>
+</tr>
+</table>
+
+<h4>Performance Note</h4>
+Blinky only renders a Globe's plate if any part of it is visible on the screen.  
+
+<hr/>
+
+<h2>Lenses</h2>
+<p>
+A Lens script takes the Globe (a sphere of surrounding pixels) and projects it to flat frame.  A "forward map" takes a point on the Globe and returns a point on the frame.  An "inverse map" does that opposite by taking a point on the frame and returning a point on the Globe.
+</p>
+
+<strong>Note</strong> Inverse maps are prefered over Forward maps. 
 
 <h2>Acknowledgements</h2>
 
