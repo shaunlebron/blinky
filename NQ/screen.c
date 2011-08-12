@@ -335,10 +335,23 @@ SCR_SizeDown_f(void)
 
 // set flag to take screenshot right after the screen is drawn
 // this is to bypass an anomaly with the video buffer getting mangled after VID_Update
+// we also added a desire screenshot name
 static int screenshot_due = 0;
+static int screenshot_bare;
+static char screenshot_name[80];
 void
 SCR_ScreenShot_f_due(void)
 {
+   screenshot_bare = 0;
+   if (Cmd_Argc() < 2) { // no name given
+      screenshot_name[0] = 0;
+   }
+   else {
+      strcpy(screenshot_name, Cmd_Argv(1));
+      if (Cmd_Argc() > 2) { // bare flag given
+         screenshot_bare = Q_atoi(Cmd_Argv(2));
+      }
+   }
    screenshot_due = 1;
 }
 
@@ -642,18 +655,23 @@ SCR_ScreenShot_f(void)
 //
 // find a file name to save it to
 //
-    strcpy(pcxname, "quake00.pcx");
-
-    for (i = 0; i <= 99; i++) {
-	pcxname[5] = i / 10 + '0';
-	pcxname[6] = i % 10 + '0';
-	sprintf(checkname, "%s/%s", com_gamedir, pcxname);
-	if (Sys_FileTime(checkname) == -1)
-	    break;		// file doesn't exist
+    if (strlen(screenshot_name) > 0) {
+       sprintf(pcxname, "%s.pcx", screenshot_name);
     }
-    if (i == 100) {
-	Con_Printf("SCR_ScreenShot_f: Couldn't create a PCX file\n");
-	return;
+    else {
+       strcpy(pcxname, "quake00.pcx");
+
+       for (i = 0; i <= 99; i++) {
+      pcxname[5] = i / 10 + '0';
+      pcxname[6] = i % 10 + '0';
+      sprintf(checkname, "%s/%s", com_gamedir, pcxname);
+      if (Sys_FileTime(checkname) == -1)
+          break;		// file doesn't exist
+       }
+       if (i == 100) {
+      Con_Printf("SCR_ScreenShot_f: Couldn't create a PCX file\n");
+      return;
+       }
     }
 //
 // save the pcx file
@@ -832,6 +850,7 @@ SCR_UpdateScreen(void)
 {
     static float oldscr_viewsize;
     vrect_t vrect;
+    int draw_bare = screenshot_due && screenshot_bare;
 
     if (scr_skipupdate || block_drawing)
 	return;
@@ -909,7 +928,7 @@ SCR_UpdateScreen(void)
     if (scr_drawdialog) {
 	Sbar_Draw();
 	Draw_FadeScreen();
-	SCR_DrawNotifyString();
+	if (!draw_bare) SCR_DrawNotifyString();
 	scr_copyeverything = true;
     } else if (scr_drawloading) {
 	SCR_DrawLoading();
@@ -926,9 +945,10 @@ SCR_UpdateScreen(void)
 	SCR_DrawNet();
 	SCR_DrawTurtle();
 	SCR_DrawPause();
-	SCR_CheckDrawCenterString();
+	if (!draw_bare) SCR_CheckDrawCenterString();
 	Sbar_Draw();
-	SCR_DrawConsole();
+
+   if (!draw_bare) SCR_DrawConsole();
 	M_Draw();
     }
 
