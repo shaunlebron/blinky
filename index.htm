@@ -8,16 +8,16 @@
 
 <body>
 <h1>blinky</h1>
-a fisheye mod for Quake
+a fisheye experiment for wide FOV gameplay
 
 <hr/>
 
 <h2>abstract</h2>
 <p>
-<strong>background</strong> Fisheye Quake was created by Aardappel in 1999.  It allows you to play Quake with a very wide Field of View.  It does this by rendering six standard 90&deg; views to a cubemap, thereby capturing all surrounding pixels like a Skybox.  All pixels are then mapped to the screen using a fisheye projection.  
+<strong>background</strong> Fisheye Quake was created by Aardappel in 1999.  It allows you to play Quake with a very wide Field of View.  It does this by rendering six standard 90&deg; views to a cubemap, thereby capturing all surrounding pixels like a Skybox.  All pixels are then mapped to the screen using a fisheye projection.
 </p>
 <p>
-<strong>results</strong> Blinky is a new mod that extends Fisheye Quake by allowing user-customizable views in the form of Lua scripts.  We do this by introducing the concept of "Globes and Lenses", formally known as environment maps and projections, respectively.  A Globe script defines how to capture the surrounding pixels (like a cubemap), and a Lens script defines how to project those pixels to the screen (like a fisheye projection).  By using this generic interface, we are able to experiment with bizarre new views.  Many Lens scripts are created from existing map projections from geography and panoramic photography tools.
+<strong>results</strong> Blinky is a new mod that extends Fisheye Quake by allowing user-customizable views in the form of Lua scripts.  We do this by introducing the concept of "Globes and Lenses", formally known as environment maps and projections, respectively.  A Globe script defines how to capture the surrounding pixels (like a cubemap), and a Lens script defines how to project those pixels to the screen (like a fisheye projection).  By using this generic interface, we are able to experiment with bizarre new views.  Many Lens scripts are created from existing map projections from cartography and panoramic photography tools.
 </p>
 <p>
 <strong>conclusions</strong> We find that a tetrahedron Globe renders faster than a cubemap but at the cost of picture quality.  We also find that stereographic and Panini Lenses seem the most practical in real gameplay in comparison with other wide-angle Lenses that seem more nauseating.
@@ -26,7 +26,97 @@ a fisheye mod for Quake
 <hr/>
 
 <h2>media</h2>
+<object width="640" height="390"><param name="movie" value="http://www.youtube.com/v/jQOJ3yCK8pI&hl=en_US&feature=player_embedded&version=3"></param><param name="allowFullScreen" value="true"></param><param name="allowScriptAccess" value="always"></param><embed src="http://www.youtube.com/v/jQOJ3yCK8pI&hl=en_US&feature=player_embedded&version=3" type="application/x-shockwave-flash" allowfullscreen="true" allowScriptAccess="always" width="640" height="390"></embed></object>
 
+<hr/>
+
+<h2>download</h2>
+
+<p>
+<a href="blinky-0.1.zip">blinky for windows xp</a>
+</p>
+
+<p>
+<a href="http://github.com/shaunew/blinky">source code</a>
+</p>
+
+<hr/>
+
+<h2>install</h2>
+
+<h3>Windows</h3>
+<p>
+Windows users must extract the folder to their Quake directory and run tyr-quake.exe to start.
+</p>
+
+<h3>Linux</h3>
+<p>
+Linux users will have to compile from source.  LuaJIT is a required library.
+</p>
+
+<p>
+After installing LuaJIT, run the following to build:
+<pre>
+$ make prepare
+$ make tyr-quake
+</pre>
+Now copy tyr-quake to your quake directory, and copy the globes/ and lenses/ folders to your $HOME/.tyrquake directory.
+</p>
+
+<hr/>
+
+<h2>Commands</h2>
+Bring down the console with the tilde (~) key and you can type the following commands:
+
+<pre>
+globe &lt;name&gt; : choose a globe (affects picture quality and render speed)
+lens &lt;name&gt; : choose a lens (affects the shape of your view)
+hfov &lt;degrees&gt; : zoom by specifying horizontal FOV
+vfov &lt;degrees&gt; : zoom by specifying vertical FOV
+hfit : zoom by fitting your view horizontal bounds in the screen
+hfit : zoom by fitting your view's vertical bounds in the screen
+fit : zoom by fitting your whole view in the screen
+rubix : display colored grid for each rendered view in the globe
+</pre>
+
+<strong>Note</strong>: the globe and lens commands both have tab completion</p>
+
+<h3>Examples (as seen in video above)</h3>
+<p>
+A very usable modern panoramic projection called Panini:
+<pre>
+globe cube
+lens panini
+hfov 180
+</pre>
+</p>
+
+<p>
+A full map projection used by National Geographic:
+<pre>
+globe tetra
+lens winkeltripel
+fit
+</pre>
+
+<hr/>
+
+<h2>Acknowledgements</h2>
+
+<ul>
+   <li><a href="http://strlen.com/gfxengine/fisheyequake/">Aardappel for Fisheye Quake</a></li>
+   <li><a href="http://en.wikipedia.org/wiki/Fisheye_lens#Mapping_function">Peter Weiden for Fisheye Projection illustrations</a></li>
+   <li><a href="http://vedutismo.net/Pannini/">Thomas K. Sharpless for Panini Projection</a></li>
+   <li><a href="http://home.comcast.net/~gevenden56/proj/">Gerald Evenden for libproj</a></li>
+   <li><a href="http://www.progonos.com/furuti/MapProj/Normal/TOC/cartTOC.html">Carlos Furuti for Progonos</a></li>
+   <li>Ashlee for the support</li>
+</ul>
+
+<hr/>
+
+<h2>History</h2>
+Project Start: April 2011<br/>
+Last Update: August 12, 2011 </br>
 
 </body>
 
