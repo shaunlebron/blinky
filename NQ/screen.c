@@ -270,9 +270,9 @@ SCR_CalcRefdef(void)
     r_refdef.fov_x = 90;
 
 // intermission is always full screen
-    if (cl.intermission)
-	size = 120;
-    else
+    //if (cl.intermission)
+	//size = 120;
+    //else
 	size = scr_viewsize.value;
 
     if (size >= 120)

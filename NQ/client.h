@@ -88,7 +88,7 @@ typedef struct {
 #define	MAX_EFRAGS	640
 
 #define	MAX_MAPSTRING	2048
-#define	MAX_DEMOS	8
+#define	MAX_DEMOS	32
 #define	MAX_DEMONAME	16
 
 #define	SIGNONS		4	// signon messages to receive before connected

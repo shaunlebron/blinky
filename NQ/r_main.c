@@ -349,8 +349,8 @@ R_SetVrect(vrect_t *pvrectin, vrect_t *pvrect, int lineadj)
 
     if (cl.intermission) {
 	//full = true;
-	size = 100.0;
-	lineadj = 0;
+	//size = 100.0;
+	//lineadj = 0;
     }
     size /= 100.0;
 
