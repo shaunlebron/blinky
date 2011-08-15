@@ -7,6 +7,11 @@
 
 <style type="text/css">
 
+p
+{
+   line-height:1.5em;
+}
+
 div.globe_images
 {
    height:170px;
@@ -37,10 +42,7 @@ Shaun Williams</br>
 
 <h2>Abstract</h2>
 <p>
-It is known that the limitations of a camera's Field of View (FOV) can be overcome by using fisheye lenses or by "stitching" multiple photographs together to form a panorama.  Both are commonly used in photography and cinema but have not seen wide use in computer graphics.  We experiment with applying these techniques in this context by building a generic interface to the open-source Fisheye Quake.
-</p>
-<p>
-We introduce a "Globe" as a collection of camera configurations for capturing the entire surrounding image.  We also introduce a "Lens" as a function that shapes the final panorama.  All of the provided "Lenses" are implemented from existing map projections used in cartography and panoramic photography tools.  
+It is known that the limitations of a camera's Field of View (FOV) can be overcome by using fisheye lenses or by "stitching" multiple photographs together to form a panorama.  Both are commonly used in photography and cinema but have not seen wide use in computer graphics.  One such use was seen in 1999, when Fisheye Quake was released as a fisheye addon to the popular game Quake.  We wish to exploit its technology to explore other panoramic methods.  To this end, we introduce a new extension to Fisheye Quake called Blinky.  It abstracts away the details of environment mapping and projection logic into Lua scripts, called Globe and Lens scripts, respectively.  In this paper, we detail the architecture of Blinky as well as several Globes and Lenses written for it.
 </p>
 <p>
 In conclusion, we find that a tetrahedron Globe renders faster than a cube but at the cost of picture quality.  We also find that stereographic and Panini Lenses seem the most practical in comparison with other wide-angle Lenses that may induce nausea.
