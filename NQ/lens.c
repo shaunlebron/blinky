@@ -499,6 +499,42 @@ static struct stree_root * L_LensArg(const char *arg)
 
 int lua_globe_load(void);
 
+int save_globe;
+char save_globe_name[32];
+void L_SaveGlobe(void)
+{
+   if (Cmd_Argc() < 2) { // no file name given
+      Con_Printf("saveglobe <name>: screenshot the globe plates\n");
+      return;
+   }
+
+   strncpy(save_globe_name, Cmd_Argv(1), 32);
+
+   save_globe = 1;
+}
+
+void SaveGlobe(void)
+{
+   int i;
+   char pcxname[32];
+
+   save_globe = 0;
+
+    D_EnableBackBufferAccess();	// enable direct drawing of console to back
+   void WritePCXfile(char *filename, byte *data, int width, int height, int rowbytes, byte *palette);
+
+   for (i=0; i<numplates; ++i) 
+   {
+      snprintf(pcxname, 32, "%s%d.pcx", save_globe_name, i);
+      WritePCXfile(pcxname, platemap+platesize*platesize*i, platesize, platesize, platesize, host_basepal);
+
+    Con_Printf("Wrote %s\n", pcxname);
+   }
+
+    D_DisableBackBufferAccess();	// for adapters that can't stay mapped in
+    //  for linear writes all the time
+}
+
 void L_Globe(void)
 {
    if (Cmd_Argc() < 2) { // no globe name given
@@ -554,6 +590,7 @@ void L_Init(void)
    Cmd_SetCompletion("lens", L_LensArg);
    Cmd_AddCommand("globe", L_Globe);
    Cmd_SetCompletion("globe", L_GlobeArg);
+   Cmd_AddCommand("saveglobe", L_SaveGlobe);
 
    // default view state
    Cmd_ExecuteString("globe tetra", src_command);
@@ -1672,6 +1709,11 @@ void L_RenderView()
 
          render_plate(plate, f, r, u);
       //}
+   }
+
+   // save plates upon request from the "saveglobe" command
+   if (save_globe) {
+      SaveGlobe();
    }
 
    // render our view
