@@ -7,7 +7,7 @@
 
 <style type="text/css">
 
-p
+body
 {
    line-height:1.5em;
 }
@@ -33,19 +33,20 @@ h1,h2,h3,h4,h5,p
 </head>
 
 <body>
+
 <h1>blinky</h1>
-a fisheye experiment for panoramic gaming <br/>
-Shaun Williams</br>
+an experiment in panoramic gaming
+
 <hr/>
 <strong>NOTE</strong>: This research page is under construction but the project is complete and available for download below.
 <hr/>
 
 <h2>Abstract</h2>
 <p>
-It is known that the limitations of a camera's Field of View (FOV) can be overcome by using fisheye lenses or by "stitching" multiple photographs together to form a panorama.  Both are commonly used in photography and cinema but have not seen wide use in computer graphics.  One such use was seen in 1999, when Fisheye Quake was released as a fisheye addon to the popular game Quake.  We wish to exploit its technology to explore other panoramic methods.  To this end, we introduce a new extension to Fisheye Quake called Blinky.  It abstracts away the details of environment mapping and projection logic into Lua scripts, called Globe and Lens scripts, respectively.  In this paper, we detail the architecture of Blinky as well as several Globes and Lenses written for it.
+It is known that the limitations of a camera's Field of View (FOV) can be overcome by "stitching" multiple photographs together into a panorama.  This method was only demonstrated once in the context of a game by Fisheye Quake in 1999.  We wish to leverage its technology to explore other panoramic methods.  
 </p>
 <p>
-In conclusion, we find that a tetrahedron Globe renders faster than a cube but at the cost of picture quality.  We also find that stereographic and Panini Lenses seem the most practical in comparison with other wide-angle Lenses that may induce nausea.
+To this end, we introduce a new extension to Fisheye Quake called Blinky.  It abstracts away the details of "environment mapping" and "projection" logic into Lua scripts, called Globe and Lens scripts, respectively.  In this paper, we detail the architecture of Blinky as well as the different perspectives that we were able to produce with it.
 </p>
 
 <hr/>
@@ -181,6 +182,8 @@ A Lens script takes the Globe (a sphere of surrounding pixels) and projects it t
 </p>
 
 <strong>Note</strong> Inverse maps are prefered over Forward maps. 
+
+<hr/>
 
 <h2>Acknowledgements</h2>
 
