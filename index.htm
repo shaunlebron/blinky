@@ -43,10 +43,13 @@ an experiment in panoramic gaming
 
 <h2>Abstract</h2>
 <p>
-It is known that the limitations of a camera's Field of View (FOV) can be overcome by "stitching" multiple photographs together into a panorama.  This method was only demonstrated once in the context of a game by Fisheye Quake in 1999.  We wish to leverage its technology to explore other panoramic methods.  
+It is known that the limitations of a camera's Field of View (FOV) can be overcome by "stitching" multiple photographs together into a panorama.  This method has only been demonstrated once in the context of a game by Fisheye Quake in 1999.  It stitched six views into a single perspective using the <em>equidistant fisheye</em> projection.  We wish to continue in this direction by exploring the practicality of other panoramic methods in gameplay.  
 </p>
 <p>
-To this end, we introduce a new extension to Fisheye Quake called Blinky.  It abstracts away the details of "environment mapping" and "projection" logic into Lua scripts, called Globe and Lens scripts, respectively.  In this paper, we detail the architecture of Blinky as well as the different perspectives that we were able to produce with it.
+To this end, we introduce an extension to Fisheye Quake called Blinky.  It provides a new front end for customizing your perspective.  Specifically, the <em>environment map</em> and <em>projection</em> logic are abstracted into Lua scripts, called Globe and Lens scripts, respectively.  In this paper, we discuss this new architecture as well as the different perspectives that were produced with it.
+</p>
+<p>
+In conclusion, we find that the Panini projection produces a practical wide angle perspective for gameplay that is less prone to nausea than the other projections.
 </p>
 
 <hr/>
