@@ -3,6 +3,8 @@ rows = 3
 
 hfit_size = cols
 vfit_size = rows
+max_hfov = 360
+max_vfov = 180
 
 function col(x)
    local nx = x+cols/2
@@ -26,6 +28,10 @@ function lens_inverse(x,y)
    x = x - 0.5
    local r,v = row(y)
    local c,u = col(x)
+   u = u - 0.5
+   v = v - 0.5
+   v = -v
+
    if r < 0 or r >= rows or c < -1 or c >= cols then
       return nil
    end
@@ -35,60 +41,80 @@ function lens_inverse(x,y)
       end
    end
 
-   local front = 0 
-   local right = 1
-   local left = 2
-   local back = 3
-   local top = 4
-   local bottom = 5
-   local rx,ry,rz
-
    local plate
-   if r == 0 then
-      plate = top
+   if r == 0 then 
+      -- top
+      return u,0.5,-v
    elseif r == 2 then
-      plate = bottom
+      -- bottom
+      return u,-0.5,v
    elseif c == 0 then
-      plate = left
+      -- left
+      return -0.5,v,u
    elseif c == 1 then
-      plate = front
+      -- front
+      return u,v,0.5
    elseif c == 2 then
-      plate = right
+      -- right
+      return 0.5,v,-u
    elseif c == 3 or c == -1 then
-      plate = back
+      -- back
+      return -u,v,-0.5
    else
       return nil
    end
+end
 
-   u = u - 0.5
-   v = v - 0.5
-   v = -v
+function lens_forward(x,y,z)
+   -- only to be used for FOV
 
-   if plate == front then
-      rx = u
-      ry = v
-      rz = 0.5
-   elseif plate == right then
-      rx = 0.5
-      ry = v
-      rz = -u
-   elseif plate == left then
-      rx = -0.5
-      ry = v
-      rz = u
-   elseif plate == back then
-      rx = -u
-      ry = v
-      rz = -0.5
-   elseif plate == top then
-      rx = u
-      ry = 0.5
-      rz = -v
-   elseif plate == bottom then
-      rx = u
-      ry = -0.5
-      rz = v
+   local ax = abs(x)
+   local ay = abs(y)
+   local az = abs(z)
+
+   local max = math.max(ax,ay,az)
+
+   local u,v
+   if max == ax then
+      if x > 0 then
+         -- right
+         u = -z/x*0.5
+         v = y/x*0.5
+         return 1+u,v
+      else
+         -- left
+         u = z/-x*0.5
+         v = y/-x*0.5
+         return -1+u,v
+      end
+   elseif max == ay then
+      if y > 0 then
+         -- top
+         u = x/y*0.5
+         v = -z/y*0.5
+         return u,1+v
+      else
+         -- bottom
+         u = x/-y*0.5
+         v = z/-y*0.5
+         return u,-1+v
+      end
+   elseif max == az then
+      if z > 0 then
+         -- front
+         u = x/z*0.5
+         v = y/z*0.5
+         return u,v
+      else
+         -- back
+         u = -x/-z*0.5
+         v = y/-z*0.5
+         if u > 0 then
+            return -2+u,v
+         else
+            return 2+u,v
+         end
+      end
    end
 
-   return rx,ry,rz
 end
