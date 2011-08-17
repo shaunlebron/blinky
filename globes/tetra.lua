@@ -13,28 +13,30 @@ local d = s/2/tan(theta) -- center to edge
 local e = r*cos(d60) -- face to edge
 local f = h-c -- center to face
 
--- having to add 0.1 to compensate error roundoff
-local fovr = 2*atan(s/2/f)+0.1
-local fovd = fovr * 180 / pi
+-- compute fov
+local fovr = 2*atan(r/f)
+local fovd = fovr * 180 / pi + 1 -- +1 to get rid of the hole in the center
+print(fovd)
 
 local y = e - e*e/(r+e)
 local z =-f + h*e/(r+e)
 
 plates = {
-   { -- top
+   { -- bottom
       {0,-y/f,z/f},
       {0,-(e-y)/e,(-f-z)/e}, 
       fovd
    },
-   { -- left
+   { -- right
       {y/f*sin(d120),-y/f*cos(d120),z/f},
       {(e-y)/e*sin(d120),-(e-y)/e*cos(d120),(-f-z)/e}, 
       fovd
    },
-   { -- right
+   { -- left
       {y/f*sin(-d120),-y/f*cos(-d120),z/f},
       {(e-y)/e*sin(-d120),-(e-y)/e*cos(-d120),(-f-z)/e}, 
       fovd
    },
    {{0,0,-1},{0,-1,0},fovd} -- back
 }
+
