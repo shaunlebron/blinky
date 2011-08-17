@@ -23,9 +23,10 @@ function row(y)
 end
 
 function lens_inverse(x,y)
+   x = x - 0.5
    local r,v = row(y)
    local c,u = col(x)
-   if r < 0 or r >= rows or c < 0 or c >= cols then
+   if r < 0 or r >= rows or c < -1 or c >= cols then
       return nil
    end
    if r == 0 or r == 2 then
@@ -53,7 +54,7 @@ function lens_inverse(x,y)
       plate = front
    elseif c == 2 then
       plate = right
-   elseif c == 3 then
+   elseif c == 3 or c == -1 then
       plate = back
    else
       return nil
