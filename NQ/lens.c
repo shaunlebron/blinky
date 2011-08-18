@@ -500,17 +500,114 @@ static struct stree_root * L_LensArg(const char *arg)
 int lua_globe_load(void);
 
 int save_globe;
+int save_globe_full;
 char save_globe_name[32];
 void L_SaveGlobe(void)
 {
    if (Cmd_Argc() < 2) { // no file name given
-      Con_Printf("saveglobe <name>: screenshot the globe plates\n");
+      Con_Printf("saveglobe <name> [full flag=0]: screenshot the globe plates\n");
       return;
    }
 
    strncpy(save_globe_name, Cmd_Argv(1), 32);
 
+   if (Cmd_Argc() >= 3) {
+      save_globe_full = Q_atoi(Cmd_Argv(2));
+   }
+   else {
+      save_globe_full = 0;
+   }
    save_globe = 1;
+}
+
+typedef struct {
+    char manufacturer;
+    char version;
+    char encoding;
+    char bits_per_pixel;
+    unsigned short xmin, ymin, xmax, ymax;
+    unsigned short hres, vres;
+    unsigned char palette[48];
+    char reserved;
+    char color_planes;
+    unsigned short bytes_per_line;
+    unsigned short palette_type;
+    char filler[58];
+    unsigned char data;		// unbounded
+} pcx_t;
+
+int ray_to_plate_index(vec3_t ray);
+
+// copied from WritePCXfile in NQ/screen.c
+// write a plate 
+void WritePCXplate(char *filename, int plate_index, int full)
+{
+    // parameters from WritePCXfile
+    byte *data = platemap+platesize*platesize*plate_index;
+    int width = platesize;
+    int height = platesize;
+    int rowbytes = platesize;
+    byte *palette = host_basepal;
+
+    int i, j, length;
+    pcx_t *pcx;
+    byte *pack;
+
+    pcx = Hunk_TempAlloc(width * height * 2 + 1000);
+    if (pcx == NULL) {
+	Con_Printf("SCR_ScreenShot_f: not enough memory\n");
+	return;
+    }
+
+    pcx->manufacturer = 0x0a;	// PCX id
+    pcx->version = 5;		// 256 color
+    pcx->encoding = 1;		// uncompressed
+    pcx->bits_per_pixel = 8;	// 256 color
+    pcx->xmin = 0;
+    pcx->ymin = 0;
+    pcx->xmax = LittleShort((short)(width - 1));
+    pcx->ymax = LittleShort((short)(height - 1));
+    pcx->hres = LittleShort((short)width);
+    pcx->vres = LittleShort((short)height);
+    memset(pcx->palette, 0, sizeof(pcx->palette));
+    pcx->color_planes = 1;	// chunky image
+    pcx->bytes_per_line = LittleShort((short)width);
+    pcx->palette_type = LittleShort(2);	// not a grey scale
+    memset(pcx->filler, 0, sizeof(pcx->filler));
+
+// pack the image
+    pack = &pcx->data;
+
+    for (i = 0; i < height; i++) {
+       double v = ((double)i)/height;
+	for (j = 0; j < width; j++) {
+       double u = ((double)j)/width;
+
+          // 
+          vec3_t ray;
+          plate_uv_to_ray(&plates[plate_index], u, v, ray);
+          byte col = full || plate_index == ray_to_plate_index(ray) ? *data : 0xFE;
+
+          if ((col & 0xc0) == 0xc0) {
+             *pack++ = 0xc1;
+          }
+          *pack = col;
+
+          pack++;
+          data++;
+      }
+
+	data += rowbytes - width;
+    }
+
+// write the palette
+    *pack++ = 0x0c;		// palette ID byte
+    for (i = 0; i < 768; i++)
+	*pack++ = *palette++;
+
+// write output file
+    length = pack - (byte *)pcx;
+    COM_WriteFile(filename, pcx, length);
 }
 
 void SaveGlobe(void)
@@ -521,12 +618,11 @@ void SaveGlobe(void)
    save_globe = 0;
 
     D_EnableBackBufferAccess();	// enable direct drawing of console to back
-   void WritePCXfile(char *filename, byte *data, int width, int height, int rowbytes, byte *palette);
 
    for (i=0; i<numplates; ++i) 
    {
       snprintf(pcxname, 32, "%s%d.pcx", save_globe_name, i);
-      WritePCXfile(pcxname, platemap+platesize*platesize*i, platesize, platesize, platesize, host_basepal);
+      WritePCXplate(pcxname, i, save_globe_full);
 
     Con_Printf("Wrote %s\n", pcxname);
    }
