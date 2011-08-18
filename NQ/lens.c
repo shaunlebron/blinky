@@ -672,6 +672,7 @@ int lua_lens_inverse(double x, double y, vec3_t ray)
             ray[0] = lua_tonumber(lua, -3);
             ray[1] = lua_tonumber(lua, -2);
             ray[2] = lua_tonumber(lua, -1);
+            VectorNormalize(ray);
             status = 1;
          }
          else {
@@ -1206,22 +1207,22 @@ void set_lensmap_from_plate_uv(int lx, int ly, double u, double v, int plate_ind
 int ray_to_plate_index(vec3_t ray)
 {
    int i;
-   int min_i = 0; // minimum plate index
-   double min_a = 100000; // minimum angle
+   int plate = 0; // closest plate index
+
+   // maximum dotproduct 
+   //  = minimum acos(dotproduct) 
+   //  = minimum angle between vectors
+   double max_dp = -2;
 
    for (i=0; i<numplates; ++i) {
-
-      // get angle between the plate's view and the ray
-      double a = fabs(acos(DotProduct(ray, plates[i].forward))/(Length(ray)*Length(plates[i].forward)));
-
-      // update minimum angle
-      if (a < min_a) {
-         min_a = a;
-         min_i = i;
+      double dp = DotProduct(ray, plates[i].forward);
+      if (dp > max_dp) {
+         max_dp = dp;
+         plate = i;
       }
    }
 
-   return min_i;
+   return plate;
 }
 
 void plate_uv_to_ray(plate_t *plate, double u, double v, vec3_t ray)
