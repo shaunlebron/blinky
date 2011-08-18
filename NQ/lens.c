@@ -1206,23 +1206,31 @@ void set_lensmap_from_plate_uv(int lx, int ly, double u, double v, int plate_ind
 // retrieves the plate closest to the given ray
 int ray_to_plate_index(vec3_t ray)
 {
-   int i;
-   int plate = 0; // closest plate index
+   int plate_index = 0;
+
+   if (globePlateIndex != -1) {
+      // use user-defined plate selection function
+      if (lua_globe_plate(ray, &plate_index)) {
+         return plate_index;
+      }
+      return -1;
+   }
 
    // maximum dotproduct 
    //  = minimum acos(dotproduct) 
    //  = minimum angle between vectors
    double max_dp = -2;
 
+   int i;
    for (i=0; i<numplates; ++i) {
       double dp = DotProduct(ray, plates[i].forward);
       if (dp > max_dp) {
          max_dp = dp;
-         plate = i;
+         plate_index = i;
       }
    }
 
-   return plate;
+   return plate_index;
 }
 
 void plate_uv_to_ray(plate_t *plate, double u, double v, vec3_t ray)
@@ -1265,16 +1273,9 @@ void set_lensmap_from_ray(int lx, int ly, double sx, double sy, double sz)
    vec3_t ray = {sx,sy,sz};
 
    // get plate index
-   int plate_index;
-   if (globePlateIndex != -1) {
-      // use user-defined plate selection function
-      if (!lua_globe_plate(ray, &plate_index)) {
-         return;
-      }
-   }
-   else {
-      // find closest plate
-      plate_index = ray_to_plate_index(ray);
+   int plate_index = ray_to_plate_index(ray);
+   if (plate_index < 0) {
+      return;
    }
 
    // get texture coordinates
@@ -1488,7 +1489,17 @@ void create_lensmap_forward()
 
          // DRAW QUAD FOR EACH PIXEL IN THIS TEXTURE ROW ***********************************
 
+         v = ((double)py)/platesize;
          for (px = 0; px < platesize; ++px) {
+            
+            // skip overlapping region of texture
+            double u = ((double)px)/platesize;
+            vec3_t ray;
+            plate_uv_to_ray(&plates[plate_index], u, v, ray);
+            if (plate_index != ray_to_plate_index(ray)) {
+               continue;
+            }
+
             int index = 2*px;
             drawQuad(&top[index], &top[index+2], &bot[index], &bot[index+2], plate_index,px,py);
          }
