@@ -33,16 +33,18 @@ pre.code
 table.globes td
 {
    border-collapse: collapse;
+   border: 2px solid white;
    padding: 10px;
    width: 270px;
    text-align: center;
    background: #ddd;
 }
 
-table.globes td.caption
+table.globes td div.caption
 {
-   text-decoration: italic;
-   text-align: right;
+   text-align: center;
+   color: #555;
+   margin-bottom: 20px;
 }
 
 div.title
@@ -158,12 +160,15 @@ A Globe is the entire image of your environment, composed of smaller images stic
 <table class="globes">
 <tr>
    <td>
+      <div class="caption">Cube</div>
       <a href="shots/cube_full.gif"><img src="shots/cube_full.png"/></a>
    </td>
    <td>
+      <div class="caption">Triangular Prism</div>
       <a href="shots/trism_full.gif"><img src="shots/trism_full.png"/></a>
    </td>
    <td>
+      <div class="caption">Tetrahedron</div>
       <a href="shots/tetra_full.gif"><img src="shots/tetra_full.png"/></a>
    </td>
 </tr>
