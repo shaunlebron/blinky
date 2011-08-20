@@ -23,9 +23,65 @@ div.globe_images img
    margin:2px;
 }
 
-h1,h2,h3,h4,h5,p
+pre.code
 {
-   clear:both;
+   line-height: 1.25em;
+   margin-left: 25px;
+   padding: 5px;
+}
+
+table.globes td
+{
+   border-collapse: collapse;
+   padding: 10px;
+   width: 270px;
+   text-align: center;
+   background: #ddd;
+}
+
+table.globes td.caption
+{
+   text-decoration: italic;
+   text-align: right;
+}
+
+div.title
+{
+   background: #eee;
+   padding:10px;
+}
+
+div.title h1
+{
+   display:inline;
+}
+
+h2
+{
+   font-size: 1.25em;
+}
+
+p
+{
+   margin-left: 10px;
+}
+
+table.intro
+{
+float:right;
+margin:10px;
+}
+
+table.intro td
+{
+background: #666;
+padding: 10px;
+}
+
+table.intro div.caption
+{
+text-align:center;
+color:white;
 }
 
 </style>
@@ -34,12 +90,33 @@ h1,h2,h3,h4,h5,p
 
 <body>
 
-<h1>blinky</h1>
+<div class="title">
+<h1 class="title">blinky</h1>
+<img src="icons/Lisas-Wedding-6-eyed-Blinky-icon.png" alt="Blinky Icon by Jeanette Foshee" /><br/>
 an experiment in panoramic gaming
+</div>
 
-<hr/>
-<strong>NOTE</strong>: This research page is under construction but the project is complete and available for download below.
-<hr/>
+<table class="intro">
+<tr>
+<td>
+<a href="shots/intro90b.gif"><img src="shots/intro90b.gif" width=240 /></a>
+<div class="caption">90&deg; Standard <acronym title="Field of View">FOV</acronym></div>
+</td>
+</tr>
+<tr>
+<td>
+<a href="shots/intro180b.gif"><img src="shots/intro180b.gif" width=240 /></a>
+
+<div class="caption">180&deg; Panini <acronym title="Field of View">FOV</acronym></div>
+</td>
+</tr>
+<tr>
+<td>
+<a href="shots/intro360b.gif"><img src="shots/intro360b.gif" width=240 /></a>
+<div class="caption">360&deg; Fahey <acronym title="Field of View">FOV</acronym></div>
+</td>
+</tr>
+</table>
 
 <h2>Abstract</h2>
 <p>
@@ -52,13 +129,6 @@ To this end, we introduce an extension to Fisheye Quake called Blinky.  It provi
 As a result, we find that the Panini projection produces the most practical wide angle perspective for gameplay that is less prone to nausea than the other projections.
 </p>
 
-<hr/>
-
-<h2>Preview</h2>
-<object width="640" height="390"><param name="movie" value="http://www.youtube.com/v/jQOJ3yCK8pI&hl=en_US&feature=player_embedded&version=3"></param><param name="allowFullScreen" value="true"></param><param name="allowScriptAccess" value="always"></param><embed src="http://www.youtube.com/v/jQOJ3yCK8pI&hl=en_US&feature=player_embedded&version=3" type="application/x-shockwave-flash" allowfullscreen="true" allowScriptAccess="always" width="640" height="390"></embed></object>
-
-<hr/>
-
 <h2>Download</h2>
 
 <ul>
@@ -66,109 +136,43 @@ As a result, we find that the Panini projection produces the most practical wide
 <li><a href="http://github.com/shaunew/blinky">source code</a></li>
 </ul>
 
-<hr/>
-
-<h2>Install</h2>
-
-<h3>Windows</h3>
-<p>
-Windows users must extract the folder to their Quake directory and run tyr-quake.exe to start.
-</p>
-
-<h3>Linux</h3>
-<p>
-Linux users will have to compile from source.  LuaJIT is a required library.
-</p>
-
-<p>
-After installing LuaJIT, run the following to build:
-<pre>
-$ make prepare
-$ make tyr-quake
-</pre>
-Now copy tyr-quake to your quake directory, and copy the globes/ and lenses/ folders to your $HOME/.tyrquake directory.
-</p>
-
-<hr/>
-
 <h2>Commands</h2>
 Bring down the console with the tilde (~) key and you can type the following commands:
 
-<pre>
-globe &lt;name&gt; : choose a globe (affects picture quality and render speed)
-lens &lt;name&gt; : choose a lens (affects the shape of your view)
+<pre class="code">
+globe &lt;name&gt;   : choose a globe (affects picture quality and render speed)
+lens &lt;name&gt;    : choose a lens (affects the shape of your view)
 hfov &lt;degrees&gt; : zoom by specifying horizontal FOV
 vfov &lt;degrees&gt; : zoom by specifying vertical FOV
-hfit : zoom by fitting your view horizontal bounds in the screen
-hfit : zoom by fitting your view's vertical bounds in the screen
-fit : zoom by fitting your whole view in the screen
-rubix : display colored grid for each rendered view in the globe
+hfit           : zoom by fitting your view horizontal bounds in the screen
+hfit           : zoom by fitting your view's vertical bounds in the screen
+fit            : zoom by fitting your whole view in the screen
+rubix          : display colored grid for each rendered view in the globe
 </pre>
-
-<strong>Note</strong>: the globe and lens commands both have tab completion</p>
-
-<h3>Examples (as seen in video above)</h3>
-<p>
-A very usable modern panoramic projection called Panini:
-<pre>
-globe cube
-lens panini
-hfov 180
-</pre>
-</p>
-
-<p>
-A full map projection used by National Geographic:
-<pre>
-globe tetra
-lens winkeltripel
-fit
-</pre>
-
-<hr/>
 
 <h2>Globes</h2>
 <p>
-A Globe script contains a collection of square plates.  Each plate provides a piece of the surrounding image.  The script describes where to point the camera and how far to zoom for each plate image.  It is called a Globe because you can imagine morphing these plates into a sphere of pixels around you. 
-</p>
-<p>
-Blinky comes bundled with the following Globes.
+A Globe is the entire image of your environment, composed of smaller images stiched together.  Thus, a Globe script describes where to point the camera and how far to zoom when capturing each of image plate.  The following is an illustration of the packaged globes in Blinky.  They show how each image rendered by Quake fits together into a polyhedron net after some cropping.
 </p>
 
-<h3>Cube</h3>
-<p>
-This is the standard cubemap that renders six 90&deg; views.  It functions like a Skybox and has no overlap.  It is the highest quality Globe, but has the overhead of having to render six views per frame:
-</p>
-
-<a href="shots/cube_full.gif"><img src="shots/cube_full.gif" width="600" /></a>
-
-<h3>Triangular Prism</h3>
-<p>
-This is a triangular prism that renders a total of five views:  three 120&deg; views and two 128&deg; views for the top and bottom, with some overlap between the plates.  It is second to the Cube Globe for image quality, but slightly faster in rendering.
-</p>
-
-<a href="shots/trism_full.gif"><img src="shots/trism_full.gif" width="600" /></a>
-
-<h3>Tetrahedron</h3>
-<p>
-This is a tetrahedron that renders a total of four 142&deg; views, which is the minimum amount of plates required to capture the whole environment.  There is some overlap between the plates.  It is the fastest, but lowest quality Globe.
-</p>
-
-<a href="shots/tetra_full.gif"><img src="shots/tetra_full.gif" width="600" /></a>
-
-<h4>Performance Note</h4>
-Blinky only renders a Globe's plate if any part of it is visible on the screen.  
-
-<hr/>
+<table class="globes">
+<tr>
+   <td>
+      <a href="shots/cube_full.gif"><img src="shots/cube_full.png"/></a>
+   </td>
+   <td>
+      <a href="shots/trism_full.gif"><img src="shots/trism_full.png"/></a>
+   </td>
+   <td>
+      <a href="shots/tetra_full.gif"><img src="shots/tetra_full.png"/></a>
+   </td>
+</tr>
+</table>
 
 <h2>Lenses</h2>
 <p>
-A Lens script takes the Globe (a sphere of surrounding pixels) and projects it to flat frame.  A "forward map" takes a point on the Globe and returns a point on the frame.  An "inverse map" does that opposite by taking a point on the frame and returning a point on the Globe.
+A Lens shapes the panoramic view by mapping the Globe to the final screen image.  Thus, a Lens script describes the mathematical projections to make this possible. The following is an illustration of the packaged lenses in Blinky.
 </p>
-
-<strong>Note</strong> Inverse maps are prefered over Forward maps. 
-
-<hr/>
 
 <h2>Acknowledgements</h2>
 
@@ -180,8 +184,6 @@ A Lens script takes the Globe (a sphere of surrounding pixels) and projects it t
    <li><a href="http://www.progonos.com/furuti/MapProj/Normal/TOC/cartTOC.html">Carlos Furuti for Progonos</a></li>
    <li>Ashlee for the support</li>
 </ul>
-
-<hr/>
 
 <h2>History</h2>
 Project Start: April 2011<br/>
