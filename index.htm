@@ -33,7 +33,6 @@ table.globes td
    border-collapse: collapse;
    border: 2px solid white;
    padding: 10px;
-   width: 270px;
    text-align: center;
    background: #ddd;
 }
@@ -43,6 +42,22 @@ table.globes td div.caption
    text-align: center;
    color: #555;
    margin-bottom: 20px;
+}
+
+/* lens table */
+
+table.lenses td
+{
+   border-collapse: collapse;
+   border: 2px solid white;
+   padding: 10px;
+   text-align: center;
+   background: #ddd;
+}
+
+table.lenses td a img
+{
+   width: 240px;
 }
 
 /* title bar */
@@ -168,16 +183,20 @@ A Globe is the entire image of your environment, composed of smaller images stic
 
 <table class="globes">
 <tr>
+   <td>Cube</td>
    <td>
-      <div class="caption">Cube</div>
       <a href="shots/cube_full.gif"><img src="shots/cube_full.png"/></a>
    </td>
+</tr>
+<tr>
+   <td>Triangular Prism</td>
    <td>
-      <div class="caption">Triangular Prism</div>
       <a href="shots/trism_full.gif"><img src="shots/trism_full.png"/></a>
    </td>
+</tr>
+<tr>
+   <td>Tetrahedron</td>
    <td>
-      <div class="caption">Tetrahedron</div>
       <a href="shots/tetra_full.gif"><img src="shots/tetra_full.png"/></a>
    </td>
 </tr>
@@ -187,6 +206,92 @@ A Globe is the entire image of your environment, composed of smaller images stic
 <p>
 A Lens shapes the panoramic view by mapping the Globe to the final screen image.  Thus, a Lens script describes the mathematical projections to make this possible. The following is an illustration of the packaged lenses in Blinky.
 </p>
+
+<table class="lenses">
+
+   <tr>
+      <td>Equirectangular</td>
+      <td><a href="lenses/equirect.gif"><img src="lenses/equirect.gif"></a></td>
+   </tr>
+   <tr>
+      <td>Cylinder</td>
+      <td><a href="lenses/cylinder.gif"><img src="lenses/cylinder.gif"></a></td>
+   </tr>
+   <tr>
+      <td>Mercator</td>
+      <td><a href="lenses/mercator.gif"><img src="lenses/mercator.gif"></a></td>
+   </tr>
+   <tr>
+      <td>Equidistant Fisheye</td>
+      <td><a href="lenses/fisheye1.gif"><img src="lenses/fisheye1.gif"></a></td>
+   </tr>
+   <tr>
+      <td>Equisolid Fisheye</td>
+      <td><a href="lenses/fisheye2.gif"><img src="lenses/fisheye2.gif"></a></td>
+   </tr>
+   <tr>
+      <td>Vandergrinten</td>
+      <td><a href="lenses/vandergrinten.gif"><img src="lenses/vandergrinten.gif"></a></td>
+   </tr>
+   <tr>
+      <td>Fahey</td>
+      <td><a href="lenses/fahey.gif"><img src="lenses/fahey.gif"></a></td>
+   </tr>
+   <tr>
+      <td>Hammer</td>
+      <td><a href="lenses/hammer.gif"><img src="lenses/hammer.gif"></a></td>
+   </tr>
+   <tr>
+      <td>Polyconic</td>
+      <td><a href="lenses/polyconic.gif"><img src="lenses/polyconic.gif"></a></td>
+   </tr>
+   <tr>
+      <td>Larrivee</td>
+      <td><a href="lenses/larrivee.gif"><img src="lenses/larrivee.gif"></a></td>
+   </tr>
+   <tr>
+      <td>Quincuncial</td>
+      <td><a href="lenses/quincuncial.gif"><img src="lenses/quincuncial.gif"></a></td>
+   </tr>
+   <tr>
+      <td>Eckert I</td>
+      <td><a href="lenses/eckert1.gif"><img src="lenses/eckert1.gif"></a></td>
+   </tr>
+   <tr>
+      <td>Eckert IV</td>
+      <td><a href="lenses/eckert4.gif"><img src="lenses/eckert4.gif"></a></td>
+   </tr>
+   <tr>
+      <td>Eckert V</td>
+      <td><a href="lenses/eckert5.gif"><img src="lenses/eckert5.gif"></a></td>
+   </tr>
+   <tr>
+      <td>Wagner VI</td>
+      <td><a href="lenses/wagner6.gif"><img src="lenses/wagner6.gif"></a></td>
+   </tr>
+   <tr>
+      <td>Winkel I</td>
+      <td><a href="lenses/winkel1.gif"><img src="lenses/winkel1.gif"></a></td>
+   </tr>
+   <tr>
+      <td>Winkel II</td>
+      <td><a href="lenses/winkel2.gif"><img src="lenses/winkel2.gif"></a></td>
+   </tr>
+   <tr>
+      <td>Winkel Tripel</td>
+      <td><a href="lenses/winkeltripel.gif"><img src="lenses/winkeltripel.gif"></a></td>
+   </tr>
+   <tr>
+      <td>Panini</td>
+      <td><a href="lenses/panini.gif"><img src="lenses/panini.gif"></a></td>
+   </tr>
+   <tr>
+      <td>Stereographic</td>
+      <td><a href="lenses/stereographic.gif"><img src="lenses/stereographic.gif"></a></td>
+   </tr>
+
+
+</table>
 
 <h2>Acknowledgements</h2>
 
