@@ -10,17 +10,13 @@
 body
 {
    line-height:1.5em;
+   font-family: serif;
 }
 
-div.globe_images
+div.content
 {
-   height:170px;
-}
-
-div.globe_images img
-{
-   float:left;
-   margin:2px;
+   margin-left: 15px;
+   margin-right: 15px;
 }
 
 pre.code
@@ -29,6 +25,8 @@ pre.code
    margin-left: 25px;
    padding: 5px;
 }
+
+/* globe table */
 
 table.globes td
 {
@@ -47,15 +45,20 @@ table.globes td div.caption
    margin-bottom: 20px;
 }
 
+/* title bar */
+
 div.title
 {
-   background: #eee;
+   text-align:center;
    padding:10px;
+   margin: 10px;
 }
 
 div.title h1
 {
    display:inline;
+   line-height: 1.25em;
+   font-size: 2.5em;
 }
 
 h2
@@ -63,10 +66,7 @@ h2
    font-size: 1.25em;
 }
 
-p
-{
-   margin-left: 10px;
-}
+/* intro side pane for quick image preview */
 
 table.intro
 {
@@ -76,14 +76,13 @@ margin:10px;
 
 table.intro td
 {
-background: #666;
+background: #ddd;
 padding: 10px;
 }
 
 table.intro div.caption
 {
 text-align:center;
-color:white;
 }
 
 </style>
@@ -108,7 +107,6 @@ an experiment in panoramic gaming
 <tr>
 <td>
 <a href="shots/intro180b.gif"><img src="shots/intro180b.gif" width=240 /></a>
-
 <div class="caption">180&deg; Panini <acronym title="Field of View">FOV</acronym></div>
 </td>
 </tr>
@@ -120,22 +118,33 @@ an experiment in panoramic gaming
 </tr>
 </table>
 
+<div class="content">
+
+<h2>Objectives</h2>
+<ul>
+<li>Overcome narrow FOV limit in 3D games using panoramic photo techniques</li>
+<li>Implement a front-end to Quake for prototyping panoramic perspectives</li>
+<li>Explore the practicality of different panoramas in gameplay</li>
+</ul>
+
 <h2>Abstract</h2>
 <p>
-In photography, it is common to overcome the limitations of a camera's Field of View (FOV) by "stitching" multiple photographs together into a panorama.  This method has only been demonstrated once in the context of a game by Fisheye Quake in 1999.  It stitched six views into a single perspective using the <em>equidistant fisheye</em> projection.  We wish to continue in this direction by exploring the practicality of other panoramic methods in gameplay.  
+In photography, it is common to overcome the limitations of a camera's Field of View (FOV) by "stitching" multiple photographs together into a panorama.  This method was first demonstrated in the context of a game by Fisheye Quake in 1999 [1].  It stitches six views into a single perspective using a fisheye projection.  
 </p>
 <p>
-To this end, we introduce an extension to Fisheye Quake called Blinky.  It provides a new front-end for customizing your ingame panoramic perspective.  Specifically, the <em>environment map</em> and <em>projection</em> logic are abstracted into Lua scripts, called Globe and Lens scripts, respectively.  In this paper, we discuss this new architecture and the experimental perspectives that were created with it.
-</p>
-<p>
-As a result, we find that the Panini projection produces the most practical wide angle perspective for gameplay that is less prone to nausea than the other projections.
+We introduce an extension to Fisheye Quake called Blinky.  It allows you to create two types of Lua scripts for fully customising your perspective: 
+<ul>
+<li> <a href="#globe">Globe</a> scripts define how to capture the image of your environment.</li>
+<li> <a href="#lens">Lens</a> scripts define how to project the environment image to the screen.</li>
+</ul>
+Depending on how you pair a Globe with a Lens, you can achieve perspectives that vary in terms of rendering speed, picture fidelity, and panoramic distortion. 
 </p>
 
 <h2>Download</h2>
 
 <ul>
-<li><a href="blinky-0.1.zip">blinky for windows xp</a></li>
-<li><a href="http://github.com/shaunew/blinky">source code</a></li>
+<li><a href="blinky-0.1.zip">binary (windows)</a></li>
+<li><a href="http://github.com/shaunew/blinky">source code (linux and windows)</a></li>
 </ul>
 
 <h2>Commands</h2>
@@ -152,9 +161,9 @@ fit            : zoom by fitting your whole view in the screen
 rubix          : display colored grid for each rendered view in the globe
 </pre>
 
-<h2>Globes</h2>
+<h2><a name="globe">Globes</a></h2>
 <p>
-A Globe is the entire image of your environment, composed of smaller images stiched together.  Thus, a Globe script describes where to point the camera and how far to zoom when capturing each of image plate.  The following is an illustration of the packaged globes in Blinky.  They show how each image rendered by Quake fits together into a polyhedron net after some cropping.
+A Globe is the entire image of your environment, composed of smaller images stiched together.  Thus, a Globe script describes where to point the camera and how far to zoom when capturing each image plate.  The following is an illustration of the packaged globes in Blinky.  They show how each image rendered by Quake fits together into a polyhedron net after some cropping.
 </p>
 
 <table class="globes">
@@ -174,7 +183,7 @@ A Globe is the entire image of your environment, composed of smaller images stic
 </tr>
 </table>
 
-<h2>Lenses</h2>
+<h2><a name="lens">Lenses</a></h2>
 <p>
 A Lens shapes the panoramic view by mapping the Globe to the final screen image.  Thus, a Lens script describes the mathematical projections to make this possible. The following is an illustration of the packaged lenses in Blinky.
 </p>
@@ -183,6 +192,7 @@ A Lens shapes the panoramic view by mapping the Globe to the final screen image.
 
 <ul>
    <li><a href="http://strlen.com/gfxengine/fisheyequake/">Aardappel for Fisheye Quake</a></li>
+   <li><a href="">Tyrann for TyrQuake</a></li>
    <li><a href="http://en.wikipedia.org/wiki/Fisheye_lens#Mapping_function">Peter Weiden for Fisheye Projection illustrations</a></li>
    <li><a href="http://vedutismo.net/Pannini/">Thomas K. Sharpless for Panini Projection</a></li>
    <li><a href="http://home.comcast.net/~gevenden56/proj/">Gerald Evenden for libproj</a></li>
@@ -192,7 +202,9 @@ A Lens shapes the panoramic view by mapping the Globe to the final screen image.
 
 <h2>History</h2>
 Project Start: April 2011<br/>
-Last Update: August 12, 2011 </br>
+Last Update: August 21, 2011 </br>
+
+</div> 
 
 </body>
 
