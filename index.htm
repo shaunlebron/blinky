@@ -33,8 +33,9 @@ table.globes td
    border-collapse: collapse;
    border: 2px solid white;
    padding: 10px;
-   text-align: center;
    background: #ddd;
+   font-size: 0.75em;
+   vertical-align: top;
 }
 
 table.globes td div.caption
@@ -51,8 +52,20 @@ table.lenses td
    border-collapse: collapse;
    border: 2px solid white;
    padding: 10px;
-   text-align: center;
    background: #ddd;
+   font-size: 0.75em;
+   vertical-align: top;
+}
+
+table.lenses tr.first td
+{
+   /*background: #ACE1AF;*/
+   background: #93C572;
+}
+
+table.lenses tr.second td
+{
+   background: #FADA5E;
 }
 
 table.lenses td a img
@@ -189,19 +202,43 @@ A Globe is the entire image of your environment, composed of smaller images stic
 
 <table class="globes">
 <tr>
-   <td>Cube</td>
+   <td>
+      <strong>Cube</strong> <br/>
+      (<a href="https://github.com/shaunew/blinky/blob/master/globes/cube.lua">cube.lua</a>)
+      <ul>
+         <li>six 90&deg; views</li>
+         <li>highest image quality</li>
+         <li>slowest render speed</li>
+      </ul>
+   </td>
    <td>
       <a href="shots/cube_full.gif"><img src="shots/cube_full.png"/></a>
    </td>
 </tr>
 <tr>
-   <td>Triangular Prism</td>
+   <td>
+      <strong>Triangular Prism</strong> <br/>
+      (<a href="https://github.com/shaunew/blinky/blob/master/globes/trism.lua">trism.lua</a>)
+      <ul>
+         <li>three 120&deg; views + two 128&deg; views</li>
+         <li>medium image quality</li>
+         <li>medium render speed</li>
+      </ul>
+   </td>
    <td>
       <a href="shots/trism_full.gif"><img src="shots/trism_full.png"/></a>
    </td>
 </tr>
 <tr>
-   <td>Tetrahedron</td>
+   <td>
+      <strong>Tetrahedron</strong> <br/>
+      (<a href="https://github.com/shaunew/blinky/blob/master/globes/tetra.lua">tetra.lua</a>)
+      <ul>
+         <li>four 142&deg; views</li>
+         <li>lowest image quality</li>
+         <li>fastest render speed</li>
+      </ul>
+   </td>
    <td>
       <a href="shots/tetra_full.gif"><img src="shots/tetra_full.png"/></a>
    </td>
@@ -215,87 +252,192 @@ A Lens shapes the panoramic view by mapping the Globe to the final screen image.
 
 <table class="lenses">
 
-   <tr>
-      <td>Equirectangular</td>
-      <td><a href="lenses/equirect.gif"><img src="lenses/equirect.gif"></a></td>
-   </tr>
-   <tr>
-      <td>Cylinder</td>
-      <td><a href="lenses/cylinder.gif"><img src="lenses/cylinder.gif"></a></td>
-   </tr>
-   <tr>
-      <td>Mercator</td>
-      <td><a href="lenses/mercator.gif"><img src="lenses/mercator.gif"></a></td>
-   </tr>
-   <tr>
-      <td>Equidistant Fisheye</td>
-      <td><a href="lenses/fisheye1.gif"><img src="lenses/fisheye1.gif"></a></td>
-   </tr>
-   <tr>
-      <td>Equisolid Fisheye</td>
-      <td><a href="lenses/fisheye2.gif"><img src="lenses/fisheye2.gif"></a></td>
-   </tr>
-   <tr>
-      <td>Vandergrinten</td>
-      <td><a href="lenses/vandergrinten.gif"><img src="lenses/vandergrinten.gif"></a></td>
-   </tr>
-   <tr>
-      <td>Fahey</td>
-      <td><a href="lenses/fahey.gif"><img src="lenses/fahey.gif"></a></td>
-   </tr>
-   <tr>
-      <td>Hammer</td>
-      <td><a href="lenses/hammer.gif"><img src="lenses/hammer.gif"></a></td>
-   </tr>
-   <tr>
-      <td>Polyconic</td>
-      <td><a href="lenses/polyconic.gif"><img src="lenses/polyconic.gif"></a></td>
-   </tr>
-   <tr>
-      <td>Larrivee</td>
-      <td><a href="lenses/larrivee.gif"><img src="lenses/larrivee.gif"></a></td>
-   </tr>
-   <tr>
-      <td>Quincuncial</td>
-      <td><a href="lenses/quincuncial.gif"><img src="lenses/quincuncial.gif"></a></td>
-   </tr>
-   <tr>
-      <td>Eckert I</td>
-      <td><a href="lenses/eckert1.gif"><img src="lenses/eckert1.gif"></a></td>
-   </tr>
-   <tr>
-      <td>Eckert IV</td>
-      <td><a href="lenses/eckert4.gif"><img src="lenses/eckert4.gif"></a></td>
-   </tr>
-   <tr>
-      <td>Eckert V</td>
-      <td><a href="lenses/eckert5.gif"><img src="lenses/eckert5.gif"></a></td>
-   </tr>
-   <tr>
-      <td>Wagner VI</td>
-      <td><a href="lenses/wagner6.gif"><img src="lenses/wagner6.gif"></a></td>
-   </tr>
-   <tr>
-      <td>Winkel I</td>
-      <td><a href="lenses/winkel1.gif"><img src="lenses/winkel1.gif"></a></td>
-   </tr>
-   <tr>
-      <td>Winkel II</td>
-      <td><a href="lenses/winkel2.gif"><img src="lenses/winkel2.gif"></a></td>
-   </tr>
-   <tr>
-      <td>Winkel Tripel</td>
-      <td><a href="lenses/winkeltripel.gif"><img src="lenses/winkeltripel.gif"></a></td>
-   </tr>
-   <tr>
-      <td>Panini</td>
+   <tr class="first">
+      <td>
+         <strong>Panini</strong><br/>
+         (<a href="https://github.com/shaunew/blinky/blob/master/lenses/panini.lua">panini.lua</a>)
+         <ul>
+            <li>practical for ~180&deg; gameplay view</li>
+            <li>vertical lines are kept vertical</li>
+         </ul>
+      </td>
       <td><a href="lenses/panini.gif"><img src="lenses/panini.gif"></a></td>
    </tr>
-   <tr>
-      <td>Stereographic</td>
+   <tr class="second">
+      <td>
+         <strong>Stereographic</strong><br/>
+         (<a href="https://github.com/shaunew/blinky/blob/master/lenses/stereographic.lua">stereographic.lua</a>)
+         <ul>
+            <li>practical for ~180&deg; gameplay view</li>
+            <li>all angles are preserved</li>
+         </ul>
+      </td>
       <td><a href="lenses/stereographic.gif"><img src="lenses/stereographic.gif"></a></td>
    </tr>
 
+
+   <tr>
+      <td>
+         <strong>Equirectangular</strong><br/>
+         (<a href="">equirect.lua</a>)
+         <ul>
+         </ul>
+      </td>
+      <td><a href="lenses/equirect.gif"><img src="lenses/equirect.gif"></a></td>
+   </tr>
+   <tr>
+      <td>
+         <strong>Cylinder</strong><br/>
+         (<a href="https://github.com/shaunew/blinky/blob/master/lenses/equirect.lua">equirect.lua</a>)
+         <ul>
+         </ul>
+      </td>
+      <td><a href="lenses/cylinder.gif"><img src="lenses/cylinder.gif"></a></td>
+   </tr>
+   <tr>
+      <td>
+         <strong>Mercator</strong><br/>
+         (<a href="https://github.com/shaunew/blinky/blob/master/lenses/mercator.lua">mercator.lua</a>)
+         <ul>
+         </ul>
+      </td>
+      <td><a href="lenses/mercator.gif"><img src="lenses/mercator.gif"></a></td>
+   </tr>
+   <tr>
+      <td>
+         <strong>Equidistant Fisheye</strong><br/>
+         (<a href="https://github.com/shaunew/blinky/blob/master/lenses/fisheye1.lua">fisheye1.lua</a>)
+         <ul>
+         </ul>
+      </td>
+      <td><a href="lenses/fisheye1.gif"><img src="lenses/fisheye1.gif"></a></td>
+   </tr>
+   <tr>
+      <td>
+         <strong>Equisolid Fisheye</strong><br/>
+         (<a href="https://github.com/shaunew/blinky/blob/master/lenses/fisheye2.lua">fisheye2.lua</a>)
+         <ul>
+         </ul>
+      </td>
+      <td><a href="lenses/fisheye2.gif"><img src="lenses/fisheye2.gif"></a></td>
+   </tr>
+   <tr>
+      <td>
+         <strong>Vandergrinten</strong><br/>
+         (<a href="https://github.com/shaunew/blinky/blob/master/lenses/vandergrinten.lua">vandergrinten.lua</a>)
+         <ul>
+         </ul>
+      </td>
+      <td><a href="lenses/vandergrinten.gif"><img src="lenses/vandergrinten.gif"></a></td>
+   </tr>
+   <tr>
+      <td>
+         <strong>Fahey</strong><br/>
+         (<a href="https://github.com/shaunew/blinky/blob/master/lenses/fahey.lua">fahey.lua</a>)
+         <ul>
+         </ul>
+      </td>
+      <td><a href="lenses/fahey.gif"><img src="lenses/fahey.gif"></a></td>
+   </tr>
+   <tr>
+      <td>
+         <strong>Hammer</strong><br/>
+         (<a href="https://github.com/shaunew/blinky/blob/master/lenses/hammer.lua">hammer.lua</a>)
+         <ul>
+         </ul>
+      </td>
+      <td><a href="lenses/hammer.gif"><img src="lenses/hammer.gif"></a></td>
+   </tr>
+   <tr>
+      <td>
+         <strong>Polyconic</strong><br/>
+         (<a href="https://github.com/shaunew/blinky/blob/master/lenses/polyconic.lua">polyconic.lua</a>)
+         <ul>
+         </ul>
+      </td>
+      <td><a href="lenses/polyconic.gif"><img src="lenses/polyconic.gif"></a></td>
+   </tr>
+   <tr>
+      <td>
+         <strong>Larrivee</strong><br/>
+         (<a href="https://github.com/shaunew/blinky/blob/master/lenses/larrivee.lua">larrivee.lua</a>)
+         <ul>
+         </ul>
+      </td>
+      <td><a href="lenses/larrivee.gif"><img src="lenses/larrivee.gif"></a></td>
+   </tr>
+   <tr>
+      <td>
+         <strong>Quincuncial</strong><br/>
+         (<a href="https://github.com/shaunew/blinky/blob/master/lenses/quincuncial.lua">quincuncial.lua</a>)
+         <ul>
+         </ul>
+      </td>
+      <td><a href="lenses/quincuncial.gif"><img src="lenses/quincuncial.gif"></a></td>
+   </tr>
+   <tr>
+      <td>
+         <strong>Eckert I</strong><br/>
+         (<a href="https://github.com/shaunew/blinky/blob/master/lenses/eckert1.lua">eckert1.lua</a>)
+         <ul>
+         </ul>
+      </td>
+      <td><a href="lenses/eckert1.gif"><img src="lenses/eckert1.gif"></a></td>
+   </tr>
+   <tr>
+      <td>
+         <strong>Eckert IV</strong><br/>
+         (<a href="https://github.com/shaunew/blinky/blob/master/lenses/eckert4.lua">eckert4.lua</a>)
+         <ul>
+         </ul>
+      </td>
+      <td><a href="lenses/eckert4.gif"><img src="lenses/eckert4.gif"></a></td>
+   </tr>
+   <tr>
+      <td>
+         <strong>Eckert V</strong><br/>
+         (<a href="https://github.com/shaunew/blinky/blob/master/lenses/eckert5.lua">eckert5.lua</a>)
+         <ul>
+         </ul>
+      </td>
+      <td><a href="lenses/eckert5.gif"><img src="lenses/eckert5.gif"></a></td>
+   </tr>
+   <tr>
+      <td>
+         <strong>Wagner VI</strong><br/>
+         (<a href="https://github.com/shaunew/blinky/blob/master/lenses/wagner6.lua">wagner6.lua</a>)
+         <ul>
+         </ul>
+      </td>
+      <td><a href="lenses/wagner6.gif"><img src="lenses/wagner6.gif"></a></td>
+   </tr>
+   <tr>
+      <td>
+         <strong>Winkel I</strong><br/>
+         (<a href="https://github.com/shaunew/blinky/blob/master/lenses/winkel1.lua">winkel1.lua</a>)
+         <ul>
+         </ul>
+      </td>
+      <td><a href="lenses/winkel1.gif"><img src="lenses/winkel1.gif"></a></td>
+   </tr>
+   <tr>
+      <td>
+         <strong>Winkel II</strong><br/>
+         (<a href="https://github.com/shaunew/blinky/blob/master/lenses/winkel2.lua">winkel2.lua</a>)
+         <ul>
+         </ul>
+      </td>
+      <td><a href="lenses/winkel2.gif"><img src="lenses/winkel2.gif"></a></td>
+   </tr>
+   <tr>
+      <td>
+         <strong>Winkel Tripel</strong><br/>
+         (<a href="https://github.com/shaunew/blinky/blob/master/lenses/winkeltripel.lua">winkeltripel.lua</a>)
+         <ul>
+         </ul>
+      </td>
+      <td><a href="lenses/winkeltripel.gif"><img src="lenses/winkeltripel.gif"></a></td>
+   </tr>
 
 </table>
 
@@ -313,7 +455,7 @@ A Lens shapes the panoramic view by mapping the Globe to the final screen image.
 
 <h2>History</h2>
 Project Start: April 2011<br/>
-Last Update: August 21, 2011 </br>
+Last Update: September 6, 2011 </br>
 
 </div> 
 
