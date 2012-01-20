@@ -62,11 +62,11 @@ All sorts of wide-angle perspectives can be constructed using variety of **globe
 
 **Globes**
 
-In the original Fisheye Quake mod, six 90x90 degree images are rendered at once to capture the full environment around a player.  These images together form a cubemap.  In blinky, we call that cube a type of *globe*.  A globe, or formally *environment map*, is a custom way to capture your environment.
+In the original Fisheye Quake mod, six 90x90 degree images are rendered at once to capture the full environment around a player.  Together, these images form a cubemap.  In blinky, we call that cube a type of **globe**.  A globe, or formally an environment map, is a custom way to capture your environment.
 
-To define a **globe**, you just create a Lua script in the globes/ folder, and define a *plates* list.  Think of each plate as a covering the area of your globe.  Each plate contains a forward vector, an up vector, and a field of view (FOV).  The game will point configure the camera using those parameters and snap a picture.  Thus you can define your own way to capture your environment by defining these plates.
+To define a **globe**, you create a Lua script in the globes/ folder, and define a *plates* list.  Think of each plate as a covering a certain area on the surface of your globe.  Each plate contains a forward vector, an up vector, and a field of view (FOV).  The game will configure the camera relative to the player using those parameters, and snap a picture.  After doing this for each plate, we have a full environment map.  Thus you can define your own way to capture your environment by defining these plates.
 
-Blinky provides a default function for retrieving a pixel from this cubemap given a 3D vector.  This function just chooses the plate with the forward vector having the smallest angular distance from the given 3D vector, then does some math to retrieve the pixel from that plate.  You can provide your own in the globe script by defining a "function globe_plate(x,y,z)" that returns the index of the plate that you want the game to use for the given vector.
+Blinky requires a way to retrieve a pixel from the **globe** given a view vector emanating from the player.  A default function is provided that just chooses the plate with the forward vector having the smallest angular distance from the given view vector, then does some math to retrieve the pixel from that plate.  Since some plates may overlap, you can provide your own in the globe script by defining a "function globe_plate(x,y,z)" that returns the index of the plate that you want the game to use for the given view vector.
 
 **Lenses**
 
