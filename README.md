@@ -3,14 +3,14 @@ blinky
 
 Blinky is a fisheye mod for Quake, based on Fisheye Quake.  Its purpose is to explore several types of panoramic projections defined by user-generated Lua scripts.
 
-See official website for details and media: 
-http://shaunew.github.com/blinky
+[View the official page for details and media](http://shaunew.github.com/blinky)
 
 
 Compiling and Installation:
 ---------------------------
 
-Linux:
+**Linux:**
+
 1. Install LuaJIT
 2. build tyr-quake:
 
@@ -21,7 +21,8 @@ Linux:
 4. copy globes/ and lenses/ folder to $HOME/.tyrquake
 
 
-Windows:
+**Windows:**
+
 1. build tyr-quake.exe:
 
     make prepare
