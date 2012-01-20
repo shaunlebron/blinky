@@ -53,3 +53,22 @@ Compiling and Installation:
         make tyr-quake.exe
 
 2. copy everything from the installation binary at the link above to your Quake directory, along with the freshly built tyr-quake.exe
+
+
+How does it work?
+-----------------
+
+All sorts of wide-angle perspectives can be constructed using variety of **globes and lenses**.
+
+**Globes**
+
+In the original Fisheye Quake mod, six 90x90 degree images are rendered at once to capture the full environment around a player.  These images together form a cubemap.  In blinky, we call that cube a type of *globe*.  A globe, or formally *environment map*, is a custom way to capture your environment.
+
+To define a **globe**, you just create a Lua script in the globes/ folder, and define a *plates* list.  Think of each plate as a covering the area of your globe.  Each plate contains a forward vector, an up vector, and a field of view (FOV).  The game will point configure the camera using those parameters and snap a picture.  Thus you can define your own way to capture your environment by defining these plates.
+
+Blinky provides a default function for retrieving a pixel from this cubemap given a 3D vector.  This function just chooses the plate with the forward vector having the smallest angular distance from the given 3D vector, then does some math to retrieve the pixel from that plate.  You can provide your own in the globe script by defining a "function globe_plate(x,y,z)" that returns the index of the plate that you want the game to use for the given vector.
+
+**Lenses**
+
+In the original Fisheye Quake mod, the pixels were taken from the cubemap and mapped to the screen using an Equidistant Fisheye projection.  In blinky, we call that a type of *lens*.  A lens, or formally *projection*, is a custom way to warp your environment to your screen.
+
