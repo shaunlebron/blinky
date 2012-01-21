@@ -72,3 +72,33 @@ Blinky requires a way to retrieve a pixel from the **globe** given a view vector
 
 In the original Fisheye Quake mod, the pixels were taken from the cubemap and mapped to the screen using an Equidistant Fisheye projection.  In blinky, we call that a type of *lens*.  A lens, or formally *projection*, is a custom way to warp your environment to your screen.
 
+To define a **lens**, you create a Lua script in the lenses/ folder.  There is a lot more to a lens than a globe which will take some explanation.
+
+First, consider the *projection* to be the final image created by your lens script, which may be of any size depending on the equations you use.  Keep that in mind.  
+
+A **forward** function is one that maps a view vector to a point on your projection.  An **inverse** function does the opposite by mapping a point on your projection to a view vector.  
+
+Zooming in and out of your view in the game is equivalent to increasing and decreasing the scale at which this projection is drawn on the screen.  The projection is scaled by using either an **FOV command** (`hfov`, `vfov`), or a **fit command** (`fit`, `hfit`, `vfit`).  An FOV command will zoom in using conventional degrees that will span your screen horizontally or vertically.  A fit command will try to fit the entirety of the projection to the width or height of your screen, if the projection is not infinitely large, which is possibly the case sometimes.
+
+For your lens script to support an **FOV command**, you must provide a `forward(x,y,z)` function and a `max_hfov` and `max_vfov` value to constrain the `hfov` and `vfov` degree values.  You can still provide the `inverse(x,y)` function (which computes faster), but `forward(x,y,z)` is still used to scale your projection to the screen.  It does this by inputting the view vector on the right side or top side of the screen (depending on if you're using `hfov` or `vfov`) to the `forward(x,y,z)` function in order to get the 2D coordinate in your projection.  Using this, it knows how to scale the 2D projection coordinates used in your script to fit the screen.
+
+For the lens script to support a **fit command**, you can provide either a `forward(x,y,z)` or `inverse(x,y,z)` function.  You must also provide an `hfit_size` or `vfit_size` so that projection can be scaled to match those sizes to fit the screen.
+
+The game will always look for an `inverse` function first, because it is faster to render.  The `forward` function only sparsely populates the pixels on the screen, so some interpolation is done to fill in the holes, which takes a bit longer.  This only matters for the time it takes to build the lookup table though, once it's done, the performance only relies on how many views has to be rendered by the globe.  The globe will actually not render any views that don't appear in the projection to prevent performance hits.
+
+Still, it's possibly to increase the performance of the initial lookup table built from your lens. You can do this by exploiting the symmetry of your projection to lessen the number of calculations performed.  You can set `hsym` or `vsym` to true to indicate horizontal or vertical symmetry.  Horizontal symmetry means the left and right sides are reflections of each other.
+
+Don't Panic
+-----------
+
+If you have no idea what's going on, that's because this is a weird project.  It just explores the simple question of what it might be like if you had eyes in the back of your head, I guess.  To get a non-nauseous perspective, I would just try the following:
+
+    lens panini
+    hfov 180
+    
+or
+
+    lens stereographic
+    hfov 180
+    
+I find it to be a wide angle view that best represents your real life range of view on a limiting screen.
