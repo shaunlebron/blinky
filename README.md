@@ -101,4 +101,4 @@ or
     lens stereographic
     hfov 180
     
-I find it to be a wide angle view that best represents your real life range of view on a limiting screen.
+I find it to be a perspective that best represents your real life range of view on a limiting screen.
