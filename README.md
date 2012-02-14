@@ -1,22 +1,22 @@
 blinky
 ======
 
-Blinky is a fisheye mod for Quake forked from [Fisheye Quake](http://strlen.com/gfxengine/fisheyequake/). It was created to explore several types of panoramic projections defined by Lua scripts.
+Explore panoramic views in the Quake software renderer.
 
-[View the official page for details and media](http://shaunew.github.com/blinky)
+![](https://github.com/shaunew/blinky/raw/master/screenshots/panini.gif)
 
-Video
------
+The example above demonstrates a break in the conventional FOV limit by displaying a 180 degree view (using the [Panini Projection](http://vedutismo.net/Pannini/)).  I find it to be the best way to represent your real life range of view on a limiting screen.  
 
-I made a video starting with the regular FOV stretched to its limits.  Then I tried a bunch of different projections in the rest of the video using Quake Done Quick demos: [View the video](http://www.youtube.com/watch?v=jQOJ3yCK8pI)
+The view above is produced by the following console commands.
 
-Navigating the Repository
--------------------------
+    lens panini
+    hfov 180
 
-The bulk of the code here belongs to [TyrQuake](http://disenchant.net/engine.html), which is the engine that **blinky** is integrated into.
+Blinky is a heavily modified version of [Fisheye Quake](http://strlen.com/gfxengine/fisheyequake/), introducing the use of Lua scripts to define several panoramic views.
 
-Nearly all of the code relevant to blinky is in [NQ/lens.c](https://github.com/shaunew/blinky/blob/master/NQ/lens.c).  Other minor edits to files in the *NQ/* folder have been tagged with "FISHEYE" comments.  The Lua scripts that are used by *blinky* to edit your view are under [globes/](https://github.com/shaunew/blinky/tree/master/globes) and [lenses/](https://github.com/shaunew/blinky/tree/master/lenses).
-
+Download
+--------
+[The binary package for Windows can be downloaded here](http://shaunew.github.com/blinky/blinky-0.1.zip)
 
 In-Game Console Commands
 ------------------------
@@ -33,7 +33,7 @@ In-Game Console Commands
 Compiling and Installation:
 ---------------------------
 
-**Linux:**
+### Linux:
 
 1. Install LuaJIT
 2. build tyr-quake:
@@ -45,14 +45,27 @@ Compiling and Installation:
 4. copy globes/ and lenses/ folder to $HOME/.tyrquake
 
 
-**Windows:**
+### Windows:
 
 1. build tyr-quake.exe:
 
         make prepare
         make tyr-quake.exe
 
-2. copy everything from the installation binary at the link above to your Quake directory, along with the freshly built tyr-quake.exe
+2. copy everything from the installation binary at the download link above to your Quake directory, along with the freshly built tyr-quake.exe
+
+#### Performance Note
+
+In Windows OS, the game only performs well in windowed mode, not fullscreen mode.
+
+Navigating the Repository
+-------------------------
+
+The bulk of the code here belongs to [TyrQuake](http://disenchant.net/engine.html), which is the engine that **blinky** is integrated into.
+
+Nearly all of the code relevant to blinky is in [NQ/lens.c](https://github.com/shaunew/blinky/blob/master/NQ/lens.c).  Other minor edits to files in the *NQ/* folder have been tagged with "FISHEYE" comments.
+
+The Lua scripts that are used by *blinky* to edit your view are under [globes/](https://github.com/shaunew/blinky/tree/master/globes) and [lenses/](https://github.com/shaunew/blinky/tree/master/lenses).
 
 
 How does it work?
@@ -60,7 +73,7 @@ How does it work?
 
 All sorts of wide-angle perspectives can be constructed using variety of **globes and lenses**.
 
-**Globes**
+### Globes
 
 In the original Fisheye Quake mod, six 90x90 degree images are rendered at once to capture the full environment around a player.  Together, these images form a cubemap.  In blinky, we call that cube a type of **globe**.  A globe, or formally an environment map, is a custom way to capture your environment.
 
@@ -68,7 +81,7 @@ To define a **globe**, you create a Lua script in the globes/ folder, and define
 
 Blinky requires a way to retrieve a pixel from the **globe** given a view vector emanating from the player.  A default function is provided that just chooses the plate with the forward vector having the smallest angular distance from the given view vector, then does some math to retrieve the pixel from that plate.  Since some plates may overlap, you can provide your own in the globe script by defining a "function globe_plate(x,y,z)" that returns the index of the plate that you want the game to use for the given view vector.
 
-**Lenses**
+### Lenses
 
 In the original Fisheye Quake mod, the pixels were taken from the cubemap and mapped to the screen using an Equidistant Fisheye projection.  In blinky, we call that a type of *lens*.  A lens, or formally *projection*, is a custom way to warp your environment to your screen.
 
@@ -87,18 +100,3 @@ For the lens script to support a **fit command**, you can provide either a `forw
 The game will always look for an `inverse` function first, because it is faster to render.  The `forward` function only sparsely populates the pixels on the screen, so some interpolation is done to fill in the holes, which takes a bit longer.  This only matters for the time it takes to build the lookup table though, once it's done, the performance only relies on how many views has to be rendered by the globe.  The globe will actually not render any views that don't appear in the projection to prevent performance hits.
 
 Still, it's possibly to increase the performance of the initial lookup table built from your lens. You can do this by exploiting the symmetry of your projection to lessen the number of calculations performed.  You can set `hsym` or `vsym` to true to indicate horizontal or vertical symmetry.  Horizontal symmetry means the left and right sides are reflections of each other.
-
-Don't Panic
------------
-
-If you have no idea what's going on, that's because this is a weird project.  It just explores the simple question of what it might be like if you had eyes in the back of your head, I guess.  To get a non-nauseous perspective, I would just try the following:
-
-    lens panini
-    hfov 180
-    
-or
-
-    lens stereographic
-    hfov 180
-    
-I find it to be a perspective that best represents your real life range of view on a limiting screen.
