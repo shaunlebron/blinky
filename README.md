@@ -31,14 +31,14 @@ You can stretch this standard projection to its limits (~180 degrees), but you g
 
 ![rect170](screenshots/rect170_anim.gif)
 
-We can apply the popular mercator projection using in world maps with `lens
+We can apply the popular mercator projection used in world maps with `lens
 mercator` and `hfov 360` to get a full perspective of everything around you.
 
 ![mercator](screenshots/mercator_anim.gif)
 
 Or we can use a modern panoramic projection for viewing 180 degrees around you:
 
-![pan180](screenshots/pan_anim.gif)
+![pan180](screenshots/pan180_anim.gif)
 
 Download
 --------
