@@ -295,15 +295,15 @@ void L_InitLua(void)
    luaL_openlibs(lua);
 
    // initialize LuaJIT
-   luaopen_jit(lua);
+   // luaopen_jit(lua);
 
    // initialize LuaJIT optimizer 
-   char *cmd = "require(\"jit.opt\").start()";
-   int error = luaL_loadbuffer(lua, cmd, strlen(cmd), "jit.opt") || lua_pcall(lua, 0, 0, 0);
-   if (error) {
-      fprintf(stderr, "%s", lua_tostring(lua, -1));
-      lua_pop(lua, 1);  /* pop error message from the stack */
-   }
+   //char *cmd = "require(\"jit.opt\").start()";
+   //int error = luaL_loadbuffer(lua, cmd, strlen(cmd), "jit.opt") || lua_pcall(lua, 0, 0, 0);
+   //if (error) {
+   //   fprintf(stderr, "%s", lua_tostring(lua, -1));
+   //   lua_pop(lua, 1);  /* pop error message from the stack */
+   //}
 
    char *aliases = 
       "cos = math.cos\n"
@@ -325,7 +325,7 @@ void L_InitLua(void)
       "tau = math.pi*2\n"
       "pow = math.pow\n";
 
-   error = luaL_loadbuffer(lua, aliases, strlen(aliases), "aliases") ||
+   int error = luaL_loadbuffer(lua, aliases, strlen(aliases), "aliases") ||
       lua_pcall(lua, 0, 0, 0);
    if (error) {
       fprintf(stderr, "%s", lua_tostring(lua, -1));
@@ -929,7 +929,7 @@ int lua_globe_load(void)
 
    // load plates array
    lua_getglobal(lua, "plates");
-   if (!lua_istable(lua,-1) || lua_objlen(lua,-1) < 1)
+   if (!lua_istable(lua,-1) || lua_rawlen(lua,-1) < 1)
    {
       Con_Printf("plates must be an array of one or more elements\n");
       lua_pop(lua, 1); // pop plates
@@ -945,7 +945,7 @@ int lua_globe_load(void)
       lua_rawgeti(lua, -1, 1);
 
       // verify table of length 3
-      if (!lua_istable(lua,-1) || lua_objlen(lua,-1) != 3 )
+      if (!lua_istable(lua,-1) || lua_rawlen(lua,-1) != 3 )
       {
          Con_Printf("plate %d: forward vector is not a 3d vector\n", i+1);
          lua_pop(lua, 3); // pop forward vector, plate, and plates
@@ -970,7 +970,7 @@ int lua_globe_load(void)
       lua_rawgeti(lua, -1, 2);
 
       // verify table of length 3
-      if (!lua_istable(lua,-1) || lua_objlen(lua,-1) != 3 )
+      if (!lua_istable(lua,-1) || lua_rawlen(lua,-1) != 3 )
       {
          Con_Printf("plate %d: up vector is not a 3d vector\n", i+1);
          lua_pop(lua, 3); // pop forward vector, plate, and plates

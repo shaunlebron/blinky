@@ -35,7 +35,7 @@ Compiling and Installation:
 
 ### Linux:
 
-1. Install LuaJIT
+1. Install Lua 5.2
 2. build tyr-quake:
 
         make prepare
