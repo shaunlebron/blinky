@@ -21,24 +21,24 @@ __blinky__ works by pasting multiple pictures together in different ways.  This 
 using `lens cube` below.  Each colored grid shows each of the 6 pictures and how
 they're pasted together.
 
-![cube](cube_anim.gif)
+![cube](screenshots/cube_anim.gif)
 
 The standard projection `lens rectilinear` shows the usual 90 degree FOV:
 
-![rect90](rect90_anim.gif)
+![rect90](screenshots/rect90_anim.gif)
 
 You can stretch this standard projection to its limits (~180 degrees), but you get extreme distortion seen below:
 
-![rect170](rect170_anim.gif)
+![rect170](screenshots/rect170_anim.gif)
 
 We can apply the popular mercator projection using in world maps with `lens
 mercator` and `hfov 360` to get a full perspective of everything around you.
 
-![mercator](mercator_anim.gif)
+![mercator](screenshots/mercator_anim.gif)
 
 Or we can use a modern panoramic projection for viewing 180 degrees around you:
 
-![pan180](pan_anim.gif)
+![pan180](screenshots/pan_anim.gif)
 
 Download
 --------
