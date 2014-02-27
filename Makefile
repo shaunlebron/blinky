@@ -643,6 +643,7 @@ CL_OBJS := \
 	cl_tent.o	\
 	console.o	\
 	keys.o		\
+	lens.o		\
 	menu.o		\
 	r_efrag.o	\
 	r_light.o	\
@@ -814,7 +815,7 @@ COMMON_CPPFLAGS += -DWIN32_LEAN_AND_MEAN
 COMMON_OBJS += net_wins.o sys_win.o
 CL_OBJS     += winquake.res
 NQCL_OBJS   += conproc.o net_win.o
-COMMON_LIBS += ws2_32 winmm dxguid
+COMMON_LIBS += ws2_32 winmm dxguid lua52
 GL_LIBS     += opengl32
 ifeq ($(DEBUG),Y)
 CL_LFLAGS += -mconsole
@@ -826,7 +827,7 @@ endif
 ifeq ($(TARGET_OS),UNIX)
 COMMON_CPPFLAGS += -DELF
 COMMON_OBJS += net_udp.o sys_unix.o
-COMMON_LIBS += m
+COMMON_LIBS += m lua
 NQCL_OBJS   += net_bsd.o
 
 # FIXME - stupid hack

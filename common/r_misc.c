@@ -493,14 +493,28 @@ R_SetupFrame(void)
     VectorCopy(r_refdef.vieworg, modelorg);
     VectorCopy(r_refdef.vieworg, r_origin);
 
-    AngleVectors(r_refdef.viewangles, vpn, vright, vup);
+    extern int fisheye_enabled;
+    if (fisheye_enabled) {
+        VectorCopy(r_refdef.forward, vpn);
+        VectorCopy(r_refdef.right, vright);
+        VectorCopy(r_refdef.up, vup);
+    }
+    else {
+        AngleVectors(r_refdef.viewangles, vpn, vright, vup);
+    }
 
 // current viewleaf
     r_oldviewleaf = r_viewleaf;
     r_viewleaf = Mod_PointInLeaf(cl.worldmodel, r_origin);
 
     r_dowarpold = r_dowarp;
-    r_dowarp = r_waterwarp.value && (r_viewleaf->contents <= CONTENTS_WATER);
+    extern int fisheye_enabled;
+    if (fisheye_enabled) {
+        r_dowarp = 0;
+    }
+    else {
+        r_dowarp = r_waterwarp.value && (r_viewleaf->contents <= CONTENTS_WATER);
+    }
 
     if ((r_dowarp != r_dowarpold) || r_viewchanged) {
 	if (r_dowarp) {

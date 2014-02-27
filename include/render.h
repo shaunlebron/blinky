@@ -135,6 +135,10 @@ typedef struct {
     vec3_t vieworg;
     vec3_t viewangles;
 
+    vec3_t forward;
+    vec3_t right;
+    vec3_t up;
+
     float fov_x, fov_y;
 
     int ambientlight;

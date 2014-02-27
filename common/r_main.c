@@ -404,7 +404,23 @@ R_ViewChanged(vrect_t *pvrect, int lineadj, float aspect)
 
     R_SetVrect(pvrect, &r_refdef.vrect, lineadj);
 
-    r_refdef.horizontalFieldOfView = 2.0 * tan(r_refdef.fov_x / 360 * M_PI);
+    extern int fisheye_enabled;
+    if (fisheye_enabled) {
+
+        // Make render size a square
+        int minsize = r_refdef.vrect.width;
+        if (r_refdef.vrect.height < minsize)
+           minsize = r_refdef.vrect.height;
+        r_refdef.vrect.width = r_refdef.vrect.height = minsize;
+
+        // set fov
+        extern double renderfov;
+        r_refdef.horizontalFieldOfView = 2.0 * tan(renderfov / 2);
+    }
+    else {
+        r_refdef.horizontalFieldOfView = 2.0 * tan(r_refdef.fov_x / 360 * M_PI);
+    }
+
     r_refdef.fvrectx = (float)r_refdef.vrect.x;
     r_refdef.fvrectx_adj = (float)r_refdef.vrect.x - 0.5;
     r_refdef.vrect_x_adj_shift20 = (r_refdef.vrect.x << 20) + (1 << 19) - 1;
@@ -430,7 +446,12 @@ R_ViewChanged(vrect_t *pvrect, int lineadj, float aspect)
     r_refdef.aliasvrectbottom =
 	r_refdef.aliasvrect.y + r_refdef.aliasvrect.height;
 
-    pixelAspect = aspect;
+    if (fisheye_enabled) {
+        pixelAspect = (float)r_refdef.vrect.height / r_refdef.vrect.width;
+    }
+    else {
+        pixelAspect = aspect;
+    }
     xOrigin = r_refdef.xOrigin;
     yOrigin = r_refdef.yOrigin;
 

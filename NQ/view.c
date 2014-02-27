@@ -26,6 +26,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "cvar.h"
 #include "draw.h"
 #include "host.h"
+#include "lens.h"
 #include "quakedef.h"
 #include "screen.h"
 #include "view.h"
@@ -943,8 +944,14 @@ V_RenderView(void)
 	    V_CalcRefdef();
     }
 
-    R_PushDlights();
-    R_RenderView();
+    extern int fisheye_enabled;
+    if (fisheye_enabled) {
+        L_RenderView();
+    }
+    else {
+        R_PushDlights();
+        R_RenderView();
+    }
 
 #ifndef GLQUAKE
     if (crosshair.value)

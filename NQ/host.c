@@ -26,6 +26,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "host.h"
 #include "input.h"
 #include "keys.h"
+#include "lens.h"
 #include "menu.h"
 #include "model.h"
 #include "net.h"
@@ -283,6 +284,8 @@ Host_WriteConfiguration(void)
 
 	Key_WriteBindings(f);
 	Cvar_WriteVariables(f);
+
+	L_WriteConfig(f);
 
 	fclose(f);
     }
@@ -846,6 +849,8 @@ Host_Init(quakeparms_t *parms)
 	CL_Init();
 
 	IN_Init();
+
+	L_Init();
     }
     Mod_InitAliasCache();
 
@@ -890,6 +895,7 @@ Host_Shutdown(void)
     CDAudio_Shutdown();
     NET_Shutdown();
     S_Shutdown();
+    L_Shutdown();
     IN_Shutdown();
 
     if (cls.state != ca_dedicated) {
