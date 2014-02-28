@@ -901,8 +901,9 @@ Sbar_Draw(void)
     if (scr_con_current == vid.height)
 	return;			// console is full screen
 
-    if (sb_updates >= vid.numpages)
-	return;
+    // status bar seems to be disappearing when I pick up items (so I'm commenting this out to force refresh)
+    //if (sb_updates >= vid.numpages)
+	//return;
 
     scr_copyeverything = 1;
 
