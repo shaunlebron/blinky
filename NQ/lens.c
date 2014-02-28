@@ -688,9 +688,9 @@ void L_Init(void)
    Cmd_AddCommand("fisheye", L_Fisheye);
 
    // default view state
-   Cmd_ExecuteString("globe tetra", src_command);
-   Cmd_ExecuteString("lens rectilinear", src_command);
-   Cmd_ExecuteString("hfov 90", src_command);
+   Cmd_ExecuteString("globe cube", src_command);
+   Cmd_ExecuteString("lens panini", src_command);
+   Cmd_ExecuteString("hfov 180", src_command);
 
    // create palette maps
    create_palmap();
