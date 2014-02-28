@@ -398,6 +398,7 @@ void L_WriteConfig(FILE* f)
       fprintf(f,"fit\n");
    }
 
+   fprintf(f,"fisheye %d\n", fisheye_enabled);
    fprintf(f,"lens \"%s\"\n",lens);
    fprintf(f,"globe \"%s\"\n", globe);
 }
@@ -414,6 +415,16 @@ void printActiveFov(void)
    else if (dfov != 0) {
       Con_Printf("dfov %d\n",(int)dfov);
    }
+}
+
+void L_Fisheye(void)
+{
+   if (Cmd_Argc() < 2) {
+      Con_Printf("Currently: ");
+      Con_Printf("fisheye %d\n", fisheye_enabled);
+      return;
+   }
+   fisheye_enabled = Q_atoi(Cmd_Argv(1)); // will return 0 if not valid
 }
 
 void L_HFov(void)
@@ -674,6 +685,7 @@ void L_Init(void)
    Cmd_AddCommand("globe", L_Globe);
    Cmd_SetCompletion("globe", L_GlobeArg);
    Cmd_AddCommand("saveglobe", L_SaveGlobe);
+   Cmd_AddCommand("fisheye", L_Fisheye);
 
    // default view state
    Cmd_ExecuteString("globe tetra", src_command);
