@@ -1,0 +1,206 @@
+diff --git a/Makefile b/Makefile
+index 0a6c4d0..4545240 100644
+--- a/Makefile
++++ b/Makefile
+@@ -643,6 +643,7 @@ CL_OBJS := \
+ 	cl_tent.o	\
+ 	console.o	\
+ 	keys.o		\
++	lens.o		\
+ 	menu.o		\
+ 	r_efrag.o	\
+ 	r_light.o	\
+@@ -814,7 +815,7 @@ COMMON_CPPFLAGS += -DWIN32_LEAN_AND_MEAN
+ COMMON_OBJS += net_wins.o sys_win.o
+ CL_OBJS     += winquake.res
+ NQCL_OBJS   += conproc.o net_win.o
+-COMMON_LIBS += ws2_32 winmm dxguid
++COMMON_LIBS += ws2_32 winmm dxguid lua52
+ GL_LIBS     += opengl32
+ ifeq ($(DEBUG),Y)
+ CL_LFLAGS += -mconsole
+@@ -826,7 +827,7 @@ endif
+ ifeq ($(TARGET_OS),UNIX)
+ COMMON_CPPFLAGS += -DELF
+ COMMON_OBJS += net_udp.o sys_unix.o
+-COMMON_LIBS += m
++COMMON_LIBS += m lua
+ NQCL_OBJS   += net_bsd.o
+ 
+ # FIXME - stupid hack
+diff --git a/NQ/host.c b/NQ/host.c
+index c6c3e06..784dd3e 100644
+--- a/NQ/host.c
++++ b/NQ/host.c
+@@ -26,6 +26,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
+ #include "host.h"
+ #include "input.h"
+ #include "keys.h"
++#include "lens.h"
+ #include "menu.h"
+ #include "model.h"
+ #include "net.h"
+@@ -284,6 +285,8 @@ Host_WriteConfiguration(void)
+ 	Key_WriteBindings(f);
+ 	Cvar_WriteVariables(f);
+ 
++	L_WriteConfig(f);
++
+ 	fclose(f);
+     }
+ }
+@@ -846,6 +849,8 @@ Host_Init(quakeparms_t *parms)
+ 	CL_Init();
+ 
+ 	IN_Init();
++
++	L_Init();
+     }
+     Mod_InitAliasCache();
+ 
+@@ -890,6 +895,7 @@ Host_Shutdown(void)
+     CDAudio_Shutdown();
+     NET_Shutdown();
+     S_Shutdown();
++    L_Shutdown();
+     IN_Shutdown();
+ 
+     if (cls.state != ca_dedicated) {
+diff --git a/NQ/sbar.c b/NQ/sbar.c
+index 63c03bb..33a69c0 100644
+--- a/NQ/sbar.c
++++ b/NQ/sbar.c
+@@ -901,8 +901,9 @@ Sbar_Draw(void)
+     if (scr_con_current == vid.height)
+ 	return;			// console is full screen
+ 
+-    if (sb_updates >= vid.numpages)
+-	return;
++    // status bar seems to be disappearing when I pick up items (so I'm commenting this out to force refresh)
++    //if (sb_updates >= vid.numpages)
++	//return;
+ 
+     scr_copyeverything = 1;
+ 
+diff --git a/NQ/view.c b/NQ/view.c
+index c88604b..6199bac 100644
+--- a/NQ/view.c
++++ b/NQ/view.c
+@@ -26,6 +26,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
+ #include "cvar.h"
+ #include "draw.h"
+ #include "host.h"
++#include "lens.h"
+ #include "quakedef.h"
+ #include "screen.h"
+ #include "view.h"
+@@ -943,8 +944,14 @@ V_RenderView(void)
+ 	    V_CalcRefdef();
+     }
+ 
+-    R_PushDlights();
+-    R_RenderView();
++    extern int fisheye_enabled;
++    if (fisheye_enabled) {
++        L_RenderView();
++    }
++    else {
++        R_PushDlights();
++        R_RenderView();
++    }
+ 
+ #ifndef GLQUAKE
+     if (crosshair.value)
+diff --git a/common/r_main.c b/common/r_main.c
+index ec9e1da..eb462c0 100644
+--- a/common/r_main.c
++++ b/common/r_main.c
+@@ -404,7 +404,23 @@ R_ViewChanged(vrect_t *pvrect, int lineadj, float aspect)
+ 
+     R_SetVrect(pvrect, &r_refdef.vrect, lineadj);
+ 
+-    r_refdef.horizontalFieldOfView = 2.0 * tan(r_refdef.fov_x / 360 * M_PI);
++    extern int fisheye_enabled;
++    if (fisheye_enabled) {
++
++        // Make render size a square
++        int minsize = r_refdef.vrect.width;
++        if (r_refdef.vrect.height < minsize)
++           minsize = r_refdef.vrect.height;
++        r_refdef.vrect.width = r_refdef.vrect.height = minsize;
++
++        // set fov
++        extern double renderfov;
++        r_refdef.horizontalFieldOfView = 2.0 * tan(renderfov / 2);
++    }
++    else {
++        r_refdef.horizontalFieldOfView = 2.0 * tan(r_refdef.fov_x / 360 * M_PI);
++    }
++
+     r_refdef.fvrectx = (float)r_refdef.vrect.x;
+     r_refdef.fvrectx_adj = (float)r_refdef.vrect.x - 0.5;
+     r_refdef.vrect_x_adj_shift20 = (r_refdef.vrect.x << 20) + (1 << 19) - 1;
+@@ -430,7 +446,12 @@ R_ViewChanged(vrect_t *pvrect, int lineadj, float aspect)
+     r_refdef.aliasvrectbottom =
+ 	r_refdef.aliasvrect.y + r_refdef.aliasvrect.height;
+ 
+-    pixelAspect = aspect;
++    if (fisheye_enabled) {
++        pixelAspect = (float)r_refdef.vrect.height / r_refdef.vrect.width;
++    }
++    else {
++        pixelAspect = aspect;
++    }
+     xOrigin = r_refdef.xOrigin;
+     yOrigin = r_refdef.yOrigin;
+ 
+diff --git a/common/r_misc.c b/common/r_misc.c
+index f052690..4d218fc 100644
+--- a/common/r_misc.c
++++ b/common/r_misc.c
+@@ -493,14 +493,28 @@ R_SetupFrame(void)
+     VectorCopy(r_refdef.vieworg, modelorg);
+     VectorCopy(r_refdef.vieworg, r_origin);
+ 
+-    AngleVectors(r_refdef.viewangles, vpn, vright, vup);
++    extern int fisheye_enabled;
++    if (fisheye_enabled) {
++        VectorCopy(r_refdef.forward, vpn);
++        VectorCopy(r_refdef.right, vright);
++        VectorCopy(r_refdef.up, vup);
++    }
++    else {
++        AngleVectors(r_refdef.viewangles, vpn, vright, vup);
++    }
+ 
+ // current viewleaf
+     r_oldviewleaf = r_viewleaf;
+     r_viewleaf = Mod_PointInLeaf(cl.worldmodel, r_origin);
+ 
+     r_dowarpold = r_dowarp;
+-    r_dowarp = r_waterwarp.value && (r_viewleaf->contents <= CONTENTS_WATER);
++    extern int fisheye_enabled;
++    if (fisheye_enabled) {
++        r_dowarp = 0;
++    }
++    else {
++        r_dowarp = r_waterwarp.value && (r_viewleaf->contents <= CONTENTS_WATER);
++    }
+ 
+     if ((r_dowarp != r_dowarpold) || r_viewchanged) {
+ 	if (r_dowarp) {
+diff --git a/include/render.h b/include/render.h
+index c2b7265..96f9924 100644
+--- a/include/render.h
++++ b/include/render.h
+@@ -135,6 +135,10 @@ typedef struct {
+     vec3_t vieworg;
+     vec3_t viewangles;
+ 
++    vec3_t forward;
++    vec3_t right;
++    vec3_t up;
++
+     float fov_x, fov_y;
+ 
+     int ambientlight;

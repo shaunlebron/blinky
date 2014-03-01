@@ -29,16 +29,13 @@ rubix          : display colored grid for each rendered view in the globe
 saveglobe      : take screenshots of each globe face (environment map)
 ```
 
-## Comments
+## Patch
 
-To generate a patch of all the fisheye changes:
-
-```
-git diff e43c82e17470f74cd1398ec8117cba4718d02889..
-```
-
-In general, most of the work is in `NQ/lens.c`, and all other changes are wrapped in an `if (fisheye_enable){` which you can find with:
+I'm generating the current [fisheye patch](fisheye.patch) with the command:
 
 ```
-grep -nr "fisheye_enabled" .
+git diff 23119f4eb2ac6b5cef3e1ebfc785189b011aae26.. NQ common include Makefile
 ```
+
+(The patch does not include the new files "NQ/lens.c" and "include/lens.h", so
+you can better see the existing changes to the engine)
