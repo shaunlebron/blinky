@@ -425,6 +425,7 @@ void L_Fisheye(void)
       return;
    }
    fisheye_enabled = Q_atoi(Cmd_Argv(1)); // will return 0 if not valid
+   vid.recalc_refdef = true;
 }
 
 void L_HFov(void)
