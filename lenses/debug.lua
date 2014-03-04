@@ -1,5 +1,5 @@
-cols = 3
-rows = 2
+cols = numplates
+rows = 1
 
 hfit_size = cols
 vfit_size = rows
@@ -7,8 +7,8 @@ vfit_size = rows
 function col(x)
    local nx = x+cols/2
    local i,f = math.modf(nx)
-   if nx < 0 then
-      return i-1, f+1
+   if nx < 0 or nx >= cols then
+      return nil, nil
    end
    return i,f
 end
@@ -16,8 +16,8 @@ end
 function row(y)
    local ny = -y+rows/2
    local i,f = math.modf(ny)
-   if ny < 0 then
-      return i-1, f+1
+   if ny < 0 or ny >= rows then
+      return nil, nil
    end
    return i,f
 end
@@ -25,7 +25,10 @@ end
 function lens_inverse(x,y)
    local r,v = row(y)
    local c,u = col(x)
-   local plate = r*cols+c
-
-   return plate_to_ray(plate,u,v)
+   if r == nil or c == nil then
+      return nil
+   else
+      local plate = r*cols+c
+      return plate_to_ray(plate,u,v)
+   end
 end

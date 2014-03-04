@@ -488,13 +488,6 @@ void L_Lens(void)
 
    // get name
    strcpy(lens, Cmd_Argv(1));
-
-   // load lens
-   valid_lens = lua_lens_load();
-   if (!valid_lens) {
-      strcpy(lens,"");
-      Con_Printf("not a valid lens\n");
-   }
 }
 
 // autocompletion for lens names
@@ -874,6 +867,10 @@ void lua_lens_clear(void)
    CLEARVAR("vfit_size");
    CLEARVAR("lens_inverse");
    CLEARVAR("lens_forward");
+
+   // set "numplates" var
+   lua_pushinteger(lua, numplates);
+   lua_setglobal(lua, "numplates");
 }
 
 // used to clear the state when switching globes
@@ -1654,6 +1651,7 @@ void create_lensmap()
    if (!valid_lens || !valid_globe)
       return;
 
+
    // test if this lens can support the current fov
    if (!determine_lens_scale()) {
       //Con_Printf("This lens could not be initialized.\n");
@@ -1765,6 +1763,13 @@ void L_RenderView()
    if (sizechange || fovchange || lenschange || globechange) {
       memset(lensmap, 0, area*sizeof(B*));
       memset(palimap, 255, area*sizeof(B));
+
+      // load lens (in case the code or its dependent variables have changed)
+      valid_lens = lua_lens_load();
+      if (!valid_lens) {
+         strcpy(lens,"");
+         Con_Printf("not a valid lens\n");
+      }
       create_lensmap();
    }
 
