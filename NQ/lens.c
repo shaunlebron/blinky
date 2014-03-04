@@ -26,9 +26,13 @@
 #include <lua.h>
 #include <lauxlib.h>
 #include <lualib.h>
+#include <time.h>
 
 // toggle fisheye mod
 int fisheye_enabled = true;
+
+int building_lens = false;
+int building_lens_y_inverse;
 
 // the Lua state pointer
 lua_State *lua;
@@ -1404,6 +1408,60 @@ void set_lensmap_from_ray(int lx, int ly, double sx, double sy, double sz)
    set_lensmap_from_plate_uv(lx,ly,u,v,plate_index);
 }
 
+int resume_lensmap_inverse()
+{
+   double x,y; // image coordinates
+   int lx; // lens coordinates
+
+   int *ly = &building_lens_y_inverse;
+
+   clock_t start_time = clock();
+   while(true)
+   {
+      y = -(*ly-height/2) * scale;
+
+      // calculate all the pixels in this row
+      for(lx = 0;lx<width;++lx)
+      {
+         x = (lx-width/2) * scale;
+
+         // determine which light ray to follow
+         vec3_t ray;
+         int status = lua_lens_inverse(x,y,ray);
+         if (status == 0) {
+            continue;
+         }
+         else if (status == -1) {
+            return false;
+         }
+
+         // get the pixel belonging to the light ray
+         set_lensmap_from_ray(lx,*ly,ray[0],ray[1],ray[2]);
+      }
+
+      // go to next row
+      ++(*ly);
+
+      // If we have more rows to go:
+      if (*ly < height) {
+         clock_t time = clock() - start_time;
+         float seconds = ((float)time) / CLOCKS_PER_SEC;
+         if (seconds > 1.0f/120) {
+            // past time allotted in this frame, resume building in the next frame
+            return true; 
+         }
+         else {
+            // keep calculating lens while we still have time in this frame
+            continue;
+         }
+      }
+      else {
+         // done building lens
+         return false;
+      }
+   }
+}
+
 void create_lensmap_inverse()
 {
    double x,y; // image coordinates
@@ -1668,12 +1726,22 @@ void create_lensmap_forward()
    */
 }
 
+void resume_lensmap()
+{
+   if (mapType == MAP_FORWARD) {
+   }
+   else if (mapType == MAP_INVERSE) {
+      building_lens = resume_lensmap_inverse();
+   }
+}
+
 void create_lensmap()
 {
+   building_lens = false;
+
    // render nothing if current lens or globe is invalid
    if (!valid_lens || !valid_globe)
       return;
-
 
    // test if this lens can support the current fov
    if (!determine_lens_scale()) {
@@ -1691,7 +1759,9 @@ void create_lensmap()
    }
    else if (mapType == MAP_INVERSE) {
       Con_Printf("using inverse map\n");
-      create_lensmap_inverse();
+      //create_lensmap_inverse();
+      building_lens_y_inverse = 0;
+      building_lens = resume_lensmap_inverse();
    }
    else { // MAP_NONE
       Con_Printf("no inverse or forward map being used\n");
@@ -1699,7 +1769,7 @@ void create_lensmap()
 
    // update face display flags depending on tallied side counts
    int i;
-   for(i=0; i<numplates; ++i) {
+   for (i=0; i<numplates; ++i) {
       plate_display[i] = (plate_tally[i] > 1);
    }
 }
@@ -1796,6 +1866,9 @@ void L_RenderView()
          Con_Printf("not a valid lens\n");
       }
       create_lensmap();
+   }
+   else if (building_lens) {
+      resume_lensmap();
    }
 
    // get the orientations required to render the plates
