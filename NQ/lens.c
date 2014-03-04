@@ -1836,3 +1836,4 @@ void L_RenderView()
    lenschange = globechange = fovchange = 0;
 }
 
+// vim: et:ts=3:sts=3:sw=3
