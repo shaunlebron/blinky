@@ -488,6 +488,28 @@ void L_Lens(void)
 
    // get name
    strcpy(lens, Cmd_Argv(1));
+
+   // load lens
+   valid_lens = lua_lens_load();
+   if (!valid_lens) {
+      strcpy(lens,"");
+      Con_Printf("not a valid lens\n");
+   }
+
+   // execute the lens' onload command string if given
+   // (this is to provide a user-friendly default view of the lens (e.g. "hfov 180"))
+   lua_getglobal(lua, "onload");
+   if (lua_isstring(lua, -1))
+   {
+      const char* onload = lua_tostring(lua, -1);
+      Cmd_ExecuteString(onload, src_command);
+   }
+   else {
+      // fail silently for now, resulting from two cases:
+      // 1. onload is nil (undefined)
+      // 2. onload is not a string
+   }
+   lua_pop(lua, 1); // pop "onload"
 }
 
 // autocompletion for lens names
@@ -1764,7 +1786,9 @@ void L_RenderView()
       memset(lensmap, 0, area*sizeof(B*));
       memset(palimap, 255, area*sizeof(B));
 
-      // load lens (in case the code or its dependent variables have changed)
+      // load lens again
+      // (NOTE: this will be the second time this lens will be loaded in this frame if it has just changed)
+      // (I'm just trying to force re-evaluation of lens variables that are dependent on globe variables (e.g. "hfit_size = numplates" in debug.lua))
       valid_lens = lua_lens_load();
       if (!valid_lens) {
          strcpy(lens,"");
