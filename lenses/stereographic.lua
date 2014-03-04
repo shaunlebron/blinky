@@ -5,7 +5,7 @@ vsym = true
 max_hfov = 360
 max_vfov = 360
 
-onload = "fit"
+onload = "hfov 180"
 
 function lens_inverse(x,y)
    local r = sqrt(x*x+y*y)
