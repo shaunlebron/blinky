@@ -7,6 +7,8 @@ max_vfov = 180
 hfit_size = 2*pi
 vfit_size = maxy*2
 
+onload = "fit"
+
 function lens_inverse(x,y)
    if abs(y) > maxy or abs(x) > pi then
       return nil

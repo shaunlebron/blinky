@@ -7,6 +7,8 @@ max_vfov = 180
 hfit_size = 2*sqrt(2)*2
 vfit_size = sqrt(2)*2
 
+onload = "fit"
+
 function solveTheta(lat)
    local t = lat
    local dt

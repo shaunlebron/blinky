@@ -4,6 +4,8 @@ rows = 1
 hfit_size = cols
 vfit_size = rows
 
+onload = "fit"
+
 function col(x)
    local nx = x+cols/2
    local i,f = math.modf(nx)
@@ -26,7 +28,7 @@ function lens_inverse(x,y)
    local r,v = row(y)
    local c,u = col(x)
    if r == nil or c == nil then
-      return nil
+      return nil 
    else
       local plate = r*cols+c
       return plate_to_ray(plate,u,v)

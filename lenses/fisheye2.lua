@@ -7,6 +7,8 @@ max_vfov = 360
 hfit_size = maxr*2
 vfit_size = maxr*2
 
+onload = "fit"
+
 function lens_inverse(x,y)
    local r = sqrt(x*x+y*y)
    if r > maxr then

@@ -13,6 +13,8 @@ max_vfov = 180
 hfit_size = maxx*2
 vfit_size = maxy*2
 
+onload = "fit"
+
 function lens_forward(x,y,z)
    if abs(x) > maxx or abs(y) > maxy then
       return nil

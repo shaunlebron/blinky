@@ -6,6 +6,8 @@ vfit_size = rows
 max_hfov = 360
 max_vfov = 180
 
+onload = "fit"
+
 function col(x)
    local nx = x+cols/2
    local i,f = math.modf(nx)

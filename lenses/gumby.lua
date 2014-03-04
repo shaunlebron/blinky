@@ -7,6 +7,8 @@ vsym = true
 max_hfov = 360
 max_vfov = 180
 
+onload = "fit"
+
 function lens_inverse(x,y)
    local k = x*x/((d+1)*(d+1))
    local dscr = k*k*d*d - (k+1)*(k*d*d-1)

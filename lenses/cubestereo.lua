@@ -4,6 +4,8 @@ vsym = true
 max_hfov = 270
 max_vfov = 270
 
+onload = "hfov 180"
+
 function projectcube(x,y,z)
    local magx = abs(x)
    local magy = abs(y)

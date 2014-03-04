@@ -3,6 +3,9 @@ vsym = true
 max_hfov = 180
 max_vfov = 180
 
+-- Popular FOVs on Quake Live are from 100-120
+onload = "hfov 110"
+
 function lens_inverse(x,y)
    local r = sqrt(x*x+y*y)
 

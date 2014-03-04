@@ -50,3 +50,5 @@ max_vfov = 180
 t = solveTheta(0)
 hfit_size = 2/sqrt(pi*(4+pi))*pi*(1+cos(t))*2
 vfit_size = 2*maxy
+
+onload = "fit"

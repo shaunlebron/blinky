@@ -11,6 +11,8 @@ max_vfov = 180
 -- horizontal fit size
 hfit_size = 2*pi
 
+onload = "fit"
+
 -- inverse mapping (screen to environment)
 function lens_inverse(x,y)
    if abs(x) > pi then

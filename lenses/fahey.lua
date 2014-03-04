@@ -8,6 +8,8 @@ max_vfov = 180
 hfit_size = XR*2
 vfit_size = YR*2
 
+onload = "fit"
+
 function lens_forward(x,y,z)
    local lat,lon = ray_to_latlon(x,y,z)
    local x = tan(0.5 * lat);
