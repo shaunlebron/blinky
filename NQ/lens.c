@@ -889,6 +889,7 @@ void lua_lens_clear(void)
    CLEARVAR("vfit_size");
    CLEARVAR("lens_inverse");
    CLEARVAR("lens_forward");
+   CLEARVAR("onload");
 
    // set "numplates" var
    lua_pushinteger(lua, numplates);
