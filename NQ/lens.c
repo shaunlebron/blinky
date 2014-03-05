@@ -26,13 +26,38 @@
 #include <lua.h>
 #include <lauxlib.h>
 #include <lualib.h>
+
 #include <time.h>
 
 // toggle fisheye mod
 int fisheye_enabled = true;
 
-int building_lens = false;
-int building_lens_y_inverse;
+// We don't want to block the game while the lens is computing.
+// So we pause the calculation if its runtime exceeds "lens_seconds_per_frame"
+// and set the "building_lens" flag to true so it can be resumed on next frame.
+// The intermediate build state is kept in "<mapType>_lensmap_progress".
+static int building_lens = false;
+static float lens_seconds_per_frame = 1.0f/30;
+static struct {
+   int ly;
+} inverse_lensmap_progress;
+static struct {
+   int *top;
+   int *bot;
+   int plate_index;
+   int py;
+} forward_lensmap_progress;
+
+// Stopwatch helpers:
+// Call "start_stopwatch()" and subsequently check "get_seconds_elapsed()".
+static int stopwatch_start_time;
+static void start_stopwatch() {
+   stopwatch_start_time = clock();
+}
+static float get_seconds_elapsed() {
+   clock_t time = clock() - stopwatch_start_time;
+   return ((float)time) / CLOCKS_PER_SEC;
+}
 
 // the Lua state pointer
 lua_State *lua;
@@ -300,17 +325,6 @@ void L_InitLua(void)
 
    // open Lua standard libraries
    luaL_openlibs(lua);
-
-   // initialize LuaJIT
-   // luaopen_jit(lua);
-
-   // initialize LuaJIT optimizer 
-   //char *cmd = "require(\"jit.opt\").start()";
-   //int error = luaL_loadbuffer(lua, cmd, strlen(cmd), "jit.opt") || lua_pcall(lua, 0, 0, 0);
-   //if (error) {
-   //   fprintf(stderr, "%s", lua_tostring(lua, -1));
-   //   lua_pop(lua, 1);  /* pop error message from the stack */
-   //}
 
    char *aliases = 
       "cos = math.cos\n"
@@ -1410,14 +1424,20 @@ void set_lensmap_from_ray(int lx, int ly, double sx, double sy, double sz)
 
 int resume_lensmap_inverse()
 {
-   double x,y; // image coordinates
-   int lx; // lens coordinates
+   // image coordinates
+   double x,y;
 
-   int *ly = &building_lens_y_inverse;
+   // lens coordinates
+   int lx, *ly;
 
-   clock_t start_time = clock();
-   while(true)
+   start_stopwatch();
+   for(ly = &(inverse_lensmap_progress.ly); *ly >= 0; --(*ly))
    {
+      // pause building if we have exceeded time allowed per frame
+      if (get_seconds_elapsed() > lens_seconds_per_frame) {
+         return true; 
+      }
+
       y = -(*ly-height/2) * scale;
 
       // calculate all the pixels in this row
@@ -1438,57 +1458,10 @@ int resume_lensmap_inverse()
          // get the pixel belonging to the light ray
          set_lensmap_from_ray(lx,*ly,ray[0],ray[1],ray[2]);
       }
-
-      // go to next row
-      ++(*ly);
-
-      // If we have more rows to go:
-      if (*ly < height) {
-         clock_t time = clock() - start_time;
-         float seconds = ((float)time) / CLOCKS_PER_SEC;
-         if (seconds > 1.0f/120) {
-            // past time allotted in this frame, resume building in the next frame
-            return true; 
-         }
-         else {
-            // keep calculating lens while we still have time in this frame
-            continue;
-         }
-      }
-      else {
-         // done building lens
-         return false;
-      }
    }
-}
 
-void create_lensmap_inverse()
-{
-   double x,y; // image coordinates
-   int lx,ly; // lens coordinates
-
-   for(ly = 0;ly<height;++ly) 
-   {
-      y = -(ly-height/2) * scale;
-
-      for(lx = 0;lx<width;++lx)
-      {
-         x = (lx-width/2) * scale;
-
-         // determine which light ray to follow
-         vec3_t ray;
-         int status = lua_lens_inverse(x,y,ray);
-         if (status == 0) {
-            continue;
-         }
-         else if (status == -1) {
-            return;
-         }
-
-         // get the pixel belonging to the light ray
-         set_lensmap_from_ray(lx,ly,ray[0],ray[1],ray[2]);
-      }
-   }
+   // done building lens
+   return false;
 }
 
 // convenience function for forward map calculation:
@@ -1606,36 +1579,41 @@ void drawQuad(int *tl, int *tr, int *bl, int *br,
    }
 }
 
-void create_lensmap_forward()
+int resume_lensmap_forward()
 {
-   int *rowa = malloc((platesize+1)*sizeof(int[2]));
-   int *rowb = malloc((platesize+1)*sizeof(int[2]));
-   int *top = rowa;
-   int *bot = rowb;
+   int *top = forward_lensmap_progress.top;
+   int *bot = forward_lensmap_progress.bot;
+   int *py = &(forward_lensmap_progress.py);
+   int *plate_index = &(forward_lensmap_progress.plate_index);
 
-   int plate_index;
-   for (plate_index = 0; plate_index < numplates; ++plate_index)
+   start_stopwatch();
+   for (; *plate_index < numplates; ++(*plate_index))
    {
-      int px, py;
-      for (py = 0; py < platesize; ++py) {
+      int px;
+      for (; *py >=0; --(*py)) {
+
+         // pause building if we have exceeded time allowed per frame
+         if (get_seconds_elapsed() > lens_seconds_per_frame) {
+            return true;
+         }
 
          // FIND ALL DESTINATION SCREEN COORDINATES FOR THIS TEXTURE ROW ********************
 
-         // compute upper points
-         if (py == 0) {
-            double v = (py - 0.5) / platesize;
+         // compute lower points
+         if (*py == platesize-1) {
+            double v = (*py + 0.5) / platesize;
             for (px = 0; px < platesize; ++px) {
                // compute left point
                if (px == 0) {
                   double u = (px - 0.5) / platesize;
-                  int status = uv_to_screen(plate_index, u, v, &top[0], &top[1]);
-                  if (status == 0) continue; else if (status == -1) return;
+                  int status = uv_to_screen(*plate_index, u, v, &bot[0], &bot[1]);
+                  if (status == 0) continue; else if (status == -1) return false;
                }
                // compute right point
                double u = (px + 0.5) / platesize;
                int index = 2*(px+1);
-               int status = uv_to_screen(plate_index, u, v, &top[index], &top[index+1]);
-               if (status == 0) continue; else if (status == -1) return;
+               int status = uv_to_screen(*plate_index, u, v, &bot[index], &bot[index+1]);
+               if (status == 0) continue; else if (status == -1) return false;
             }
          }
          else {
@@ -1645,94 +1623,83 @@ void create_lensmap_forward()
             bot = temp;
          }
 
-         // compute lower points
-         double v = (py + 0.5) / platesize;
+         // compute upper points
+         double v = (*py - 0.5) / platesize;
          for (px = 0; px < platesize; ++px) {
             // compute left point
             if (px == 0) {
                double u = (px - 0.5) / platesize;
-               int status = uv_to_screen(plate_index, u, v, &bot[0], &bot[1]);
-               if (status == 0) continue; else if (status == -1) return;
+               int status = uv_to_screen(*plate_index, u, v, &top[0], &top[1]);
+               if (status == 0) continue; else if (status == -1) return false;
             }
             // compute right point
             double u = (px + 0.5) / platesize;
             int index = 2*(px+1);
-            int status = uv_to_screen(plate_index, u, v, &bot[index], &bot[index+1]);
-            if (status == 0) continue; else if (status == -1) return;
+            int status = uv_to_screen(*plate_index, u, v, &top[index], &top[index+1]);
+            if (status == 0) continue; else if (status == -1) return false;
          }
 
          // DRAW QUAD FOR EACH PIXEL IN THIS TEXTURE ROW ***********************************
 
-         v = ((double)py)/platesize;
+         v = ((double)*py)/platesize;
          for (px = 0; px < platesize; ++px) {
             
             // skip overlapping region of texture
             double u = ((double)px)/platesize;
             vec3_t ray;
-            plate_uv_to_ray(&plates[plate_index], u, v, ray);
-            if (plate_index != ray_to_plate_index(ray)) {
+            plate_uv_to_ray(&plates[*plate_index], u, v, ray);
+            if (*plate_index != ray_to_plate_index(ray)) {
                continue;
             }
 
             int index = 2*px;
-            drawQuad(&top[index], &top[index+2], &bot[index], &bot[index+2], plate_index,px,py);
+            drawQuad(&top[index], &top[index+2], &bot[index], &bot[index+2], *plate_index,px,*py);
          }
 
       }
+
+      // reset row position
+      // (we have to do it here because it cannot be reset until it is done iterating)
+      // (we cannot do it at the beginning because the function could be resumed at some middle row)
+      *py = platesize-1;
    }
 
    free(top);
    free(bot);
 
-   // old method for 1-to-1 mapping of texture pixels to screen pixels.
-   //    this leaves holes in the screen.
-   /*
-   for (plate_index = 0; plate_index < numplates; ++plate_index)
-   {
-      for (py=0; py<platesize; ++py)
-      {
-         double v = (double)py / platesize;
-         for (px=0; px < platesize; ++px)
-         {
-            double u = (double)px / platesize;
-
-            // (use globe)
-            // get ray from plate coordinates
-            vec3_t ray;
-            plate_uv_to_ray(&plates[plate_index], u, v, ray);
-
-            // (use lens)
-            // get image coordinates from ray
-            double x,y;
-            int status = lua_lens_forward(ray,&x,&y);
-            if (status == 0) {
-               continue;
-            }
-            else if (status == -1) {
-               return;
-            }
-
-            // transform from image coordinates to lens coordinates
-            int lx = (int)(x/scale + width/2);
-            int ly = (int)(-y/scale + height/2);
-
-            if (lx < 0 || lx >= width || ly < 0 || ly >= height)
-               continue;
-
-            set_lensmap_from_plate(lx,ly,px,py,plate_index);
-         }
-      }
-   }
-   */
+   // done building lens
+   return false;
 }
 
 void resume_lensmap()
 {
    if (mapType == MAP_FORWARD) {
+      building_lens = resume_lensmap_forward();
    }
    else if (mapType == MAP_INVERSE) {
       building_lens = resume_lensmap_inverse();
    }
+}
+
+void create_lensmap_inverse()
+{
+   // initialize progress state
+   inverse_lensmap_progress.ly = height-1;
+
+   resume_lensmap();
+}
+
+void create_lensmap_forward()
+{
+   // initialize progress state
+   int *rowa = malloc((platesize+1)*sizeof(int[2]));
+   int *rowb = malloc((platesize+1)*sizeof(int[2]));
+   forward_lensmap_progress.top = rowa;
+   forward_lensmap_progress.bot = rowb;
+   forward_lensmap_progress.py = platesize-1;
+   forward_lensmap_progress.plate_index = 0;
+
+   resume_lensmap();
 }
 
 void create_lensmap()
@@ -1759,9 +1726,7 @@ void create_lensmap()
    }
    else if (mapType == MAP_INVERSE) {
       Con_Printf("using inverse map\n");
-      //create_lensmap_inverse();
-      building_lens_y_inverse = 0;
-      building_lens = resume_lensmap_inverse();
+      create_lensmap_inverse();
    }
    else { // MAP_NONE
       Con_Printf("no inverse or forward map being used\n");
