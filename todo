@@ -1,6 +1,10 @@
 
 - add cover command
-- remove dfov command
+O fix symmetry optimizations
+X fix platedisplay optimizations
+X remove dfov command
+
+X make variables static if possible
 - rename commands
     - fisheye
 
@@ -11,13 +15,79 @@
 
     - f_fov
     - f_vfov
-    - f_fit
-    - f_hfit
-    - f_vfit
+    - f_contain
     - f_cover
 
     - f_rubix
     - f_saveglobe
+
+- organize vars
+    - fisheye_enabled
+    - Lua
+        - pointer to intepreter state
+        - reference indexes
+            - forward func
+            - inverse func
+            - plate func
+    - drawing area on screen (in pixels)
+        - left
+        - top
+        - width
+        - height
+    - fov
+        - change flag
+        - active fov in radians (value of hfov or vfov)
+        - hfov in degrees
+        - vfov in degrees
+        - max hfov
+        - max vfov
+        - renderfov (global var used as a function argument when rendering each plate)
+        - framesize (pointer to width or height -- pixel screen size vars)
+        - scale (lens to pixel scale)
+    - lens
+        - lensmap
+        - palimap
+        - lens build state vars
+        - stopwatch var
+        - name
+        - has changed flag
+        - is valid flag
+        - lens width
+        - lens height
+        - scale
+        - map type (forward/inverse)
+        - fit flags:
+            - hfit
+            - vfit
+            - fit
+    - rubix
+        - is enabled
+        - number of cells
+        - divs per cell (cells are separated by 1 div)
+    - globe
+        - name
+        - is valid flag
+        - has changed flag
+        - platemap
+        - plate camera configs
+        - plate size
+        - plate palettes
+        - plate display flags
+        - save globe
+            - should save globe this frame
+            - filename
+            - should save full globe (cut out unused margins)
+
+- organize functions
+    - commands
+        - dump palette
+        - rubix
+    - palette
+        - find closest
+        - create palmap
+    - lua
+    - lua->c functions
+    - c->lua functions
 
 - prepare video demonstration
 
