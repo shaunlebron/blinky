@@ -1,0 +1,27 @@
+
+- add cover command
+- remove dfov command
+- rename commands
+    - fisheye
+
+    - f_help
+
+    - f_lens
+    - f_globe
+
+    - f_fov
+    - f_vfov
+    - f_fit
+    - f_hfit
+    - f_vfit
+    - f_cover
+
+    - f_rubix
+    - f_saveglobe
+
+- prepare video demonstration
+
+- prepare patch and send to Kevin
+    - ask if Lua dependency is alright
+
+- write blog post
