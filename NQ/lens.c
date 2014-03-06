@@ -51,10 +51,10 @@ static struct {
 // Stopwatch helpers:
 // Call "start_stopwatch()" and subsequently check "get_seconds_elapsed()".
 static int stopwatch_start_time;
-static void start_stopwatch() {
+static void start_stopwatch(void) {
    stopwatch_start_time = clock();
 }
-static float get_seconds_elapsed() {
+static float get_seconds_elapsed(void) {
    clock_t time = clock() - stopwatch_start_time;
    return ((float)time) / CLOCKS_PER_SEC;
 }
@@ -1422,7 +1422,7 @@ void set_lensmap_from_ray(int lx, int ly, double sx, double sy, double sz)
    set_lensmap_from_plate_uv(lx,ly,u,v,plate_index);
 }
 
-int resume_lensmap_inverse()
+int resume_lensmap_inverse(void)
 {
    // image coordinates
    double x,y;
@@ -1579,7 +1579,7 @@ void drawQuad(int *tl, int *tr, int *bl, int *br,
    }
 }
 
-int resume_lensmap_forward()
+int resume_lensmap_forward(void)
 {
    int *top = forward_lensmap_progress.top;
    int *bot = forward_lensmap_progress.bot;
@@ -1671,7 +1671,7 @@ int resume_lensmap_forward()
    return false;
 }
 
-void resume_lensmap()
+void resume_lensmap(void)
 {
    if (mapType == MAP_FORWARD) {
       building_lens = resume_lensmap_forward();
@@ -1681,7 +1681,7 @@ void resume_lensmap()
    }
 }
 
-void create_lensmap_inverse()
+void create_lensmap_inverse(void)
 {
    // initialize progress state
    inverse_lensmap_progress.ly = height-1;
@@ -1689,7 +1689,7 @@ void create_lensmap_inverse()
    resume_lensmap();
 }
 
-void create_lensmap_forward()
+void create_lensmap_forward(void)
 {
    // initialize progress state
    int *rowa = malloc((platesize+1)*sizeof(int[2]));
@@ -1702,7 +1702,7 @@ void create_lensmap_forward()
    resume_lensmap();
 }
 
-void create_lensmap()
+void create_lensmap(void)
 {
    building_lens = false;
 
@@ -1740,7 +1740,7 @@ void create_lensmap()
 }
 
 // draw the lensmap to the vidbuffer
-void render_lensmap()
+void render_lensmap(void)
 {
    B **lmap = lensmap;
    B *pmap = palimap;
@@ -1784,7 +1784,7 @@ void render_plate(B* plate, vec3_t forward, vec3_t right, vec3_t up)
    }
 }
 
-void L_RenderView() 
+void L_RenderView(void)
 {
    static int pwidth = -1;
    static int pheight = -1;
