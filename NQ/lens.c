@@ -1,12 +1,3 @@
-/*
-   TO DO
-   - publish Con_Printf to Lua
-   - allow manual adjustment of map scale without specifying FOV
-   - allow the viewing of the map scale due to the current FOV
-
-   - add Lua interactive mode
-   */
-// lens.c -- player lens viewing
 
 #include "bspfile.h"
 #include "client.h"
@@ -60,7 +51,7 @@ static float get_seconds_elapsed(void) {
 }
 
 // the Lua state pointer
-lua_State *lua;
+static lua_State *lua;
 
 // type to represent one pixel (one byte)
 typedef unsigned char B;
@@ -171,8 +162,8 @@ typedef struct {
 } plate_t;
 
 #define MAX_PLATES 6
-plate_t plates[MAX_PLATES];
-int numplates;
+static plate_t plates[MAX_PLATES];
+static int numplates;
 
 // the palettes for each cube face used by the rubix filter
 static B palmap[MAX_PLATES][256];
@@ -188,7 +179,7 @@ static int plate_display[] = {0,0,0,0,0,0};
 static int platesize;
 
 // find closest pallete index for color
-int find_closest_pal_index(int r, int g, int b)
+static int find_closest_pal_index(int r, int g, int b)
 {
    int i;
    int mindist = 256*256*256;
@@ -210,7 +201,7 @@ int find_closest_pal_index(int r, int g, int b)
    return minindex;
 }
 
-void create_palmap(void)
+static void create_palmap(void)
 {
    int i,j;
    int percent = 256/6;
@@ -267,7 +258,7 @@ void create_palmap(void)
 // Console Commands
 // -------------------------------------------
 
-void L_DumpPalette(void)
+static void L_DumpPalette(void)
 {
    int i;
    B *pal = host_basepal;
@@ -284,23 +275,23 @@ void L_DumpPalette(void)
    fclose(pFile);
 }
 
-void L_ShowFovDeprecate(void)
+static void L_ShowFovDeprecate(void)
 {
    Con_Printf("Please use hfov instead\n");
 }
 
-void L_ColorCube(void)
+static void L_ColorCube(void)
 {
    colorcube = colorcube ? 0 : 1;
    Con_Printf("Rubix is %s\n", colorcube ? "ON" : "OFF");
 }
 
 /* START CONVERSION LUA HELPER FUNCTIONS */
-int lua_latlon_to_ray(lua_State *L);
-int lua_ray_to_latlon(lua_State *L);
-int lua_plate_to_ray(lua_State *L);
+static int lua_latlon_to_ray(lua_State *L);
+static int lua_ray_to_latlon(lua_State *L);
+static int lua_plate_to_ray(lua_State *L);
 
-void latlon_to_ray(double lat, double lon, vec3_t ray)
+static void latlon_to_ray(double lat, double lon, vec3_t ray)
 {
    double clat = cos(lat);
    ray[0] = sin(lon)*clat;
@@ -308,17 +299,17 @@ void latlon_to_ray(double lat, double lon, vec3_t ray)
    ray[2] = cos(lon)*clat;
 }
 
-void ray_to_latlon(vec3_t ray, double *lat, double *lon)
+static void ray_to_latlon(vec3_t ray, double *lat, double *lon)
 {
    *lon = atan2(ray[0], ray[2]);
    *lat = atan2(ray[1], sqrt(ray[0]*ray[0]+ray[2]*ray[2]));
 }
 
-void plate_uv_to_ray(plate_t *plate, double u, double v, vec3_t ray);
+static void plate_uv_to_ray(plate_t *plate, double u, double v, vec3_t ray);
 
 /* END CONVERSION LUA HELPER FUNCTIONS */
 
-void L_InitLua(void)
+static void L_InitLua(void)
 {
    // create Lua state
    lua = luaL_newstate();
@@ -363,7 +354,7 @@ void L_InitLua(void)
    lua_setglobal(lua, "plate_to_ray");
 }
 
-void clearFov(void)
+static void clearFov(void)
 {
    fit = hfit = vfit = 0;
    fov = hfov = vfov = dfov = 0;
@@ -371,19 +362,19 @@ void clearFov(void)
    fovchange = 1; // trigger change
 }
 
-void L_HFit(void)
+static void L_HFit(void)
 {
    clearFov();
    hfit = 1;
 }
 
-void L_VFit(void)
+static void L_VFit(void)
 {
    clearFov();
    vfit = 1;
 }
 
-void L_Fit(void)
+static void L_Fit(void)
 {
    clearFov();
    fit = 1;
@@ -421,7 +412,7 @@ void L_WriteConfig(FILE* f)
    fprintf(f,"globe \"%s\"\n", globe);
 }
 
-void printActiveFov(void)
+static void printActiveFov(void)
 {
    Con_Printf("Currently: ");
    if (hfov != 0) {
@@ -435,7 +426,7 @@ void printActiveFov(void)
    }
 }
 
-void L_Fisheye(void)
+static void L_Fisheye(void)
 {
    if (Cmd_Argc() < 2) {
       Con_Printf("Currently: ");
@@ -446,7 +437,7 @@ void L_Fisheye(void)
    vid.recalc_refdef = true;
 }
 
-void L_HFov(void)
+static void L_HFov(void)
 {
    if (Cmd_Argc() < 2) { // no fov given
       Con_Printf("hfov <degrees>: set horizontal FOV\n");
@@ -461,7 +452,7 @@ void L_HFov(void)
    fov = hfov * M_PI / 180;
 }
 
-void L_VFov(void)
+static void L_VFov(void)
 {
    if (Cmd_Argc() < 2) { // no fov given
       Con_Printf("vfov <degrees>: set vertical FOV\n");
@@ -475,7 +466,7 @@ void L_VFov(void)
    fov = vfov * M_PI / 180;
 }
 
-void L_DFov(void)
+static void L_DFov(void)
 {
    if (Cmd_Argc() < 2) { // no fov given
       Con_Printf("dfov <degrees>: set diagonal FOV\n");
@@ -490,10 +481,10 @@ void L_DFov(void)
    fov = dfov * M_PI / 180;
 }
 
-int lua_lens_load(void);
+static int lua_lens_load(void);
 
 // lens command
-void L_Lens(void)
+static void L_Lens(void)
 {
    if (Cmd_Argc() < 2) { // no lens name given
       Con_Printf("lens <name>: use a new lens\n");
@@ -545,12 +536,12 @@ static struct stree_root * L_LensArg(const char *arg)
    return root;
 }
 
-int lua_globe_load(void);
+static int lua_globe_load(void);
 
-int save_globe;
-int save_globe_full;
-char save_globe_name[32];
-void L_SaveGlobe(void)
+static int save_globe;
+static int save_globe_full;
+static char save_globe_name[32];
+static void L_SaveGlobe(void)
 {
    if (Cmd_Argc() < 2) { // no file name given
       Con_Printf("saveglobe <name> [full flag=0]: screenshot the globe plates\n");
@@ -568,11 +559,11 @@ void L_SaveGlobe(void)
    save_globe = 1;
 }
 
-int ray_to_plate_index(vec3_t ray);
+static int ray_to_plate_index(vec3_t ray);
 
 // copied from WritePCXfile in NQ/screen.c
 // write a plate 
-void WritePCXplate(char *filename, int plate_index, int full)
+static void WritePCXplate(char *filename, int plate_index, int full)
 {
     // parameters from WritePCXfile
     byte *data = platemap+platesize*platesize*plate_index;
@@ -642,7 +633,7 @@ void WritePCXplate(char *filename, int plate_index, int full)
     COM_WriteFile(filename, pcx, length);
 }
 
-void SaveGlobe(void)
+static void SaveGlobe(void)
 {
    int i;
    char pcxname[32];
@@ -663,7 +654,7 @@ void SaveGlobe(void)
     //  for linear writes all the time
 }
 
-void L_Globe(void)
+static void L_Globe(void)
 {
    if (Cmd_Argc() < 2) { // no globe name given
       Con_Printf("globe <name>: use a new globe\n");
@@ -739,7 +730,7 @@ void L_Shutdown(void)
 // Lua Functions
 // -----------------------------------
 
-int lua_latlon_to_ray(lua_State *L)
+static int lua_latlon_to_ray(lua_State *L)
 {
    double lat = luaL_checknumber(L,1);
    double lon = luaL_checknumber(L,2);
@@ -751,7 +742,7 @@ int lua_latlon_to_ray(lua_State *L)
    return 3;
 }
 
-int lua_ray_to_latlon(lua_State *L)
+static int lua_ray_to_latlon(lua_State *L)
 {
    double rx = luaL_checknumber(L, 1);
    double ry = luaL_checknumber(L, 2);
@@ -766,7 +757,7 @@ int lua_ray_to_latlon(lua_State *L)
    return 2;
 }
 
-int lua_plate_to_ray(lua_State *L)
+static int lua_plate_to_ray(lua_State *L)
 {
    int plate_index = luaL_checknumber(L,1);
    double u = luaL_checknumber(L,2);
@@ -784,7 +775,7 @@ int lua_plate_to_ray(lua_State *L)
    return 3;
 }
 
-int lua_lens_inverse(double x, double y, vec3_t ray)
+static int lua_lens_inverse(double x, double y, vec3_t ray)
 {
    int top = lua_gettop(lua);
    lua_rawgeti(lua, LUA_REGISTRYINDEX, mapInverseIndex);
@@ -829,7 +820,7 @@ int lua_lens_inverse(double x, double y, vec3_t ray)
    return status;
 }
 
-int lua_lens_forward(vec3_t ray, double *x, double *y)
+static int lua_lens_forward(vec3_t ray, double *x, double *y)
 {
    int top = lua_gettop(lua);
    lua_rawgeti(lua, LUA_REGISTRYINDEX, mapForwardIndex);
@@ -873,7 +864,7 @@ int lua_lens_forward(vec3_t ray, double *x, double *y)
    return status;
 }
 
-int lua_globe_plate(vec3_t ray, int *plate)
+static int lua_globe_plate(vec3_t ray, int *plate)
 {
    lua_rawgeti(lua, LUA_REGISTRYINDEX, globePlateIndex);
    lua_pushnumber(lua, ray[0]);
@@ -896,7 +887,7 @@ int lua_globe_plate(vec3_t ray, int *plate)
 #define CLEARVAR(var) lua_pushnil(lua); lua_setglobal(lua, var);
 
 // used to clear the state when switching lenses
-void lua_lens_clear(void)
+static void lua_lens_clear(void)
 {
    CLEARVAR("map");
    CLEARVAR("max_hfov");
@@ -915,7 +906,7 @@ void lua_lens_clear(void)
 }
 
 // used to clear the state when switching globes
-void lua_globe_clear(void)
+static void lua_globe_clear(void)
 {
    CLEARVAR("plates");
    CLEARVAR("globe_plate");
@@ -925,7 +916,7 @@ void lua_globe_clear(void)
 
 #undef CLEARVAR
 
-int lua_func_exists(const char* name)
+static int lua_func_exists(const char* name)
 {
    lua_getglobal(lua, name);
    int exists = lua_isfunction(lua,-1);
@@ -933,7 +924,7 @@ int lua_func_exists(const char* name)
    return exists;
 }
 
-int lua_globe_load(void)
+static int lua_globe_load(void)
 {
    // clear Lua variables
    lua_globe_clear();
@@ -1058,7 +1049,7 @@ int lua_globe_load(void)
    return 1;
 }
 
-int lua_lens_load(void)
+static int lua_lens_load(void)
 {
    // clear Lua variables
    lua_lens_clear();
@@ -1168,7 +1159,7 @@ int lua_lens_load(void)
 // End Lua Functions
 // -----------------------------------
 
-int determine_lens_scale(void)
+static int determine_lens_scale(void)
 {
    // clear lens scale
    scale = -1;
@@ -1275,7 +1266,7 @@ int determine_lens_scale(void)
    return 1;
 }
 
-int clamp(int value, int min, int max)
+static int clamp(int value, int min, int max)
 {
    if (value < min) return min;
    if (value > max) return max;
@@ -1286,7 +1277,7 @@ int clamp(int value, int min, int max)
 // Lens Map Creation
 // ----------------------------------------
 
-void set_lensmap_grid(int lx, int ly, int px, int py, int plate_index)
+static void set_lensmap_grid(int lx, int ly, int px, int py, int plate_index)
 {
    // designate the palette for this pixel
    // This will set the palette index map such that a grid is shown
@@ -1304,7 +1295,7 @@ void set_lensmap_grid(int lx, int ly, int px, int py, int plate_index)
 }
 
 // set a pixel on the lensmap from plate coordinates
-void set_lensmap_from_plate(int lx, int ly, int px, int py, int plate_index)
+static void set_lensmap_from_plate(int lx, int ly, int px, int py, int plate_index)
 {
    // check valid lens coordinates
    if (lx < 0 || lx >= width || ly < 0 || ly >= height) {
@@ -1326,7 +1317,7 @@ void set_lensmap_from_plate(int lx, int ly, int px, int py, int plate_index)
 }
 
 // set a pixel on the lensmap from plate uv coordinates
-void set_lensmap_from_plate_uv(int lx, int ly, double u, double v, int plate_index)
+static void set_lensmap_from_plate_uv(int lx, int ly, double u, double v, int plate_index)
 {
    // convert to plate coordinates
    //int px = clamp((int)(u*platesize),0,platesize-1);
@@ -1338,7 +1329,7 @@ void set_lensmap_from_plate_uv(int lx, int ly, double u, double v, int plate_ind
 }
 
 // retrieves the plate closest to the given ray
-int ray_to_plate_index(vec3_t ray)
+static int ray_to_plate_index(vec3_t ray)
 {
    int plate_index = 0;
 
@@ -1367,7 +1358,7 @@ int ray_to_plate_index(vec3_t ray)
    return plate_index;
 }
 
-void plate_uv_to_ray(plate_t *plate, double u, double v, vec3_t ray)
+static void plate_uv_to_ray(plate_t *plate, double u, double v, vec3_t ray)
 {
    // transform to image coordinates
    u -= 0.5;
@@ -1385,7 +1376,7 @@ void plate_uv_to_ray(plate_t *plate, double u, double v, vec3_t ray)
    VectorNormalize(ray);
 }
 
-int ray_to_plate_uv(plate_t *plate, vec3_t ray, double *u, double *v)
+static int ray_to_plate_uv(plate_t *plate, vec3_t ray, double *u, double *v)
 {
    // get ray in the plate's relative view frame
    double x = DotProduct(plate->right, ray);
@@ -1402,7 +1393,7 @@ int ray_to_plate_uv(plate_t *plate, vec3_t ray, double *u, double *v)
 }
 
 // set the (lx,ly) pixel on the lensmap to the (sx,sy,sz) view vector
-void set_lensmap_from_ray(int lx, int ly, double sx, double sy, double sz)
+static void set_lensmap_from_ray(int lx, int ly, double sx, double sy, double sz)
 {
    vec3_t ray = {sx,sy,sz};
 
@@ -1422,7 +1413,7 @@ void set_lensmap_from_ray(int lx, int ly, double sx, double sy, double sz)
    set_lensmap_from_plate_uv(lx,ly,u,v,plate_index);
 }
 
-int resume_lensmap_inverse(void)
+static int resume_lensmap_inverse(void)
 {
    // image coordinates
    double x,y;
@@ -1466,7 +1457,7 @@ int resume_lensmap_inverse(void)
 
 // convenience function for forward map calculation:
 //    maps uv coordinate on a texture to a screen coordinate
-int uv_to_screen(int plate_index, double u, double v, int *lx, int *ly)
+static int uv_to_screen(int plate_index, double u, double v, int *lx, int *ly)
 {
    // get ray from uv coordinates
    vec3_t ray;
@@ -1485,7 +1476,7 @@ int uv_to_screen(int plate_index, double u, double v, int *lx, int *ly)
 }
 
 // fills a quad on the lensmap using the given plate coordinate
-void drawQuad(int *tl, int *tr, int *bl, int *br,
+static void drawQuad(int *tl, int *tr, int *bl, int *br,
       int plate_index, int px, int py)
 {
    // array for quad corners in clockwise order
@@ -1579,7 +1570,7 @@ void drawQuad(int *tl, int *tr, int *bl, int *br,
    }
 }
 
-int resume_lensmap_forward(void)
+static int resume_lensmap_forward(void)
 {
    int *top = forward_lensmap_progress.top;
    int *bot = forward_lensmap_progress.bot;
@@ -1671,7 +1662,7 @@ int resume_lensmap_forward(void)
    return false;
 }
 
-void resume_lensmap(void)
+static void resume_lensmap(void)
 {
    if (mapType == MAP_FORWARD) {
       building_lens = resume_lensmap_forward();
@@ -1681,7 +1672,7 @@ void resume_lensmap(void)
    }
 }
 
-void create_lensmap_inverse(void)
+static void create_lensmap_inverse(void)
 {
    // initialize progress state
    inverse_lensmap_progress.ly = height-1;
@@ -1689,7 +1680,7 @@ void create_lensmap_inverse(void)
    resume_lensmap();
 }
 
-void create_lensmap_forward(void)
+static void create_lensmap_forward(void)
 {
    // initialize progress state
    int *rowa = malloc((platesize+1)*sizeof(int[2]));
@@ -1702,7 +1693,7 @@ void create_lensmap_forward(void)
    resume_lensmap();
 }
 
-void create_lensmap(void)
+static void create_lensmap(void)
 {
    building_lens = false;
 
@@ -1740,7 +1731,7 @@ void create_lensmap(void)
 }
 
 // draw the lensmap to the vidbuffer
-void render_lensmap(void)
+static void render_lensmap(void)
 {
    B **lmap = lensmap;
    B *pmap = palimap;
@@ -1761,7 +1752,7 @@ void render_lensmap(void)
 }
 
 // render a specific plate
-void render_plate(B* plate, vec3_t forward, vec3_t right, vec3_t up) 
+static void render_plate(B* plate, vec3_t forward, vec3_t right, vec3_t up) 
 {
    // set camera orientation
    VectorCopy(forward, r_refdef.forward);
