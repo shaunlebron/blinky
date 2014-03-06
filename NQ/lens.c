@@ -80,7 +80,7 @@ static int width, height, diag;
 static double fov;
 
 // specific desired FOVs in degrees
-static double hfov, vfov, dfov;
+static double hfov, vfov;
 
 // render FOV for each plate
 double renderfov;
@@ -163,17 +163,16 @@ typedef struct {
 
 #define MAX_PLATES 6
 static plate_t plates[MAX_PLATES];
+
+// number of plates used by the current globe
 static int numplates;
 
 // the palettes for each cube face used by the rubix filter
 static B palmap[MAX_PLATES][256];
 
-// the number of pixels used on each cube face
-// (used to skip the rendering of invisible cubefaces)
-static int plate_tally[MAX_PLATES];
-
-// boolean flags set after looking at the final values of plate_tally
-static int plate_display[] = {0,0,0,0,0,0};
+// determines which plates should be rendered
+// (plates will only be drawn if they are used by the current lens)
+static int plate_display[MAX_PLATES] = {0};
 
 // size of each rendered square plate in the vid buffer
 static int platesize;
@@ -254,10 +253,6 @@ static void create_palmap(void)
    }
 }
 
-// -------------------------------------------
-// Console Commands
-// -------------------------------------------
-
 static void L_DumpPalette(void)
 {
    int i;
@@ -273,11 +268,6 @@ static void L_DumpPalette(void)
       pal+=3;
    }
    fclose(pFile);
-}
-
-static void L_ShowFovDeprecate(void)
-{
-   Con_Printf("Please use hfov instead\n");
 }
 
 static void L_ColorCube(void)
@@ -357,7 +347,7 @@ static void L_InitLua(void)
 static void clearFov(void)
 {
    fit = hfit = vfit = 0;
-   fov = hfov = vfov = dfov = 0;
+   fov = hfov = vfov = 0;
    framesize = 0; // clear framesize pointer
    fovchange = 1; // trigger change
 }
@@ -390,10 +380,6 @@ void L_WriteConfig(FILE* f)
    {
       fprintf(f,"vfov %f\n", vfov);
    }
-   else if (dfov != 0)
-   {
-      fprintf(f,"dfov %f\n", dfov);
-   }
    else if (hfit) 
    {
       fprintf(f,"hfit\n");
@@ -420,9 +406,6 @@ static void printActiveFov(void)
    }
    else if (vfov != 0) {
       Con_Printf("vfov %d\n",(int)vfov);
-   }
-   else if (dfov != 0) {
-      Con_Printf("dfov %d\n",(int)dfov);
    }
 }
 
@@ -464,21 +447,6 @@ static void L_VFov(void)
    vfov = Q_atof(Cmd_Argv(1)); // will return 0 if not valid
    framesize = &height;
    fov = vfov * M_PI / 180;
-}
-
-static void L_DFov(void)
-{
-   if (Cmd_Argc() < 2) { // no fov given
-      Con_Printf("dfov <degrees>: set diagonal FOV\n");
-      printActiveFov();
-      return;
-   }
-
-   clearFov();
-   fovchange = 1;
-   dfov = Q_atof(Cmd_Argv(1)); // will return 0 if not valid
-   framesize = &diag;
-   fov = dfov * M_PI / 180;
 }
 
 static int lua_lens_load(void);
@@ -697,14 +665,12 @@ void L_Init(void)
    L_InitLua();
 
    Cmd_AddCommand("dumppal", L_DumpPalette);
-   Cmd_AddCommand("fov", L_ShowFovDeprecate);
    Cmd_AddCommand("rubix", L_ColorCube);
    Cmd_AddCommand("hfit", L_HFit);
    Cmd_AddCommand("vfit", L_VFit);
    Cmd_AddCommand("fit", L_Fit);
    Cmd_AddCommand("hfov", L_HFov);
    Cmd_AddCommand("vfov", L_VFov);
-   Cmd_AddCommand("dfov", L_DFov);
    Cmd_AddCommand("lens", L_Lens);
    Cmd_SetCompletion("lens", L_LensArg);
    Cmd_AddCommand("globe", L_Globe);
@@ -1266,13 +1232,6 @@ static int determine_lens_scale(void)
    return 1;
 }
 
-static int clamp(int value, int min, int max)
-{
-   if (value < min) return min;
-   if (value > max) return max;
-   return value;
-}
-
 // ----------------------------------------
 // Lens Map Creation
 // ----------------------------------------
@@ -1308,7 +1267,7 @@ static void set_lensmap_from_plate(int lx, int ly, int px, int py, int plate_ind
    }
 
    // increase the number of times this side is used
-   ++plate_tally[plate_index];
+   plate_display[plate_index] = 1;
 
    // map the lens pixel to this cubeface pixel
    *LENSMAP(lx,ly) = PLATEMAP(plate_index,px,py);
@@ -1320,8 +1279,6 @@ static void set_lensmap_from_plate(int lx, int ly, int px, int py, int plate_ind
 static void set_lensmap_from_plate_uv(int lx, int ly, double u, double v, int plate_index)
 {
    // convert to plate coordinates
-   //int px = clamp((int)(u*platesize),0,platesize-1);
-   //int py = clamp((int)(v*platesize),0,platesize-1);
    int px = (int)(u*platesize);
    int py = (int)(v*platesize);
    
@@ -1708,7 +1665,7 @@ static void create_lensmap(void)
    }
 
    // clear the side counts
-   memset(plate_tally, 0, sizeof(plate_tally));
+   memset(plate_display, 0, sizeof(plate_display));
 
    // create lensmap
    if (mapType == MAP_FORWARD) {
@@ -1721,12 +1678,6 @@ static void create_lensmap(void)
    }
    else { // MAP_NONE
       Con_Printf("no inverse or forward map being used\n");
-   }
-
-   // update face display flags depending on tallied side counts
-   int i;
-   for (i=0; i<numplates; ++i) {
-      plate_display[i] = (plate_tally[i] > 1);
    }
 }
 
@@ -1845,7 +1796,7 @@ void L_RenderView(void)
    int i;
    for (i=0; i<numplates; ++i)
    {
-      //if (plate_display[i]) {
+      if (plate_display[i]) {
 
          B* plate = platemap+platesize*platesize*i;
          plate_t *p = &plates[i];
@@ -1875,7 +1826,7 @@ void L_RenderView(void)
          VectorMA(f, p->forward[2], forward, f);
 
          render_plate(plate, f, r, u);
-      //}
+      }
    }
 
    // save plates upon request from the "saveglobe" command
