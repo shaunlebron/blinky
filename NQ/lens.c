@@ -189,19 +189,36 @@ static struct _lens {
    double scale;
 
    // pixel size of the lens view (it is equal to the screen size below):
-   // ------------------
-   // |                |
-   // |   ----------   |
-   // |   |        |   |
-   // |   | screen |   |
-   // |   |        |   |
-   // |   ----------   |
-   // |                |
-   // |----------------|
-   // |   status bar   |
-   // |----------------|
+   //    ------------------
+   //    |                |
+   //    |   ----------   |
+   //    |   |        |   |
+   //    |   | screen |   |
+   //    |   |        |   |
+   //    |   ----------   |
+   //    |                |
+   //    |----------------|
+   //    |   status bar   |
+   //    |----------------|
    int width_px, height_px;
 
+   // array of pointers to plate pixels
+   // (the view constructed by the lens)
+   //
+   //    **************************    ^
+   //    **************************    |
+   //    **************************    |
+   //    **************************  height_px
+   //    **************************    |
+   //    **************************    |
+   //    **************************    v
+   // 
+   //    <------- width_px ------->
+   // 
+   B **pixels;
+
+   // retrieves a pointer to a lens pixel
+   #define LENSPIXEL(x,y) (lens.pixels + (x) + (y)*lens.width_px)
 
 } lens;
 
@@ -232,11 +249,6 @@ static int is_lens_builder_time_up(void) {
 // the environment map
 // a large array of pixels that hold all rendered views
 static B *platemap = NULL;  
-
-// the lookup table
-// an array of pointers to platemap pixels
-// (the view constructed by the lens)
-static B **lensmap = NULL;
 
 // how each pixel in the lensmap is colored
 // an array of palette indices
@@ -287,9 +299,6 @@ static int fovchange;
 
 // retrieves a pointer to a pixel in the platemap
 #define PLATEMAP(plate,x,y) (platemap + (plate)*platesize*platesize + (x) + (y)*platesize)
-
-// retrieves a pointer to a pixel in the lensmap
-#define LENSMAP(x,y) (lensmap + (x) + (y)*lens.width_px)
 
 // retrieves a pointer to a pixel in the palimap
 #define PALIMAP(x,y) (palimap + (x) + (y)*lens.width_px)
@@ -1402,7 +1411,7 @@ static void set_lensmap_from_plate(int lx, int ly, int px, int py, int plate_ind
    plate_display[plate_index] = 1;
 
    // map the lens pixel to this cubeface pixel
-   *LENSMAP(lx,ly) = PLATEMAP(plate_index,px,py);
+   *LENSPIXEL(lx,ly) = PLATEMAP(plate_index,px,py);
 
    set_lensmap_grid(lx,ly,px,py,plate_index);
 }
@@ -1816,7 +1825,7 @@ static void create_lensmap(void)
 // draw the lensmap to the vidbuffer
 static void render_lensmap(void)
 {
-   B **lmap = lensmap;
+   B **lmap = lens.pixels;
    B *pmap = palimap;
    int x, y;
    for(y=0; y<lens.height_px; y++)
@@ -1875,15 +1884,15 @@ void L_RenderView(void)
    if(sizechange)
    {
       if(platemap) free(platemap);
-      if(lensmap) free(lensmap);
+      if(lens.pixels) free(lens.pixels);
       if(palimap) free(palimap);
 
       platemap = (B*)malloc(platesize*platesize*MAX_PLATES*sizeof(B));
-      lensmap = (B**)malloc(area*sizeof(B*));
+      lens.pixels = (B**)malloc(area*sizeof(B*));
       palimap = (B*)malloc(area*sizeof(B));
       
       // the rude way
-      if(!platemap || !lensmap || !palimap) {
+      if(!platemap || !lens.pixels || !palimap) {
          Con_Printf("Quake-Lenses: could not allocate enough memory\n");
          exit(1); 
       }
@@ -1891,7 +1900,7 @@ void L_RenderView(void)
 
    // recalculate lens
    if (sizechange || fovchange || lenschange || globechange) {
-      memset(lensmap, 0, area*sizeof(B*));
+      memset(lens.pixels, 0, area*sizeof(B*));
       memset(palimap, 255, area*sizeof(B));
 
       // load lens again
