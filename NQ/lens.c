@@ -172,6 +172,10 @@ typedef unsigned char B;
 
 static struct _lens {
 
+   // boolean signaling if the lens is properly loaded
+   int valid;
+
+   // name of the current lens
    char name[50];
 
    // size of the lens image in its arbitrary units
@@ -249,9 +253,6 @@ double renderfov;
 static int fit;
 static int hfit;
 static int vfit;
-
-// indicates if the current lens is valid
-static int valid_lens;
 
 // name of the current globe
 static char globe[50];
@@ -610,8 +611,8 @@ static void L_Lens(void)
    strcpy(lens.name, Cmd_Argv(1));
 
    // load lens
-   valid_lens = lua_lens_load();
-   if (!valid_lens) {
+   lens.valid = lua_lens_load();
+   if (!lens.valid) {
       strcpy(lens.name,"");
       Con_Printf("not a valid lens\n");
    }
@@ -1788,7 +1789,7 @@ static void create_lensmap(void)
    lens_builder.working = false;
 
    // render nothing if current lens or globe is invalid
-   if (!valid_lens || !valid_globe)
+   if (!lens.valid || !valid_globe)
       return;
 
    // test if this lens can support the current fov
@@ -1898,8 +1899,8 @@ void L_RenderView(void)
       // load lens again
       // (NOTE: this will be the second time this lens will be loaded in this frame if it has just changed)
       // (I'm just trying to force re-evaluation of lens variables that are dependent on globe variables (e.g. "lens_width = numplates" in debug.lua))
-      valid_lens = lua_lens_load();
-      if (!valid_lens) {
+      lens.valid = lua_lens_load();
+      if (!lens.valid) {
          strcpy(lens.name,"");
          Con_Printf("not a valid lens\n");
       }
