@@ -231,18 +231,18 @@ static struct _lens {
    // pixel size of the lens view (it is equal to the screen size below):
    //    ------------------
    //    |                |
-   //    |   ----------   |
-   //    |   |        |   |
-   //    |   | screen |   |
-   //    |   |        |   |
-   //    |   ----------   |
-   //    |                |
+   //    |   ---------- ^ |
+   //    |   |        | | |
+   //    |   | screen | h |
+   //    |   |        | | |
+   //    |   ---------- v |
+   //    |   <---w---->   |
    //    |----------------|
    //    |   status bar   |
    //    |----------------|
    int width_px, height_px;
 
-   // array of pointers to plate pixels
+   // array of pointers (*) to plate pixels
    // (the view constructed by the lens)
    //
    //    **************************    ^
@@ -260,9 +260,89 @@ static struct _lens {
    // retrieves a pointer to a lens pixel
    #define LENSPIXEL(x,y) (lens.pixels + (x) + (y)*lens.width_px)
 
+   // a color tint index (i) for each pixel (255 = no filter)
+   // (new color = globe.plates[i].palette[old color])
+   // (used for displaying transparent colored overlays over certain pixels)
+   //
+   //    iiiiiiiiiiiiiiiiiiiiiiiiii    ^
+   //    iiiiiiiiiiiiiiiiiiiiiiiiii    |
+   //    iiiiiiiiiiiiiiiiiiiiiiiiii    |
+   //    iiiiiiiiiiiiiiiiiiiiiiiiii  height_px
+   //    iiiiiiiiiiiiiiiiiiiiiiiiii    |
+   //    iiiiiiiiiiiiiiiiiiiiiiiiii    |
+   //    iiiiiiiiiiiiiiiiiiiiiiiiii    v
+   // 
+   //    <------- width_px ------->
+   // 
+   B *pixel_tints;
+
+   // retrieves a pointer to a lens pixel tint
+   #define LENSPIXELTINT(x,y) (lens.pixel_tints + (x) + (y)*lens.width_px)
+
 } lens;
 
+static struct _rubix {
 
+   // boolean signaling if rubix should be drawn
+   int enabled;
+
+   int numcells;
+   double cell_size;
+   double pad_size;
+
+   // We color a plate like the side of a rubix cube so we
+   // can see how the lens distorts the plates. (indicatrix)
+   //
+   // EXAMPLE:
+   //
+   //    numcells  = 3
+   //    cell_size = 2
+   //    pad_size  = 1
+   //
+   //  A globe plate is split into a grid of "units"
+   //  The squares that are colored below are called "cells".
+   //  You can see below that there are 3x3 colored cells,
+   //  since numcells=3.
+   //
+   //  You can see below that each cell is 2x2 units large,
+   //  since cell_size=2.
+   //
+   //  Finally, you can see the cells have 1 unit of padding,
+   //  since pad_size=1.
+   //
+   //    ---------------------------------------------------
+   //    |    |    |    |    |    |    |    |    |    |    |
+   //    |    |    |    |    |    |    |    |    |    |    |
+   //    |----|----|----|----|----|----|----|----|----|----|
+   //    |    |XXXXXXXXX|    |XXXXXXXXX|    |XXXXXXXXX|    |
+   //    |    |XXXXXXXXX|    |XXXXXXXXX|    |XXXXXXXXX|    |
+   //    |----|XXXXXXXXX|----|XXXXXXXXX|----|XXXXXXXXX|----|
+   //    |    |XXXXXXXXX|    |XXXXXXXXX|    |XXXXXXXXX|    |
+   //    |    |XXXXXXXXX|    |XXXXXXXXX|    |XXXXXXXXX|    |
+   //    |----|----|----|----|----|----|----|----|----|----|
+   //    |    |    |    |    |    |    |    |    |    |    |
+   //    |    |    |    |    |    |    |    |    |    |    |
+   //    |----|----|----|----|----|----|----|----|----|----|
+   //    |    |XXXXXXXXX|    |XXXXXXXXX|    |XXXXXXXXX|    |
+   //    |    |XXXXXXXXX|    |XXXXXXXXX|    |XXXXXXXXX|    |
+   //    |----|XXXXXXXXX|----|XXXXXXXXX|----|XXXXXXXXX|----|
+   //    |    |XXXXXXXXX|    |XXXXXXXXX|    |XXXXXXXXX|    |
+   //    |    |XXXXXXXXX|    |XXXXXXXXX|    |XXXXXXXXX|    |
+   //    |----|----|----|----|----|----|----|----|----|----|
+   //    |    |    |    |    |    |    |    |    |    |    |
+   //    |    |    |    |    |    |    |    |    |    |    |
+   //    |----|----|----|----|----|----|----|----|----|----|
+   //    |    |XXXXXXXXX|    |XXXXXXXXX|    |XXXXXXXXX|    |
+   //    |    |XXXXXXXXX|    |XXXXXXXXX|    |XXXXXXXXX|    |
+   //    |----|XXXXXXXXX|----|XXXXXXXXX|----|XXXXXXXXX|----|
+   //    |    |XXXXXXXXX|    |XXXXXXXXX|    |XXXXXXXXX|    |
+   //    |    |XXXXXXXXX|    |XXXXXXXXX|    |XXXXXXXXX|    |
+   //    |----|----|----|----|----|----|----|----|----|----|
+   //    |    |    |    |    |    |    |    |    |    |    |
+   //    |    |    |    |    |    |    |    |    |    |    |
+   //    ---------------------------------------------------
+
+} rubix;
 
 // -------------------------------------------------------------------------------- 
 // |                                                                              |
@@ -286,11 +366,6 @@ static int is_lens_builder_time_up(void) {
 // --------------------------------------------------------------------------------
 
 
-// how each pixel in the lensmap is colored
-// an array of palette indices
-// (used for displaying transparent colored overlays)
-static B *palimap = NULL;
-
 // desired FOV in radians
 static double fov;
 
@@ -308,11 +383,6 @@ static int vfit;
 // pointer to the screen dimension (width,height) attached to the desired fov
 static int* framesize;
 
-// cubemap color display flag
-static int colorcube = 0;
-static int colorcells = 10;
-static int colorwfrac = 5;
-
 // maximum FOV width of the current lens
 static double max_vfov;
 
@@ -324,9 +394,6 @@ static int fovchange;
 
 // retrieves a pointer to a pixel in the video buffer
 #define VBUFFER(x,y) (vid.buffer + (x) + (y)*vid.rowbytes)
-
-// retrieves a pointer to a pixel in the palimap
-#define PALIMAP(x,y) (palimap + (x) + (y)*lens.width_px)
 
 // find closest pallete index for color
 static int find_closest_pal_index(int r, int g, int b)
@@ -421,10 +488,26 @@ static void L_DumpPalette(void)
    fclose(pFile);
 }
 
-static void L_ColorCube(void)
+static void L_Rubix(void)
 {
-   colorcube = colorcube ? 0 : 1;
-   Con_Printf("Rubix is %s\n", colorcube ? "ON" : "OFF");
+   rubix.enabled = rubix.enabled ? 0 : 1;
+   Con_Printf("Rubix is %s\n", rubix.enabled ? "ON" : "OFF");
+}
+
+static void L_RubixGrid(void)
+{
+   if (Cmd_Argc() == 4) {
+      rubix.numcells = Q_atof(Cmd_Argv(1));
+      rubix.cell_size = Q_atof(Cmd_Argv(2));
+      rubix.pad_size = Q_atof(Cmd_Argv(3));
+      lens.changed = true; // need to recompute lens to update grid
+   }
+   else {
+      Con_Printf("RubixGrid <numcells> <cellsize> <padsize>\n");
+      Con_Printf("   numcells (default 10) = %d\n", rubix.numcells);
+      Con_Printf("   cellsize (default  4) = %f\n", rubix.cell_size);
+      Con_Printf("   padsize  (default  1) = %f\n", rubix.pad_size);
+   }
 }
 
 /* START CONVERSION LUA HELPER FUNCTIONS */
@@ -547,6 +630,7 @@ void L_WriteConfig(FILE* f)
    fprintf(f,"fisheye %d\n", fisheye_enabled);
    fprintf(f,"lens \"%s\"\n", lens.name);
    fprintf(f,"globe \"%s\"\n", globe.name);
+   fprintf(f,"rubixgrid %d %f %f\n", rubix.numcells, rubix.cell_size, rubix.pad_size);
 }
 
 static void printActiveFov(void)
@@ -816,10 +900,13 @@ void L_Init(void)
    lens_builder.working = 0;
    lens_builder.seconds_per_frame = 1.0f / 60;
 
+   rubix.enabled = 0;
+
    L_InitLua();
 
    Cmd_AddCommand("dumppal", L_DumpPalette);
-   Cmd_AddCommand("rubix", L_ColorCube);
+   Cmd_AddCommand("rubix", L_Rubix);
+   Cmd_AddCommand("rubixgrid", L_RubixGrid);
    Cmd_AddCommand("hfit", L_HFit);
    Cmd_AddCommand("vfit", L_VFit);
    Cmd_AddCommand("fit", L_Fit);
@@ -832,10 +919,11 @@ void L_Init(void)
    Cmd_AddCommand("saveglobe", L_SaveGlobe);
    Cmd_AddCommand("fisheye", L_Fisheye);
 
-   // default view state
+   // defaults
    Cmd_ExecuteString("globe cube", src_command);
    Cmd_ExecuteString("lens panini", src_command);
    Cmd_ExecuteString("hfov 180", src_command);
+   Cmd_ExecuteString("rubixgrid 10 4 1", src_command);
 
    // create palette maps
    create_palmap();
@@ -1382,17 +1470,40 @@ static void set_lensmap_grid(int lx, int ly, int px, int py, int plate_index)
 {
    // designate the palette for this pixel
    // This will set the palette index map such that a grid is shown
-   int numdivs = colorcells*colorwfrac+1;
-   double divsize = (double)globe.platesize/numdivs;
-   double mod = colorwfrac;
 
-   double x = px/divsize;
-   double y = py/divsize;
+   // (This is a block)
+   //    |----|----|----|
+   //    |    |    |    |
+   //    |    |    |    |
+   //    |----|----|----|
+   //    |    |XXXXXXXXX|
+   //    |    |XXXXXXXXX|
+   //    |----|XXXXXXXXX|
+   //    |    |XXXXXXXXX|
+   //    |    |XXXXXXXXX|
+   //    |----|----|----|
+   double block_size = (rubix.pad_size + rubix.cell_size);
 
-   int ongrid = fmod(x,mod) < 1 || fmod(y,mod) < 1;
+   // (Total number of units across)
+   //    ---------------------------------------------------
+   //    |    |    |    |    |    |    |    |    |    |    |
+   //    |    |    |    |    |    |    |    |    |    |    |
+   //    |----|----|----|----|----|----|----|----|----|----|
+   double num_units = rubix.numcells * block_size + rubix.pad_size;
+
+   // (the size of one unit)
+   double unit_size_px = (double)globe.platesize / num_units;
+
+   // convert pixel coordinates to units
+   double ux = (double)px/unit_size_px;
+   double uy = (double)py/unit_size_px;
+
+   int ongrid =
+      fmod(ux,block_size) < rubix.pad_size ||
+      fmod(uy,block_size) < rubix.pad_size;
 
    if (!ongrid)
-      *PALIMAP(lx,ly) = plate_index;
+      *LENSPIXELTINT(lx,ly) = plate_index;
 }
 
 // set a pixel on the lensmap from plate coordinates
@@ -1831,14 +1942,14 @@ static void create_lensmap(void)
 static void render_lensmap(void)
 {
    B **lmap = lens.pixels;
-   B *pmap = palimap;
+   B *pmap = lens.pixel_tints;
    int x, y;
    for(y=0; y<lens.height_px; y++)
       for(x=0; x<lens.width_px; x++,lmap++,pmap++)
          if (*lmap) {
             int lx = x+scr_vrect.x;
             int ly = y+scr_vrect.y;
-            if (colorcube) {
+            if (rubix.enabled) {
                int i = *pmap;
                *VBUFFER(lx,ly) = i != 255 ? globe.plates[i].palette[**lmap] : **lmap;
             }
@@ -1892,14 +2003,14 @@ void L_RenderView(void)
    {
       if(globe.pixels) free(globe.pixels);
       if(lens.pixels) free(lens.pixels);
-      if(palimap) free(palimap);
+      if(lens.pixel_tints) free(lens.pixel_tints);
 
       globe.pixels = (B*)malloc(platesize*platesize*MAX_PLATES*sizeof(B));
       lens.pixels = (B**)malloc(area*sizeof(B*));
-      palimap = (B*)malloc(area*sizeof(B));
+      lens.pixel_tints = (B*)malloc(area*sizeof(B));
       
       // the rude way
-      if(!globe.pixels || !lens.pixels || !palimap) {
+      if(!globe.pixels || !lens.pixels || !lens.pixel_tints) {
          Con_Printf("Quake-Lenses: could not allocate enough memory\n");
          exit(1); 
       }
@@ -1908,7 +2019,7 @@ void L_RenderView(void)
    // recalculate lens
    if (sizechange || fovchange || lens.changed || globe.changed) {
       memset(lens.pixels, 0, area*sizeof(B*));
-      memset(palimap, 255, area*sizeof(B));
+      memset(lens.pixel_tints, 255, area*sizeof(B));
 
       // load lens again
       // (NOTE: this will be the second time this lens will be loaded in this frame if it has just changed)
