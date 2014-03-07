@@ -1,3 +1,106 @@
+/*
+
+LENS.C
+======
+
+   This is a fisheye addon based on Fisheye Quake.  It renders up to 6 camera views
+   per frame, and melds them together to allow a Field of View (FoV) greater than 180 degrees:
+
+             ---------
+             |       |
+             | UP    |                          -----------------------------
+             |       |                          |\--         UP          --/|
+             ---------                          |   \---             ---/   |
+   --------- --------- --------- ---------      |       \-----------/       |
+   |       | |       | |       | |       |      |        |         |        |
+   | LEFT  | | FRONT | | RIGHT | | BACK  | ---> |  LEFT  |  FRONT  | RIGHT  |
+   |       | |       | |       | |       |      |        |         |        |
+   --------- --------- --------- ---------      |       /-----------\       |
+          ^  ---------                          |   /---             ---\   |
+          |  |       |                          |/--        DOWN         --\|
+         90º | DOWN  |                          -----------------------------
+          |  |       |                          <---------- +180º ---------->
+          v  ---------
+             <--90º-->
+
+         (a GLOBE controls the separate             (a LENS controls how the
+          camera views to render)                  views are melded together)
+
+
+   To enable this fisheye rendering, enter the command:
+   ```
+   ] fisheye 1
+   ```
+
+   To resume the standard view, enter the command:
+   ```
+   ] fisheye 0
+   ```
+
+NOTE
+----
+
+   You should have a "globes/" and "lenses/" folder in the game directory.  These
+   contain Lua scripts used to configure the views.  I've included several
+   preconfigured globes and lenses in the root directory of this repo.
+
+   The game directory is "~/.tyrquake/" in UNIX environments.
+
+GLOBES
+------
+
+   The multiple camera views are controlled by a "globe" script.  It contains a
+   "plates" array, with each element containing a single camera's forward vector,
+   up vector, and fov. Together, the plates should form a complete globe around
+   the player.
+
+   For example, this is the default globe (globes/cube.lua):
+
+   ```
+   plates = {
+      { { 0, 0, 1 }, { 0, 1, 0 }, 90 }, -- front
+      { { 1, 0, 0 }, { 0, 1, 0 }, 90 }, -- right
+      { { -1, 0, 0 }, { 0, 1, 0 }, 90 }, -- left
+      { { 0, 0, -1 }, { 0, 1, 0 }, 90 }, -- back
+      { { 0, 1, 0 }, { 0, 0, -1 }, 90 }, -- top
+      { { 0, -1, 0 }, { 0, 0, 1 }, 90 } -- bottom
+   }
+   ```
+             ---------
+             |       |
+             | UP    |
+             |       |
+             ---------
+   --------- --------- --------- ---------
+   |       | |       | |       | |       |
+   | LEFT  | | FRONT | | RIGHT | | BACK  |
+   |       | |       | |       | |       |
+   --------- --------- --------- ---------
+          ^  ---------
+          |  |       |
+         90º | DOWN  |
+          |  |       |
+          v  ---------
+             <--90º-->
+
+   To use this globe, enter the command:
+
+   ```
+   ] globe cube
+   ```
+
+   There are other included globes:
+
+   - trism: a triangular prism with 5 views
+   - tetra: a tetrahedron with 4 views
+   - fast:  2 overlaid views in the same direction (90 and 160 degrees)
+
+LENSES
+------
+
+   The camera views are melded together by a "lens" script.
+
+*/
 
 #include "bspfile.h"
 #include "client.h"
