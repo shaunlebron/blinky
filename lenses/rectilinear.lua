@@ -1,5 +1,3 @@
-hsym = true
-vsym = true
 max_hfov = 180
 max_vfov = 180
 

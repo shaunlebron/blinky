@@ -1,15 +1,10 @@
 -- Mercator Projection
 
--- horizontal and vertical symmetry
-hsym = true
-vsym = true
-
 -- FOV bounds
 max_hfov = 360
 max_vfov = 180
 
--- horizontal fit size
-hfit_size = 2*pi
+lens_width = 2*pi
 
 onload = "fit"
 

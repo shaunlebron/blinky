@@ -1,6 +1,4 @@
 
-hsym = true
-vsym = true
 max_hfov = 360
 max_vfov = 180
 
@@ -109,5 +107,5 @@ function lens_inverse(x,y)
 end
 
 maxr = lens_forward(latlon_to_ray(0,pi))
-vfit_size = 2*maxr
-hfit_size = 2*maxr
+lens_height = 2*maxr
+lens_width = 2*maxr

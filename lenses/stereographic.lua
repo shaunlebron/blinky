@@ -1,7 +1,5 @@
 angleScale = 0.5
 
-hsym = true
-vsym = true
 max_hfov = 360
 max_vfov = 360
 

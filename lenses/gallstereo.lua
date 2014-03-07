@@ -6,12 +6,11 @@ RXF = 1.41421356237309504880
 maxx = XF * pi
 maxy = YF * tan(0.5*pi/2)
 
-hsym = true
-vsym = true
 max_hfov = 360
 max_vfov = 180
-hfit_size = maxx*2
-vfit_size = maxy*2
+
+lens_width = maxx*2
+lens_height = maxy*2
 
 onload = "fit"
 

@@ -42,13 +42,11 @@ end
 local t = solveTheta(pi*0.5)
 maxy = 2*sqrt(pi/(4+pi))*sin(t)
 
-hsym = true
-vsym = true
 max_hfov = 360
 max_vfov = 180
 
 t = solveTheta(0)
-hfit_size = 2/sqrt(pi*(4+pi))*pi*(1+cos(t))*2
-vfit_size = 2*maxy
+lens_width = 2/sqrt(pi*(4+pi))*pi*(1+cos(t))*2
+lens_height = 2*maxy
 
 onload = "fit"

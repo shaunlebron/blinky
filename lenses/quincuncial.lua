@@ -1,8 +1,6 @@
-hsym = true
-vsym = true
 size = 2.622058
-hfit_size = 2*size
-vfit_size = 2*size
+lens_width = 2*size
+lens_height = 2*size
 
 onload = "fit"
 
@@ -113,14 +111,14 @@ function lens_forward(x,y,z)
          x,y = y,x
       end
       if x > 0 then
-         x = x - hfit_size/2
+         x = x - lens_width/2
       else
-         x = x + hfit_size/2
+         x = x + lens_width/2
       end
       if y > 0 then
-         y = y - vfit_size/2
+         y = y - lens_height/2
       else
-         y = y + vfit_size/2
+         y = y + lens_height/2
       end
    else
    end

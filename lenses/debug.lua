@@ -1,8 +1,8 @@
 cols = numplates
 rows = 1
 
-hfit_size = cols
-vfit_size = rows
+lens_width = cols
+lens_height = rows
 
 onload = "fit"
 

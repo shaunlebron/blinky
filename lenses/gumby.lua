@@ -2,8 +2,6 @@ d = 1
 gumbyScale = 0.75
 gumbyScaleInv = 1.0/gumbyScale
 
-hsym = true
-vsym = true
 max_hfov = 360
 max_vfov = 180
 
@@ -32,7 +30,7 @@ function lens_forward(x,y,z)
 end
 
 local x,y = lens_forward(latlon_to_ray(pi/2,0))
-vfit_size = y*2
+lens_height = y*2
 
 x,y = lens_forward(latlon_to_ray(0,pi))
-hfit_size = x*2
+lens_width = x*2

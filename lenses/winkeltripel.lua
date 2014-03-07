@@ -1,8 +1,6 @@
 -- cos of the standard parallel at 50 degrees 28'
 clat0 = 2/pi
 
-hsym = true
-vsym = true
 max_hfov = 360
 max_vfov = 180
 
@@ -23,7 +21,7 @@ function lens_forward(x,y,z)
 end
 
 local x,y = lens_forward(latlon_to_ray(pi/2,0))
-vfit_size = 2*y
+lens_height = 2*y
 
 x,y = lens_forward(latlon_to_ray(0,pi))
-hfit_size = 2*x
+lens_width = 2*x

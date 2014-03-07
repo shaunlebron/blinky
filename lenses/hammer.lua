@@ -1,9 +1,8 @@
-hsym = true
-vsym = true
 max_hfov = 360
 max_vfov = 180
-hfit_size = 2*sqrt(2)*2
-vfit_size = sqrt(2)*2
+
+lens_width = 2*sqrt(2)*2
+lens_height = sqrt(2)*2
 
 onload = "fit"
 

@@ -19,6 +19,6 @@ function lens_forward(x,y,z)
 end
 
 local x,y = lens_forward(latlon_to_ray(0,pi))
-hfit_size = 2*abs(x)
+lens_width = 2*abs(x)
 x,y = lens_forward(latlon_to_ray(pi/2,0))
-vfit_size = 2*abs(y)
+lens_height = 2*abs(y)

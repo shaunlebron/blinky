@@ -1,8 +1,9 @@
 cols = 4
 rows = 3
 
-hfit_size = cols
-vfit_size = rows
+lens_width = cols
+lens_height = rows
+
 max_hfov = 360
 max_vfov = 180
 

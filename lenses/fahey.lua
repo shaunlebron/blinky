@@ -1,12 +1,11 @@
 XR = 0.819152 * pi
 YR = 1.819152
 
-hsym = true
-vsym = true
 max_hfov = 360
 max_vfov = 180
-hfit_size = XR*2
-vfit_size = YR*2
+
+lens_width = XR*2
+lens_height = YR*2
 
 onload = "fit"
 

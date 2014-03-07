@@ -74,7 +74,7 @@ static B *palimap = NULL;
 static int left, top;
 
 // size of the view in the vid buffer
-static int width, height, diag;
+static int width, height;
 
 // desired FOV in radians
 static double fov;
@@ -86,8 +86,8 @@ static double hfov, vfov;
 double renderfov;
 
 // fit sizes
-static double hfit_size;
-static double vfit_size;
+static double lens_width;
+static double lens_height;
 
 // fit mode
 static int fit;
@@ -106,7 +106,7 @@ static char globe[50];
 // indicates if the current globe is valid
 static int valid_globe;
 
-// pointer to the screen dimension (width,height or diag) attached to the desired fov
+// pointer to the screen dimension (width,height) attached to the desired fov
 static int* framesize;
 
 // scale determined from desired zoom level
@@ -858,10 +858,8 @@ static void lua_lens_clear(void)
    CLEARVAR("map");
    CLEARVAR("max_hfov");
    CLEARVAR("max_vfov");
-   CLEARVAR("hsym");
-   CLEARVAR("vsym");
-   CLEARVAR("hfit_size");
-   CLEARVAR("vfit_size");
+   CLEARVAR("lens_width");
+   CLEARVAR("lens_height");
    CLEARVAR("lens_inverse");
    CLEARVAR("lens_forward");
    CLEARVAR("onload");
@@ -1100,23 +1098,13 @@ static int lua_lens_load(void)
    max_vfov *= M_PI / 180;
    lua_pop(lua,1); // pop max_vfov
 
-   /*
-   lua_getglobal(lua, "vsym");
-   vsym = lua_isboolean(lua,-1) ? lua_toboolean(lua,-1) : 0;
-   lua_pop(lua,1);
+   lua_getglobal(lua, "lens_width");
+   lens_width = lua_isnumber(lua,-1) ? lua_tonumber(lua,-1) : 0;
+   lua_pop(lua,1); // pop lens_width
 
-   lua_getglobal(lua, "hsym");
-   hsym = lua_isboolean(lua,-1) ? lua_toboolean(lua,-1) : 0;
-   lua_pop(lua,1);
-   */
-
-   lua_getglobal(lua, "hfit_size");
-   hfit_size = lua_isnumber(lua,-1) ? lua_tonumber(lua,-1) : 0;
-   lua_pop(lua,1); // pop hfit_size
-
-   lua_getglobal(lua, "vfit_size");
-   vfit_size = lua_isnumber(lua,-1) ? lua_tonumber(lua,-1) : 0;
-   lua_pop(lua,1); // pop vfit_size
+   lua_getglobal(lua, "lens_height");
+   lens_height = lua_isnumber(lua,-1) ? lua_tonumber(lua,-1) : 0;
+   lua_pop(lua,1); // pop lens_height
 
    return 1;
 }
@@ -1186,39 +1174,39 @@ static int determine_lens_scale(void)
    else // scale based on fitting
    {
       if (hfit) {
-         if (hfit_size <= 0)
+         if (lens_width <= 0)
          {
-            //Con_Printf("Cannot use hfit unless a positive hfit_size is in your script\n");
-            Con_Printf("hfit_size not specified.  Try hfov instead.\n");
+            //Con_Printf("Cannot use hfit unless a positive lens_width is in your script\n");
+            Con_Printf("lens_width not specified.  Try hfov instead.\n");
             return 0;
          }
-         scale = hfit_size / width;
+         scale = lens_width / width;
       }
       else if (vfit) {
-         if (vfit_size <= 0)
+         if (lens_height <= 0)
          {
-            //Con_Printf("Cannot use vfit unless a positive vfit_size is in your script\n");
-            Con_Printf("vfit_size not specified.  Try vfov instead.\n");
+            //Con_Printf("Cannot use vfit unless a positive lens_height is in your script\n");
+            Con_Printf("lens_height not specified.  Try vfov instead.\n");
             return 0;
          }
-         scale = vfit_size / height;
+         scale = lens_height / height;
       }
       else if (fit) {
-         if (hfit_size <= 0 && vfit_size > 0) {
-            scale = vfit_size / height;
+         if (lens_width <= 0 && lens_height > 0) {
+            scale = lens_height / height;
          }
-         else if (vfit_size <=0 && hfit_size > 0) {
-            scale = hfit_size / width;
+         else if (lens_height <=0 && lens_width > 0) {
+            scale = lens_width / width;
          }
-         else if (vfit_size <= 0 && hfit_size <= 0) {
-            Con_Printf("vfit_size and hfit_size not specified.  Try hfov instead.\n");
+         else if (lens_height <= 0 && lens_width <= 0) {
+            Con_Printf("lens_height and lens_width not specified.  Try hfov instead.\n");
             return 0;
          }
-         else if (hfit_size / vfit_size > (double)width / height) {
-            scale = hfit_size / width;
+         else if (lens_width / lens_height > (double)width / height) {
+            scale = lens_width / width;
          }
          else {
-            scale = vfit_size / height;
+            scale = lens_height / height;
          }
       }
    }
@@ -1737,7 +1725,6 @@ void L_RenderView(void)
    width = scr_vrect.width; 
    height = scr_vrect.height;
    platesize = (width < height) ? width : height;
-   diag = sqrt(width*width+height*height);
    int area = width*height;
    int sizechange = pwidth!=width || pheight!=height;
 
@@ -1766,7 +1753,7 @@ void L_RenderView(void)
 
       // load lens again
       // (NOTE: this will be the second time this lens will be loaded in this frame if it has just changed)
-      // (I'm just trying to force re-evaluation of lens variables that are dependent on globe variables (e.g. "hfit_size = numplates" in debug.lua))
+      // (I'm just trying to force re-evaluation of lens variables that are dependent on globe variables (e.g. "lens_width = numplates" in debug.lua))
       valid_lens = lua_lens_load();
       if (!valid_lens) {
          strcpy(lens,"");

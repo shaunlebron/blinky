@@ -1,11 +1,10 @@
 maxr = 2*sin(pi*0.5)
 
-hsym = true
-vsym = true
 max_hfov = 360
 max_vfov = 360
-hfit_size = maxr*2
-vfit_size = maxr*2
+
+lens_width = maxr*2
+lens_height = maxr*2
 
 onload = "fit"
 

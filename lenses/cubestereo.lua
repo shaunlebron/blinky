@@ -1,6 +1,4 @@
 
-hsym = true
-vsym = true
 max_hfov = 270
 max_vfov = 270
 

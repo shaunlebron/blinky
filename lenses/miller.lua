@@ -1,11 +1,10 @@
 maxy = 1.25*log(tan(0.25*pi+0.4*pi*0.5))
 
-hsym = true
-vsym = true
 max_hfov = 360
 max_vfov = 180
-hfit_size = 2*pi
-vfit_size = maxy*2
+
+lens_width = 2*pi
+lens_height = maxy*2
 
 onload = "fit"
 
