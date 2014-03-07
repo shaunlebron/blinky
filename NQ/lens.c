@@ -160,6 +160,13 @@ static struct _lens_builder
 // the Lua state pointer
 static lua_State *lua;
 
+// lua reference indexes (for reference lua functions)
+static struct _lua_refs {
+   int lens_forward;
+   int lens_inverse;
+   int globe_plate;
+} lua_refs;
+
 // type to represent one pixel (one byte)
 typedef unsigned char B;
 
@@ -253,12 +260,6 @@ static double max_vfov;
 
 // maximum FOV height of the current lens
 static double max_hfov;
-
-// lua reference map index (for storing a reference to the map function)
-static int mapForwardIndex;
-static int mapInverseIndex;
-
-static int globePlateIndex;
 
 // change flags
 static int lenschange;
@@ -877,7 +878,7 @@ static int lua_plate_to_ray(lua_State *L)
 static int lua_lens_inverse(double x, double y, vec3_t ray)
 {
    int top = lua_gettop(lua);
-   lua_rawgeti(lua, LUA_REGISTRYINDEX, mapInverseIndex);
+   lua_rawgeti(lua, LUA_REGISTRYINDEX, lua_refs.lens_inverse);
    lua_pushnumber(lua, x);
    lua_pushnumber(lua, y);
    lua_call(lua, 2, LUA_MULTRET);
@@ -922,7 +923,7 @@ static int lua_lens_inverse(double x, double y, vec3_t ray)
 static int lua_lens_forward(vec3_t ray, double *x, double *y)
 {
    int top = lua_gettop(lua);
-   lua_rawgeti(lua, LUA_REGISTRYINDEX, mapForwardIndex);
+   lua_rawgeti(lua, LUA_REGISTRYINDEX, lua_refs.lens_forward);
    lua_pushnumber(lua,ray[0]);
    lua_pushnumber(lua,ray[1]);
    lua_pushnumber(lua,ray[2]);
@@ -965,7 +966,7 @@ static int lua_lens_forward(vec3_t ray, double *x, double *y)
 
 static int lua_globe_plate(vec3_t ray, int *plate)
 {
-   lua_rawgeti(lua, LUA_REGISTRYINDEX, globePlateIndex);
+   lua_rawgeti(lua, LUA_REGISTRYINDEX, lua_refs.globe_plate);
    lua_pushnumber(lua, ray[0]);
    lua_pushnumber(lua, ray[1]);
    lua_pushnumber(lua, ray[2]);
@@ -1046,11 +1047,11 @@ static int lua_globe_load(void)
    }
 
    // check for the globe_plate function
-   globePlateIndex = -1;
+   lua_refs.globe_plate = -1;
    if (lua_func_exists("globe_plate"))
    {
       lua_getglobal(lua, "globe_plate");
-      globePlateIndex = luaL_ref(lua, LUA_REGISTRYINDEX);
+      lua_refs.globe_plate = luaL_ref(lua, LUA_REGISTRYINDEX);
    }
 
    // load plates array
@@ -1172,7 +1173,7 @@ static int lua_lens_load(void)
 
    // clear current maps
    mapType = MAP_NONE;
-   mapForwardIndex = mapInverseIndex = -1;
+   lua_refs.lens_forward = lua_refs.lens_inverse = -1;
 
    // check if the inverse map function is provided
    lua_getglobal(lua, "lens_inverse");
@@ -1181,7 +1182,7 @@ static int lua_lens_load(void)
       lua_pop(lua,1); // pop lens_inverse
    }
    else {
-      mapInverseIndex = luaL_ref(lua, LUA_REGISTRYINDEX);
+      lua_refs.lens_inverse = luaL_ref(lua, LUA_REGISTRYINDEX);
       mapType = MAP_INVERSE;
    }
 
@@ -1192,7 +1193,7 @@ static int lua_lens_load(void)
       lua_pop(lua,1); // pop lens_forward
    }
    else {
-      mapForwardIndex = luaL_ref(lua, LUA_REGISTRYINDEX);
+      lua_refs.lens_forward = luaL_ref(lua, LUA_REGISTRYINDEX);
       if (mapType == MAP_NONE) {
          mapType = MAP_FORWARD;
       }
@@ -1270,7 +1271,7 @@ static int determine_lens_scale(void)
       }
 
       // try to scale based on FOV using the forward map
-      if (mapForwardIndex != -1) {
+      if (lua_refs.lens_forward != -1) {
          vec3_t ray;
          double x,y;
          if (*framesize == width) {
@@ -1411,7 +1412,7 @@ static int ray_to_plate_index(vec3_t ray)
 {
    int plate_index = 0;
 
-   if (globePlateIndex != -1) {
+   if (lua_refs.globe_plate != -1) {
       // use user-defined plate selection function
       if (lua_globe_plate(ray, &plate_index)) {
          return plate_index;
