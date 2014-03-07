@@ -79,15 +79,62 @@ X make variables static if possible
             - should save full globe (cut out unused margins)
 
 - organize functions
+    - main
+        - init
+        - init lua
+        - write config
+        - shutdown
+        - render
     - commands
         - dump palette
         - rubix
+        - zoom
+            - hfit
+            - vfit
+            - fit
     - palette
         - find closest
         - create palmap
-    - lua
-    - lua->c functions
+    - conversion funcs
+        - latlon->ray
+        - ray->latlon
+        - plateuv->ray
     - c->lua functions
+        - latlon->ray
+        - ray->latlon
+        - plate_uv->ray
+    - lua->c functions
+        - lens inverse
+        - lens forward
+        - ray->globe plate
+    - lens
+        - load
+        - reset fov
+        - clear lua vars
+        - determine scale
+        - set lensmap
+            - set grid
+            - set from plate_xy
+            - set from plate_uv
+            - set from ray
+        - resume lensmap
+            - inverse
+            - forward
+            - both
+        - create lensmap
+            - inverse
+            - forward
+            - both
+        - forward utilities
+            - plate_uv->lens
+            - draw quad
+        - render lens
+    - globe
+        - load
+        - clear globe vars
+        - ray->plate_index
+        - plate_uv->ray
+        - render plate
 
 - prepare video demonstration
 
