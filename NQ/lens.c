@@ -170,6 +170,35 @@ static struct _lua_refs {
 // type to represent one pixel (one byte)
 typedef unsigned char B;
 
+static struct _lens {
+
+   char name[50];
+
+   // size of the lens image in its arbitrary units
+   double width, height;
+
+   // controls the zoom of the lens image
+   // (scale = units per pixel)
+   double scale;
+
+   // pixel size of the lens view (it is equal to the screen size below):
+   // ------------------
+   // |                |
+   // |   ----------   |
+   // |   |        |   |
+   // |   | screen |   |
+   // |   |        |   |
+   // |   ----------   |
+   // |                |
+   // |----------------|
+   // |   status bar   |
+   // |----------------|
+   int width_px, height_px;
+
+
+} lens;
+
+
 
 // -------------------------------------------------------------------------------- 
 // |                                                                              |
@@ -207,12 +236,6 @@ static B **lensmap = NULL;
 // (used for displaying transparent colored overlays)
 static B *palimap = NULL;
 
-// top left coordinates of the view in the vid buffer
-static int left, top;
-
-// size of the view in the vid buffer
-static int width, height;
-
 // desired FOV in radians
 static double fov;
 
@@ -222,17 +245,10 @@ static double hfov, vfov;
 // render FOV for each plate
 double renderfov;
 
-// fit sizes
-static double lens_width;
-static double lens_height;
-
 // fit mode
 static int fit;
 static int hfit;
 static int vfit;
-
-// name of the current lens
-static char lens[50];
 
 // indicates if the current lens is valid
 static int valid_lens;
@@ -245,10 +261,6 @@ static int valid_globe;
 
 // pointer to the screen dimension (width,height) attached to the desired fov
 static int* framesize;
-
-// scale determined from desired zoom level
-// (multiplier used to transform lens coordinates to screen coordinates)
-static double scale;
 
 // cubemap color display flag
 static int colorcube = 0;
@@ -278,10 +290,10 @@ static int mapType;
 #define PLATEMAP(plate,x,y) (platemap + (plate)*platesize*platesize + (x) + (y)*platesize)
 
 // retrieves a pointer to a pixel in the lensmap
-#define LENSMAP(x,y) (lensmap + (x) + (y)*width)
+#define LENSMAP(x,y) (lensmap + (x) + (y)*lens.width_px)
 
 // retrieves a pointer to a pixel in the palimap
-#define PALIMAP(x,y) (palimap + (x) + (y)*width)
+#define PALIMAP(x,y) (palimap + (x) + (y)*lens.width_px)
 
 // globe plates
 typedef struct {
@@ -525,7 +537,7 @@ void L_WriteConfig(FILE* f)
    }
 
    fprintf(f,"fisheye %d\n", fisheye_enabled);
-   fprintf(f,"lens \"%s\"\n",lens);
+   fprintf(f,"lens \"%s\"\n", lens.name);
    fprintf(f,"globe \"%s\"\n", globe);
 }
 
@@ -562,7 +574,7 @@ static void L_HFov(void)
    clearFov();
 
    hfov = Q_atof(Cmd_Argv(1)); // will return 0 if not valid
-   framesize = &width;
+   framesize = &lens.width_px;
    fov = hfov * M_PI / 180;
 }
 
@@ -576,7 +588,7 @@ static void L_VFov(void)
 
    clearFov();
    vfov = Q_atof(Cmd_Argv(1)); // will return 0 if not valid
-   framesize = &height;
+   framesize = &lens.height_px;
    fov = vfov * M_PI / 180;
 }
 
@@ -587,7 +599,7 @@ static void L_Lens(void)
 {
    if (Cmd_Argc() < 2) { // no lens name given
       Con_Printf("lens <name>: use a new lens\n");
-      Con_Printf("Currently: %s\n", lens);
+      Con_Printf("Currently: %s\n", lens.name);
       return;
    }
 
@@ -595,12 +607,12 @@ static void L_Lens(void)
    lenschange = 1;
 
    // get name
-   strcpy(lens, Cmd_Argv(1));
+   strcpy(lens.name, Cmd_Argv(1));
 
    // load lens
    valid_lens = lua_lens_load();
    if (!valid_lens) {
-      strcpy(lens,"");
+      strcpy(lens.name,"");
       Con_Printf("not a valid lens\n");
    }
 
@@ -773,7 +785,6 @@ static void L_Globe(void)
       strcpy(globe,"");
       Con_Printf("not a valid globe\n");
    }
-   top = lua_gettop(lua);
 }
 
 // autocompletion for globe names
@@ -1154,7 +1165,7 @@ static int lua_lens_load(void)
 
    // set full filename
    char filename[100];
-   sprintf(filename,"%s/../lenses/%s.lua",com_gamedir,lens);
+   sprintf(filename,"%s/../lenses/%s.lua",com_gamedir, lens.name);
 
    // check if loaded correctly
    int errcode = 0;
@@ -1233,11 +1244,11 @@ static int lua_lens_load(void)
    lua_pop(lua,1); // pop max_vfov
 
    lua_getglobal(lua, "lens_width");
-   lens_width = lua_isnumber(lua,-1) ? lua_tonumber(lua,-1) : 0;
+   lens.width = lua_isnumber(lua,-1) ? lua_tonumber(lua,-1) : 0;
    lua_pop(lua,1); // pop lens_width
 
    lua_getglobal(lua, "lens_height");
-   lens_height = lua_isnumber(lua,-1) ? lua_tonumber(lua,-1) : 0;
+   lens.height = lua_isnumber(lua,-1) ? lua_tonumber(lua,-1) : 0;
    lua_pop(lua,1); // pop lens_height
 
    return 1;
@@ -1250,7 +1261,7 @@ static int lua_lens_load(void)
 static int determine_lens_scale(void)
 {
    // clear lens scale
-   scale = -1;
+   lens.scale = -1;
 
    if (fit == 0 && hfit == 0 && vfit == 0) // scale based on FOV
    {
@@ -1261,11 +1272,11 @@ static int determine_lens_scale(void)
          return 0;
       }
 
-      if (width == *framesize && fov > max_hfov) {
+      if (lens.width_px == *framesize && fov > max_hfov) {
          Con_Printf("hfov must be less than %d\n", (int)(max_hfov * 180 / M_PI));
          return 0;
       }
-      else if (height == *framesize && fov > max_vfov) {
+      else if (lens.height_px == *framesize && fov > max_vfov) {
          Con_Printf("vfov must be less than %d\n", (int)(max_vfov * 180/ M_PI));
          return 0;
       }
@@ -1274,20 +1285,20 @@ static int determine_lens_scale(void)
       if (lua_refs.lens_forward != -1) {
          vec3_t ray;
          double x,y;
-         if (*framesize == width) {
+         if (*framesize == lens.width_px) {
             latlon_to_ray(0,fov*0.5,ray);
             if (lua_lens_forward(ray,&x,&y)) {
-               scale = x / (*framesize * 0.5);
+               lens.scale = x / (*framesize * 0.5);
             }
             else {
                Con_Printf("ray_to_xy did not return a valid r value for determining FOV scale\n");
                return 0;
             }
          }
-         else if (*framesize == height) {
+         else if (*framesize == lens.height_px) {
             latlon_to_ray(fov*0.5,0,ray);
             if (lua_lens_forward(ray,&x,&y)) {
-               scale = y / (*framesize * 0.5);
+               lens.scale = y / (*framesize * 0.5);
             }
             else {
                Con_Printf("ray_to_xy did not return a valid r value for determining FOV scale\n");
@@ -1308,46 +1319,46 @@ static int determine_lens_scale(void)
    else // scale based on fitting
    {
       if (hfit) {
-         if (lens_width <= 0)
+         if (lens.width <= 0)
          {
             //Con_Printf("Cannot use hfit unless a positive lens_width is in your script\n");
             Con_Printf("lens_width not specified.  Try hfov instead.\n");
             return 0;
          }
-         scale = lens_width / width;
+         lens.scale = lens.width / lens.width_px;
       }
       else if (vfit) {
-         if (lens_height <= 0)
+         if (lens.height <= 0)
          {
             //Con_Printf("Cannot use vfit unless a positive lens_height is in your script\n");
             Con_Printf("lens_height not specified.  Try vfov instead.\n");
             return 0;
          }
-         scale = lens_height / height;
+         lens.scale = lens.height / lens.height_px;
       }
       else if (fit) {
-         if (lens_width <= 0 && lens_height > 0) {
-            scale = lens_height / height;
+         if (lens.width <= 0 && lens.height > 0) {
+            lens.scale = lens.height / lens.height_px;
          }
-         else if (lens_height <=0 && lens_width > 0) {
-            scale = lens_width / width;
+         else if (lens.height <=0 && lens.width > 0) {
+            lens.scale = lens.width / lens.width_px;
          }
-         else if (lens_height <= 0 && lens_width <= 0) {
-            Con_Printf("lens_height and lens_width not specified.  Try hfov instead.\n");
+         else if (lens.height <= 0 && lens.width <= 0) {
+            Con_Printf("lens.height and lens_width not specified.  Try hfov instead.\n");
             return 0;
          }
-         else if (lens_width / lens_height > (double)width / height) {
-            scale = lens_width / width;
+         else if (lens.width / lens.height > (double)lens.width_px / lens.height_px) {
+            lens.scale = lens.width / lens.width_px;
          }
          else {
-            scale = lens_height / height;
+            lens.scale = lens.height / lens.height_px;
          }
       }
    }
 
    // validate scale
-   if (scale <= 0) {
-      Con_Printf("init returned a scale of %f, which is  <= 0\n", scale);
+   if (lens.scale <= 0) {
+      Con_Printf("init returned a scale of %f, which is  <= 0\n", lens.scale);
       return 0;
    }
 
@@ -1379,7 +1390,7 @@ static void set_lensmap_grid(int lx, int ly, int px, int py, int plate_index)
 static void set_lensmap_from_plate(int lx, int ly, int px, int py, int plate_index)
 {
    // check valid lens coordinates
-   if (lx < 0 || lx >= width || ly < 0 || ly >= height) {
+   if (lx < 0 || lx >= lens.width_px || ly < 0 || ly >= lens.height_px) {
       return;
    }
 
@@ -1508,12 +1519,12 @@ static int resume_lensmap_inverse(void)
          return true; 
       }
 
-      y = -(*ly-height/2) * scale;
+      y = -(*ly-lens.height_px/2) * lens.scale;
 
       // calculate all the pixels in this row
-      for(lx = 0;lx<width;++lx)
+      for(lx = 0;lx<lens.width_px;++lx)
       {
-         x = (lx-width/2) * scale;
+         x = (lx-lens.width_px/2) * lens.scale;
 
          // determine which light ray to follow
          vec3_t ray;
@@ -1548,8 +1559,8 @@ static int uv_to_screen(int plate_index, double u, double v, int *lx, int *ly)
    if (status == 0 || status == -1) { return status; }
 
    // map image to screen coordinates
-   *lx = (int)(x/scale + width/2);
-   *ly = (int)(-y/scale + height/2);
+   *lx = (int)(x/lens.scale + lens.width_px/2);
+   *ly = (int)(-y/lens.scale + lens.height_px/2);
 
    return status;
 }
@@ -1754,7 +1765,7 @@ static void resume_lensmap(void)
 static void create_lensmap_inverse(void)
 {
    // initialize progress state
-   lens_builder.inverse_state.ly = height-1;
+   lens_builder.inverse_state.ly = lens.height_px-1;
 
    resume_lensmap();
 }
@@ -1809,11 +1820,11 @@ static void render_lensmap(void)
    B **lmap = lensmap;
    B *pmap = palimap;
    int x, y;
-   for(y=0; y<height; y++)
-      for(x=0; x<width; x++,lmap++,pmap++)
+   for(y=0; y<lens.height_px; y++)
+      for(x=0; x<lens.width_px; x++,lmap++,pmap++)
          if (*lmap) {
-            int lx = x+left;
-            int ly = y+top;
+            int lx = x+scr_vrect.x;
+            int ly = y+scr_vrect.y;
             if (colorcube) {
                int i = *pmap;
                *VBUFFER(lx,ly) = i != 255 ? palmap[i][**lmap] : **lmap;
@@ -1837,7 +1848,7 @@ static void render_plate(B* plate, vec3_t forward, vec3_t right, vec3_t up)
    R_RenderView();
 
    // copy from vid buffer to cubeface, row by row
-   B *vbuffer = VBUFFER(left,top);
+   B *vbuffer = VBUFFER(scr_vrect.x,scr_vrect.y);
    int y;
    for(y = 0;y<platesize;y++) {
       memcpy(plate, vbuffer, platesize);
@@ -1854,13 +1865,12 @@ void L_RenderView(void)
    static int pheight = -1;
 
    // update screen size
-   left = scr_vrect.x;
-   top = scr_vrect.y;
-   width = scr_vrect.width; 
-   height = scr_vrect.height;
-   platesize = (width < height) ? width : height;
-   int area = width*height;
-   int sizechange = pwidth!=width || pheight!=height;
+   lens.width_px = scr_vrect.width;
+   lens.height_px = scr_vrect.height;
+   #define MIN(a,b) ((a) < (b) ? (a) : (b))
+   platesize = MIN(lens.height_px, lens.width_px);
+   int area = lens.width_px * lens.height_px;
+   int sizechange = (pwidth!=lens.width_px) || (pheight!=lens.height_px);
 
    // allocate new buffers if size changes
    if(sizechange)
@@ -1890,7 +1900,7 @@ void L_RenderView(void)
       // (I'm just trying to force re-evaluation of lens variables that are dependent on globe variables (e.g. "lens_width = numplates" in debug.lua))
       valid_lens = lua_lens_load();
       if (!valid_lens) {
-         strcpy(lens,"");
+         strcpy(lens.name,"");
          Con_Printf("not a valid lens\n");
       }
       create_lensmap();
@@ -1960,8 +1970,8 @@ void L_RenderView(void)
    render_lensmap();
 
    // store current values for change detection
-   pwidth = width;
-   pheight = height;
+   pwidth = lens.width_px;
+   pheight = lens.height_px;
 
    // reset change flags
    lenschange = globechange = fovchange = 0;
