@@ -123,41 +123,68 @@ LENSES
 
 #include <time.h>
 
-// toggle fisheye mod
-int fisheye_enabled = true;
+// -------------------------------------------------------------------------------- 
+// |                                                                              |
+// |                VARIABLES / FUNCTION SIGNATURES / DESCRIPTIONS                |
+// |                                                                              |
+// --------------------------------------------------------------------------------
 
-// We don't want to block the game while the lens is computing.
-// So we pause the calculation if its runtime exceeds "lens_seconds_per_frame"
-// and set the "building_lens" flag to true so it can be resumed on next frame.
-// The intermediate build state is kept in "<mapType>_lensmap_progress".
-static int building_lens = false;
-static float lens_seconds_per_frame = 1.0f/30;
-static struct {
-   int ly;
-} inverse_lensmap_progress;
-static struct {
-   int *top;
-   int *bot;
-   int plate_index;
-   int py;
-} forward_lensmap_progress;
+// This is a globally accessible variable that determines if these fisheye features
+// should be on.  It is used by other files for modifying behaviors that fisheye 
+// depends on (e.g. square refdef, disabling water warp, hooking renderer).
+int fisheye_enabled;
 
-// Stopwatch helpers:
-// Call "start_stopwatch()" and subsequently check "get_seconds_elapsed()".
-static int stopwatch_start_time;
-static void start_stopwatch(void) {
-   stopwatch_start_time = clock();
-}
-static float get_seconds_elapsed(void) {
-   clock_t time = clock() - stopwatch_start_time;
-   return ((float)time) / CLOCKS_PER_SEC;
-}
+// Lens computation is slow, so we don't want to block the game while its busy.
+// Instead of dealing with threads, we are just limiting the time that the
+// lens builder can work each frame.  It keeps track of its work between frames
+// so it can resume without problems.  This allows the user to watch the lens
+// pixels become visible as they are calculated.
+static struct _lens_builder
+{
+   int working;
+   int start_time;
+   float seconds_per_frame;
+   struct _inverse_state
+   {
+      int ly;
+   } inverse_state;
+   struct _forward_state
+   {
+      int *top;
+      int *bot;
+      int plate_index;
+      int py;
+   } forward_state;
+} lens_builder;
 
 // the Lua state pointer
 static lua_State *lua;
 
 // type to represent one pixel (one byte)
 typedef unsigned char B;
+
+
+// -------------------------------------------------------------------------------- 
+// |                                                                              |
+// |                      VARIABLE / FUNCTION DECLARATIONS                        |
+// |                                                                              |
+// --------------------------------------------------------------------------------
+
+static void start_lens_builder_clock(void) {
+   lens_builder.start_time = clock();
+}
+static int is_lens_builder_time_up(void) {
+   clock_t time = clock() - lens_builder.start_time;
+   float s = ((float)time) / CLOCKS_PER_SEC;
+   return (s >= lens_builder.seconds_per_frame);
+}
+
+// -------------------------------------------------------------------------------- 
+// |                                                                              |
+// |                          STILL ORGANIZING BELOW                              |
+// |                                                                              |
+// --------------------------------------------------------------------------------
+
 
 // the environment map
 // a large array of pixels that hold all rendered views
@@ -765,6 +792,9 @@ static struct stree_root * L_GlobeArg(const char *arg)
 
 void L_Init(void)
 {
+   lens_builder.working = 0;
+   lens_builder.seconds_per_frame = 1.0f / 60;
+
    L_InitLua();
 
    Cmd_AddCommand("dumppal", L_DumpPalette);
@@ -1469,11 +1499,11 @@ static int resume_lensmap_inverse(void)
    // lens coordinates
    int lx, *ly;
 
-   start_stopwatch();
-   for(ly = &(inverse_lensmap_progress.ly); *ly >= 0; --(*ly))
+   start_lens_builder_clock();
+   for(ly = &(lens_builder.inverse_state.ly); *ly >= 0; --(*ly))
    {
       // pause building if we have exceeded time allowed per frame
-      if (get_seconds_elapsed() > lens_seconds_per_frame) {
+      if (is_lens_builder_time_up()) {
          return true; 
       }
 
@@ -1620,20 +1650,20 @@ static void drawQuad(int *tl, int *tr, int *bl, int *br,
 
 static int resume_lensmap_forward(void)
 {
-   int *top = forward_lensmap_progress.top;
-   int *bot = forward_lensmap_progress.bot;
-   int *py = &(forward_lensmap_progress.py);
-   int *plate_index = &(forward_lensmap_progress.plate_index);
+   int *top = lens_builder.forward_state.top;
+   int *bot = lens_builder.forward_state.bot;
+   int *py = &(lens_builder.forward_state.py);
+   int *plate_index = &(lens_builder.forward_state.plate_index);
 
-   start_stopwatch();
+   start_lens_builder_clock();
    for (; *plate_index < numplates; ++(*plate_index))
    {
       int px;
       for (; *py >=0; --(*py)) {
 
          // pause building if we have exceeded time allowed per frame
-         if (get_seconds_elapsed() > lens_seconds_per_frame) {
-            return true;
+         if (is_lens_builder_time_up()) {
+            return true; 
          }
 
          // FIND ALL DESTINATION SCREEN COORDINATES FOR THIS TEXTURE ROW ********************
@@ -1713,17 +1743,17 @@ static int resume_lensmap_forward(void)
 static void resume_lensmap(void)
 {
    if (mapType == MAP_FORWARD) {
-      building_lens = resume_lensmap_forward();
+      lens_builder.working = resume_lensmap_forward();
    }
    else if (mapType == MAP_INVERSE) {
-      building_lens = resume_lensmap_inverse();
+      lens_builder.working = resume_lensmap_inverse();
    }
 }
 
 static void create_lensmap_inverse(void)
 {
    // initialize progress state
-   inverse_lensmap_progress.ly = height-1;
+   lens_builder.inverse_state.ly = height-1;
 
    resume_lensmap();
 }
@@ -1733,17 +1763,17 @@ static void create_lensmap_forward(void)
    // initialize progress state
    int *rowa = malloc((platesize+1)*sizeof(int[2]));
    int *rowb = malloc((platesize+1)*sizeof(int[2]));
-   forward_lensmap_progress.top = rowa;
-   forward_lensmap_progress.bot = rowb;
-   forward_lensmap_progress.py = platesize-1;
-   forward_lensmap_progress.plate_index = 0;
+   lens_builder.forward_state.top = rowa;
+   lens_builder.forward_state.bot = rowb;
+   lens_builder.forward_state.py = platesize-1;
+   lens_builder.forward_state.plate_index = 0;
 
    resume_lensmap();
 }
 
 static void create_lensmap(void)
 {
-   building_lens = false;
+   lens_builder.working = false;
 
    // render nothing if current lens or globe is invalid
    if (!valid_lens || !valid_globe)
@@ -1864,7 +1894,7 @@ void L_RenderView(void)
       }
       create_lensmap();
    }
-   else if (building_lens) {
+   else if (lens_builder.working) {
       resume_lensmap();
    }
 
