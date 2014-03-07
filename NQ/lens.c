@@ -178,6 +178,9 @@ static struct _lens {
    // name of the current lens
    char name[50];
 
+   // the type of map projection (inverse/forward)
+   enum { MAP_NONE, MAP_INVERSE, MAP_FORWARD } map_type;
+
    // size of the lens image in its arbitrary units
    double width, height;
 
@@ -278,11 +281,6 @@ static double max_hfov;
 static int lenschange;
 static int globechange;
 static int fovchange;
-
-static int mapType;
-#define MAP_NONE 0
-#define MAP_FORWARD 1
-#define MAP_INVERSE 2
 
 // retrieves a pointer to a pixel in the video buffer
 #define VBUFFER(x,y) (vid.buffer + (x) + (y)*vid.rowbytes)
@@ -1184,7 +1182,7 @@ static int lua_lens_load(void)
    }
 
    // clear current maps
-   mapType = MAP_NONE;
+   lens.map_type = MAP_NONE;
    lua_refs.lens_forward = lua_refs.lens_inverse = -1;
 
    // check if the inverse map function is provided
@@ -1195,7 +1193,7 @@ static int lua_lens_load(void)
    }
    else {
       lua_refs.lens_inverse = luaL_ref(lua, LUA_REGISTRYINDEX);
-      mapType = MAP_INVERSE;
+      lens.map_type = MAP_INVERSE;
    }
 
    // check if the forward map function is provided
@@ -1206,8 +1204,8 @@ static int lua_lens_load(void)
    }
    else {
       lua_refs.lens_forward = luaL_ref(lua, LUA_REGISTRYINDEX);
-      if (mapType == MAP_NONE) {
-         mapType = MAP_FORWARD;
+      if (lens.map_type == MAP_NONE) {
+         lens.map_type = MAP_FORWARD;
       }
    }
 
@@ -1220,10 +1218,10 @@ static int lua_lens_load(void)
 
       // check for valid map function name
       if (!strcmp(funcname, "lens_inverse")) {
-         mapType = MAP_INVERSE;
+         lens.map_type = MAP_INVERSE;
       }
       else if (!strcmp(funcname, "lens_forward")) {
-         mapType = MAP_FORWARD;
+         lens.map_type = MAP_FORWARD;
       }
       else {
          Con_Printf("Unsupported map function: %s\n", funcname);
@@ -1755,10 +1753,10 @@ static int resume_lensmap_forward(void)
 
 static void resume_lensmap(void)
 {
-   if (mapType == MAP_FORWARD) {
+   if (lens.map_type == MAP_FORWARD) {
       lens_builder.working = resume_lensmap_forward();
    }
-   else if (mapType == MAP_INVERSE) {
+   else if (lens.map_type == MAP_INVERSE) {
       lens_builder.working = resume_lensmap_inverse();
    }
 }
@@ -1802,11 +1800,11 @@ static void create_lensmap(void)
    memset(plate_display, 0, sizeof(plate_display));
 
    // create lensmap
-   if (mapType == MAP_FORWARD) {
+   if (lens.map_type == MAP_FORWARD) {
       Con_Printf("using forward map\n");
       create_lensmap_forward();
    }
-   else if (mapType == MAP_INVERSE) {
+   else if (lens.map_type == MAP_INVERSE) {
       Con_Printf("using inverse map\n");
       create_lensmap_inverse();
    }
