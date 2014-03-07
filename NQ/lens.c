@@ -170,10 +170,50 @@ static struct _lua_refs {
 // type to represent one pixel (one byte)
 typedef unsigned char B;
 
+static struct _globe {
+
+   // name of the current globe
+   char name[50];
+
+   // indicates if the current globe is valid
+   int valid;
+
+   // boolean signaling if the lens has changed and needs updating
+   int changed;
+
+   // the environment map
+   // a large array of pixels that hold all rendered views
+   B *pixels;  
+   // retrieves a pointer to a pixel in the platemap
+   #define GLOBEPIXEL(plate,x,y) (globe.pixels + (plate)*(globe.platesize)*(globe.platesize) + (x) + (y)*(globe.platesize))
+
+   // globe plates
+   #define MAX_PLATES 6
+   struct {
+      vec3_t forward;
+      vec3_t right;
+      vec3_t up;
+      vec_t fov;
+      vec_t dist;
+      B palette[256];
+      int display;
+   } plates[MAX_PLATES];
+
+   // number of plates used by the current globe
+   int numplates;
+
+   // size of each rendered square plate in the vid buffer
+   int platesize;
+
+} globe;
+
 static struct _lens {
 
    // boolean signaling if the lens is properly loaded
    int valid;
+
+   // boolean signaling if the lens has changed and needs updating
+   int changed;
 
    // name of the current lens
    char name[50];
@@ -246,10 +286,6 @@ static int is_lens_builder_time_up(void) {
 // --------------------------------------------------------------------------------
 
 
-// the environment map
-// a large array of pixels that hold all rendered views
-static B *platemap = NULL;  
-
 // how each pixel in the lensmap is colored
 // an array of palette indices
 // (used for displaying transparent colored overlays)
@@ -269,12 +305,6 @@ static int fit;
 static int hfit;
 static int vfit;
 
-// name of the current globe
-static char globe[50];
-
-// indicates if the current globe is valid
-static int valid_globe;
-
 // pointer to the screen dimension (width,height) attached to the desired fov
 static int* framesize;
 
@@ -290,43 +320,13 @@ static double max_vfov;
 static double max_hfov;
 
 // change flags
-static int lenschange;
-static int globechange;
 static int fovchange;
 
 // retrieves a pointer to a pixel in the video buffer
 #define VBUFFER(x,y) (vid.buffer + (x) + (y)*vid.rowbytes)
 
-// retrieves a pointer to a pixel in the platemap
-#define PLATEMAP(plate,x,y) (platemap + (plate)*platesize*platesize + (x) + (y)*platesize)
-
 // retrieves a pointer to a pixel in the palimap
 #define PALIMAP(x,y) (palimap + (x) + (y)*lens.width_px)
-
-// globe plates
-typedef struct {
-   vec3_t forward;
-   vec3_t right;
-   vec3_t up;
-   vec_t fov;
-   vec_t dist;
-} plate_t;
-
-#define MAX_PLATES 6
-static plate_t plates[MAX_PLATES];
-
-// number of plates used by the current globe
-static int numplates;
-
-// the palettes for each cube face used by the rubix filter
-static B palmap[MAX_PLATES][256];
-
-// determines which plates should be rendered
-// (plates will only be drawn if they are used by the current lens)
-static int plate_display[MAX_PLATES] = {0};
-
-// size of each rendered square plate in the vid buffer
-static int platesize;
 
 // find closest pallete index for color
 static int find_closest_pal_index(int r, int g, int b)
@@ -397,7 +397,7 @@ static void create_palmap(void)
          if (g < 0) g=0; if (g > 255) g=255;
          if (b < 0) b=0; if (b > 255) b=255;
 
-         palmap[j][i] = find_closest_pal_index(r,g,b);
+         globe.plates[j].palette[i] = find_closest_pal_index(r,g,b);
 
          pal += 3;
       }
@@ -446,7 +446,7 @@ static void ray_to_latlon(vec3_t ray, double *lat, double *lon)
    *lat = atan2(ray[1], sqrt(ray[0]*ray[0]+ray[2]*ray[2]));
 }
 
-static void plate_uv_to_ray(plate_t *plate, double u, double v, vec3_t ray);
+static void plate_uv_to_ray(int plate_index, double u, double v, vec3_t ray);
 
 /* END CONVERSION LUA HELPER FUNCTIONS */
 
@@ -546,7 +546,7 @@ void L_WriteConfig(FILE* f)
 
    fprintf(f,"fisheye %d\n", fisheye_enabled);
    fprintf(f,"lens \"%s\"\n", lens.name);
-   fprintf(f,"globe \"%s\"\n", globe);
+   fprintf(f,"globe \"%s\"\n", globe.name);
 }
 
 static void printActiveFov(void)
@@ -612,7 +612,7 @@ static void L_Lens(void)
    }
 
    // trigger change
-   lenschange = 1;
+   lens.changed = 1;
 
    // get name
    strcpy(lens.name, Cmd_Argv(1));
@@ -685,7 +685,8 @@ static int ray_to_plate_index(vec3_t ray);
 static void WritePCXplate(char *filename, int plate_index, int full)
 {
     // parameters from WritePCXfile
-    byte *data = platemap+platesize*platesize*plate_index;
+    int platesize = globe.platesize;
+    byte *data = GLOBEPIXEL(plate_index,0,0);
     int width = platesize;
     int height = platesize;
     int rowbytes = platesize;
@@ -727,7 +728,7 @@ static void WritePCXplate(char *filename, int plate_index, int full)
 
           // 
           vec3_t ray;
-          plate_uv_to_ray(&plates[plate_index], u, v, ray);
+          plate_uv_to_ray(plate_index, u, v, ray);
           byte col = full || plate_index == ray_to_plate_index(ray) ? *data : 0xFE;
 
           if ((col & 0xc0) == 0xc0) {
@@ -761,7 +762,7 @@ static void SaveGlobe(void)
 
     D_EnableBackBufferAccess();	// enable direct drawing of console to back
 
-   for (i=0; i<numplates; ++i) 
+   for (i=0; i<globe.numplates; ++i) 
    {
       snprintf(pcxname, 32, "%s%d.pcx", save_globe_name, i);
       WritePCXplate(pcxname, i, save_globe_full);
@@ -777,20 +778,20 @@ static void L_Globe(void)
 {
    if (Cmd_Argc() < 2) { // no globe name given
       Con_Printf("globe <name>: use a new globe\n");
-      Con_Printf("Currently: %s\n", globe);
+      Con_Printf("Currently: %s\n", globe.name);
       return;
    }
 
    // trigger change
-   globechange = 1;
+   globe.changed = 1;
 
    // get name
-   strcpy(globe, Cmd_Argv(1));
+   strcpy(globe.name, Cmd_Argv(1));
 
    // load globe
-   valid_globe = lua_globe_load();
-   if (!valid_globe) {
-      strcpy(globe,"");
+   globe.valid = lua_globe_load();
+   if (!globe.valid) {
+      strcpy(globe.name,"");
       Con_Printf("not a valid globe\n");
    }
 }
@@ -882,12 +883,12 @@ static int lua_plate_to_ray(lua_State *L)
    double u = luaL_checknumber(L,2);
    double v = luaL_checknumber(L,3);
    vec3_t ray;
-   if (plate_index < 0 || plate_index >= numplates) {
+   if (plate_index < 0 || plate_index >= globe.numplates) {
       lua_pushnil(L);
       return 1;
    }
 
-   plate_uv_to_ray(&plates[plate_index],u,v,ray);
+   plate_uv_to_ray(plate_index,u,v,ray);
    lua_pushnumber(L, ray[0]);
    lua_pushnumber(L, ray[1]);
    lua_pushnumber(L, ray[2]);
@@ -1018,7 +1019,7 @@ static void lua_lens_clear(void)
    CLEARVAR("onload");
 
    // set "numplates" var
-   lua_pushinteger(lua, numplates);
+   lua_pushinteger(lua, globe.numplates);
    lua_setglobal(lua, "numplates");
 }
 
@@ -1028,7 +1029,7 @@ static void lua_globe_clear(void)
    CLEARVAR("plates");
    CLEARVAR("globe_plate");
 
-   numplates = 0;
+   globe.numplates = 0;
 }
 
 #undef CLEARVAR
@@ -1048,7 +1049,7 @@ static int lua_globe_load(void)
 
    // set full filename
    char filename[100];
-   sprintf(filename, "%s/../globes/%s.lua",com_gamedir,globe);
+   sprintf(filename, "%s/../globes/%s.lua",com_gamedir,globe.name);
 
    // check if loaded correctly
    int errcode = 0;
@@ -1107,7 +1108,7 @@ static int lua_globe_load(void)
             lua_pop(lua, 4); // pop element, vector, plate, and plates
             return 0;
          }
-         plates[i].forward[j] = lua_tonumber(lua,-1);
+         globe.plates[i].forward[j] = lua_tonumber(lua,-1);
          lua_pop(lua, 1); // pop element
       }
       lua_pop(lua,1); // pop forward vector
@@ -1132,14 +1133,14 @@ static int lua_globe_load(void)
             lua_pop(lua, 4); // pop element, vector, plate, and plates
             return 0;
          }
-         plates[i].up[j] = lua_tonumber(lua,-1);
+         globe.plates[i].up[j] = lua_tonumber(lua,-1);
          lua_pop(lua,1); // pop element
       }
       lua_pop(lua, 1); // pop up vector
 
       // calculate right vector (and correct up vector)
-      CrossProduct(plates[i].up, plates[i].forward, plates[i].right);
-      CrossProduct(plates[i].forward, plates[i].right, plates[i].up);
+      CrossProduct(globe.plates[i].up, globe.plates[i].forward, globe.plates[i].right);
+      CrossProduct(globe.plates[i].forward, globe.plates[i].right, globe.plates[i].up);
 
       // get fov
       lua_rawgeti(lua,-1,3);
@@ -1147,21 +1148,21 @@ static int lua_globe_load(void)
       {
          Con_Printf("plate %d: fov not a number\n", i+1);
       }
-      plates[i].fov = lua_tonumber(lua,-1) * M_PI / 180;
+      globe.plates[i].fov = lua_tonumber(lua,-1) * M_PI / 180;
       lua_pop(lua, 1); // pop fov
 
-      if (plates[i].fov <= 0)
+      if (globe.plates[i].fov <= 0)
       {
          Con_Printf("plate %d: fov must > 0\n", i+1);
          return 0;
       }
 
       // calculate distance to camera
-      plates[i].dist = 0.5/tan(plates[i].fov/2);
+      globe.plates[i].dist = 0.5/tan(globe.plates[i].fov/2);
    }
    lua_pop(lua, 1); // pop plates
 
-   numplates = i;
+   globe.numplates = i;
 
    return 1;
 }
@@ -1382,7 +1383,7 @@ static void set_lensmap_grid(int lx, int ly, int px, int py, int plate_index)
    // designate the palette for this pixel
    // This will set the palette index map such that a grid is shown
    int numdivs = colorcells*colorwfrac+1;
-   double divsize = (double)platesize/numdivs;
+   double divsize = (double)globe.platesize/numdivs;
    double mod = colorwfrac;
 
    double x = px/divsize;
@@ -1403,15 +1404,15 @@ static void set_lensmap_from_plate(int lx, int ly, int px, int py, int plate_ind
    }
 
    // check valid plate coordinates
-   if (px <0 || px >= platesize || py < 0 || py >= platesize) {
+   if (px <0 || px >= globe.platesize || py < 0 || py >= globe.platesize) {
       return;
    }
 
    // increase the number of times this side is used
-   plate_display[plate_index] = 1;
+   globe.plates[plate_index].display = 1;
 
    // map the lens pixel to this cubeface pixel
-   *LENSPIXEL(lx,ly) = PLATEMAP(plate_index,px,py);
+   *LENSPIXEL(lx,ly) = GLOBEPIXEL(plate_index,px,py);
 
    set_lensmap_grid(lx,ly,px,py,plate_index);
 }
@@ -1420,8 +1421,8 @@ static void set_lensmap_from_plate(int lx, int ly, int px, int py, int plate_ind
 static void set_lensmap_from_plate_uv(int lx, int ly, double u, double v, int plate_index)
 {
    // convert to plate coordinates
-   int px = (int)(u*platesize);
-   int py = (int)(v*platesize);
+   int px = (int)(u*globe.platesize);
+   int py = (int)(v*globe.platesize);
    
    set_lensmap_from_plate(lx,ly,px,py,plate_index);
 }
@@ -1445,8 +1446,8 @@ static int ray_to_plate_index(vec3_t ray)
    double max_dp = -2;
 
    int i;
-   for (i=0; i<numplates; ++i) {
-      double dp = DotProduct(ray, plates[i].forward);
+   for (i=0; i<globe.numplates; ++i) {
+      double dp = DotProduct(ray, globe.plates[i].forward);
       if (dp > max_dp) {
          max_dp = dp;
          plate_index = i;
@@ -1456,7 +1457,7 @@ static int ray_to_plate_index(vec3_t ray)
    return plate_index;
 }
 
-static void plate_uv_to_ray(plate_t *plate, double u, double v, vec3_t ray)
+static void plate_uv_to_ray(int plate_index, double u, double v, vec3_t ray)
 {
    // transform to image coordinates
    u -= 0.5;
@@ -1467,22 +1468,22 @@ static void plate_uv_to_ray(plate_t *plate, double u, double v, vec3_t ray)
    ray[0] = ray[1] = ray[2] = 0;
 
    // get euclidean coordinate from texture uv
-   VectorMA(ray, plate->dist, plate->forward, ray);
-   VectorMA(ray, u, plate->right, ray);
-   VectorMA(ray, v, plate->up, ray);
+   VectorMA(ray, globe.plates[plate_index].dist, globe.plates[plate_index].forward, ray);
+   VectorMA(ray, u, globe.plates[plate_index].right, ray);
+   VectorMA(ray, v, globe.plates[plate_index].up, ray);
 
    VectorNormalize(ray);
 }
 
-static int ray_to_plate_uv(plate_t *plate, vec3_t ray, double *u, double *v)
+static int ray_to_plate_uv(int plate_index, vec3_t ray, double *u, double *v)
 {
    // get ray in the plate's relative view frame
-   double x = DotProduct(plate->right, ray);
-   double y = DotProduct(plate->up, ray);
-   double z = DotProduct(plate->forward, ray);
+   double x = DotProduct(globe.plates[plate_index].right, ray);
+   double y = DotProduct(globe.plates[plate_index].up, ray);
+   double z = DotProduct(globe.plates[plate_index].forward, ray);
 
    // project ray to the texture
-   double dist = 0.5 / tan(plate->fov/2);
+   double dist = 0.5 / tan(globe.plates[plate_index].fov/2);
    *u = x/z*dist + 0.5;
    *v = -y/z*dist + 0.5;
 
@@ -1503,7 +1504,7 @@ static void set_lensmap_from_ray(int lx, int ly, double sx, double sy, double sz
 
    // get texture coordinates
    double u,v;
-   if (!ray_to_plate_uv(&plates[plate_index], ray, &u, &v)) {
+   if (!ray_to_plate_uv(plate_index, ray, &u, &v)) {
       return;
    }
 
@@ -1559,7 +1560,7 @@ static int uv_to_screen(int plate_index, double u, double v, int *lx, int *ly)
 {
    // get ray from uv coordinates
    vec3_t ray;
-   plate_uv_to_ray(&plates[plate_index], u, v, ray);
+   plate_uv_to_ray(plate_index, u, v, ray);
 
    // map ray to image coordinates
    double x,y;
@@ -1674,9 +1675,10 @@ static int resume_lensmap_forward(void)
    int *bot = lens_builder.forward_state.bot;
    int *py = &(lens_builder.forward_state.py);
    int *plate_index = &(lens_builder.forward_state.plate_index);
+   int platesize = globe.platesize;
 
    start_lens_builder_clock();
-   for (; *plate_index < numplates; ++(*plate_index))
+   for (; *plate_index < globe.numplates; ++(*plate_index))
    {
       int px;
       for (; *py >=0; --(*py)) {
@@ -1736,7 +1738,7 @@ static int resume_lensmap_forward(void)
             // skip overlapping region of texture
             double u = ((double)px)/platesize;
             vec3_t ray;
-            plate_uv_to_ray(&plates[*plate_index], u, v, ray);
+            plate_uv_to_ray(*plate_index, u, v, ray);
             if (*plate_index != ray_to_plate_index(ray)) {
                continue;
             }
@@ -1781,11 +1783,11 @@ static void create_lensmap_inverse(void)
 static void create_lensmap_forward(void)
 {
    // initialize progress state
-   int *rowa = malloc((platesize+1)*sizeof(int[2]));
-   int *rowb = malloc((platesize+1)*sizeof(int[2]));
+   int *rowa = malloc((globe.platesize+1)*sizeof(int[2]));
+   int *rowb = malloc((globe.platesize+1)*sizeof(int[2]));
    lens_builder.forward_state.top = rowa;
    lens_builder.forward_state.bot = rowb;
-   lens_builder.forward_state.py = platesize-1;
+   lens_builder.forward_state.py = globe.platesize-1;
    lens_builder.forward_state.plate_index = 0;
 
    resume_lensmap();
@@ -1796,7 +1798,7 @@ static void create_lensmap(void)
    lens_builder.working = false;
 
    // render nothing if current lens or globe is invalid
-   if (!lens.valid || !valid_globe)
+   if (!lens.valid || !globe.valid)
       return;
 
    // test if this lens can support the current fov
@@ -1806,7 +1808,10 @@ static void create_lensmap(void)
    }
 
    // clear the side counts
-   memset(plate_display, 0, sizeof(plate_display));
+   int i;
+   for (i=0; i<globe.numplates; i++) {
+      globe.plates[i].display = 0;
+   }
 
    // create lensmap
    if (lens.map_type == MAP_FORWARD) {
@@ -1835,7 +1840,7 @@ static void render_lensmap(void)
             int ly = y+scr_vrect.y;
             if (colorcube) {
                int i = *pmap;
-               *VBUFFER(lx,ly) = i != 255 ? palmap[i][**lmap] : **lmap;
+               *VBUFFER(lx,ly) = i != 255 ? globe.plates[i].palette[**lmap] : **lmap;
             }
             else {
                *VBUFFER(lx,ly) = **lmap;
@@ -1844,8 +1849,10 @@ static void render_lensmap(void)
 }
 
 // render a specific plate
-static void render_plate(B* plate, vec3_t forward, vec3_t right, vec3_t up) 
+static void render_plate(int plate_index, vec3_t forward, vec3_t right, vec3_t up) 
 {
+   B *pixels = GLOBEPIXEL(plate_index, 0, 0);
+
    // set camera orientation
    VectorCopy(forward, r_refdef.forward);
    VectorCopy(right, r_refdef.right);
@@ -1858,12 +1865,12 @@ static void render_plate(B* plate, vec3_t forward, vec3_t right, vec3_t up)
    // copy from vid buffer to cubeface, row by row
    B *vbuffer = VBUFFER(scr_vrect.x,scr_vrect.y);
    int y;
-   for(y = 0;y<platesize;y++) {
-      memcpy(plate, vbuffer, platesize);
+   for(y = 0;y<globe.platesize;y++) {
+      memcpy(pixels, vbuffer, globe.platesize);
 
       // advance to the next row
       vbuffer += vid.rowbytes;
-      plate += platesize;
+      pixels += globe.platesize;
    }
 }
 
@@ -1876,30 +1883,30 @@ void L_RenderView(void)
    lens.width_px = scr_vrect.width;
    lens.height_px = scr_vrect.height;
    #define MIN(a,b) ((a) < (b) ? (a) : (b))
-   platesize = MIN(lens.height_px, lens.width_px);
+   int platesize = globe.platesize = MIN(lens.height_px, lens.width_px);
    int area = lens.width_px * lens.height_px;
    int sizechange = (pwidth!=lens.width_px) || (pheight!=lens.height_px);
 
    // allocate new buffers if size changes
    if(sizechange)
    {
-      if(platemap) free(platemap);
+      if(globe.pixels) free(globe.pixels);
       if(lens.pixels) free(lens.pixels);
       if(palimap) free(palimap);
 
-      platemap = (B*)malloc(platesize*platesize*MAX_PLATES*sizeof(B));
+      globe.pixels = (B*)malloc(platesize*platesize*MAX_PLATES*sizeof(B));
       lens.pixels = (B**)malloc(area*sizeof(B*));
       palimap = (B*)malloc(area*sizeof(B));
       
       // the rude way
-      if(!platemap || !lens.pixels || !palimap) {
+      if(!globe.pixels || !lens.pixels || !palimap) {
          Con_Printf("Quake-Lenses: could not allocate enough memory\n");
          exit(1); 
       }
    }
 
    // recalculate lens
-   if (sizechange || fovchange || lenschange || globechange) {
+   if (sizechange || fovchange || lens.changed || globe.changed) {
       memset(lens.pixels, 0, area*sizeof(B*));
       memset(palimap, 255, area*sizeof(B));
 
@@ -1933,15 +1940,12 @@ void L_RenderView(void)
 
    // render plates
    int i;
-   for (i=0; i<numplates; ++i)
+   for (i=0; i<globe.numplates; ++i)
    {
-      if (plate_display[i]) {
-
-         B* plate = platemap+platesize*platesize*i;
-         plate_t *p = &plates[i];
+      if (globe.plates[i].display) {
 
          // set view to change plate FOV
-         renderfov = p->fov;
+         renderfov = globe.plates[i].fov;
          R_ViewChanged(&vrect, sb_lines, vid.aspect);
 
          // compute absolute view vectors
@@ -1950,21 +1954,21 @@ void L_RenderView(void)
          // forward = z
 
          vec3_t r = { 0,0,0};
-         VectorMA(r, p->right[0], right, r);
-         VectorMA(r, p->right[1], up, r);
-         VectorMA(r, p->right[2], forward, r);
+         VectorMA(r, globe.plates[i].right[0], right, r);
+         VectorMA(r, globe.plates[i].right[1], up, r);
+         VectorMA(r, globe.plates[i].right[2], forward, r);
 
          vec3_t u = { 0,0,0};
-         VectorMA(u, p->up[0], right, u);
-         VectorMA(u, p->up[1], up, u);
-         VectorMA(u, p->up[2], forward, u);
+         VectorMA(u, globe.plates[i].up[0], right, u);
+         VectorMA(u, globe.plates[i].up[1], up, u);
+         VectorMA(u, globe.plates[i].up[2], forward, u);
 
          vec3_t f = { 0,0,0};
-         VectorMA(f, p->forward[0], right, f);
-         VectorMA(f, p->forward[1], up, f);
-         VectorMA(f, p->forward[2], forward, f);
+         VectorMA(f, globe.plates[i].forward[0], right, f);
+         VectorMA(f, globe.plates[i].forward[1], up, f);
+         VectorMA(f, globe.plates[i].forward[2], forward, f);
 
-         render_plate(plate, f, r, u);
+         render_plate(i, f, r, u);
       }
    }
 
@@ -1982,7 +1986,7 @@ void L_RenderView(void)
    pheight = lens.height_px;
 
    // reset change flags
-   lenschange = globechange = fovchange = 0;
+   lens.changed = globe.changed = fovchange = 0;
 }
 
 // vim: et:ts=3:sts=3:sw=3
