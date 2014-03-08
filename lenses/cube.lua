@@ -7,7 +7,7 @@ lens_height = rows
 max_hfov = 360
 max_vfov = 180
 
-onload = "fit"
+onload = "f_fit"
 
 function col(x)
    local nx = x+cols/2

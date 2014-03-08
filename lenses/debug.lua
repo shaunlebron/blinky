@@ -4,7 +4,7 @@ rows = 1
 lens_width = cols
 lens_height = rows
 
-onload = "fit"
+onload = "f_fit"
 
 function col(x)
    local nx = x+cols/2

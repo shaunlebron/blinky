@@ -4,7 +4,7 @@ clat0 = 2/pi
 max_hfov = 360
 max_vfov = 180
 
-onload = "fit"
+onload = "f_fit"
 
 function lens_forward(x,y,z)
    local lat,lon = ray_to_latlon(x,y,z)

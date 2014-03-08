@@ -4,7 +4,7 @@ max_vfov = 180
 lens_width = 2*sqrt(2)*2
 lens_height = sqrt(2)*2
 
-onload = "fit"
+onload = "f_fit"
 
 function lens_inverse(x,y)
    if x*x/8+y*y/2 > 1 then 

@@ -606,15 +606,15 @@ static void L_Fit(void)
 void L_WriteConfig(FILE* f)
 {
    fprintf(f,"fisheye %d\n", fisheye_enabled);
-   fprintf(f,"lens \"%s\"\n", lens.name);
-   fprintf(f,"globe \"%s\"\n", globe.name);
-   fprintf(f,"rubixgrid %d %f %f\n", rubix.numcells, rubix.cell_size, rubix.pad_size);
+   fprintf(f,"f_lens \"%s\"\n", lens.name);
+   fprintf(f,"f_globe \"%s\"\n", globe.name);
+   fprintf(f,"f_rubixgrid %d %f %f\n", rubix.numcells, rubix.cell_size, rubix.pad_size);
    switch (zoom.type) {
-      case ZOOM_HFOV: fprintf(f,"hfov %d\n", zoom.fov); break;
-      case ZOOM_VFOV: fprintf(f,"vfov %d\n", zoom.fov); break;
-      case ZOOM_HFIT: fprintf(f,"hfit\n"); break;
-      case ZOOM_VFIT: fprintf(f,"vfit\n"); break;
-      case ZOOM_FIT:  fprintf(f,"fit\n"); break;
+      case ZOOM_HFOV: fprintf(f,"f_hfov %d\n", zoom.fov); break;
+      case ZOOM_VFOV: fprintf(f,"f_vfov %d\n", zoom.fov); break;
+      case ZOOM_HFIT: fprintf(f,"f_hfit\n"); break;
+      case ZOOM_VFIT: fprintf(f,"f_vfit\n"); break;
+      case ZOOM_FIT:  fprintf(f,"f_fit\n"); break;
    }
 }
 
@@ -622,11 +622,11 @@ static void printActiveZoom(void)
 {
    Con_Printf("Zoom currently: ");
    switch (zoom.type) {
-      case ZOOM_HFOV: Con_Printf("hfov %d", zoom.fov); break;
-      case ZOOM_VFOV: Con_Printf("vfov %d", zoom.fov); break;
-      case ZOOM_HFIT: Con_Printf("hfit"); break;
-      case ZOOM_VFIT: Con_Printf("vfit"); break;
-      case ZOOM_FIT:  Con_Printf("fit"); break;
+      case ZOOM_HFOV: Con_Printf("f_hfov %d", zoom.fov); break;
+      case ZOOM_VFOV: Con_Printf("f_vfov %d", zoom.fov); break;
+      case ZOOM_HFIT: Con_Printf("f_hfit"); break;
+      case ZOOM_VFIT: Con_Printf("f_vfit"); break;
+      case ZOOM_FIT:  Con_Printf("f_fit"); break;
       default:        Con_Printf("none");
    }
    Con_Printf("\n");
@@ -646,7 +646,7 @@ static void L_Fisheye(void)
 static void L_HFov(void)
 {
    if (Cmd_Argc() < 2) { // no fov given
-      Con_Printf("hfov <degrees>: set horizontal FOV\n");
+      Con_Printf("f_hfov <degrees>: set horizontal FOV\n");
       printActiveZoom();
       return;
    }
@@ -660,7 +660,7 @@ static void L_HFov(void)
 static void L_VFov(void)
 {
    if (Cmd_Argc() < 2) { // no fov given
-      Con_Printf("vfov <degrees>: set vertical FOV\n");
+      Con_Printf("f_vfov <degrees>: set vertical FOV\n");
       printActiveZoom();
       return;
    }
@@ -677,7 +677,7 @@ static int lua_lens_load(void);
 static void L_Lens(void)
 {
    if (Cmd_Argc() < 2) { // no lens name given
-      Con_Printf("lens <name>: use a new lens\n");
+      Con_Printf("f_lens <name>: use a new lens\n");
       Con_Printf("Currently: %s\n", lens.name);
       return;
    }
@@ -731,7 +731,7 @@ static int lua_globe_load(void);
 static void L_SaveGlobe(void)
 {
    if (Cmd_Argc() < 2) { // no file name given
-      Con_Printf("saveglobe <name> [full flag=0]: screenshot the globe plates\n");
+      Con_Printf("f_saveglobe <name> [full flag=0]: screenshot the globe plates\n");
       return;
    }
 
@@ -845,7 +845,7 @@ static void SaveGlobe(void)
 static void L_Globe(void)
 {
    if (Cmd_Argc() < 2) { // no globe name given
-      Con_Printf("globe <name>: use a new globe\n");
+      Con_Printf("f_globe <name>: use a new globe\n");
       Con_Printf("Currently: %s\n", globe.name);
       return;
    }
@@ -888,26 +888,26 @@ void L_Init(void)
 
    L_InitLua();
 
-   Cmd_AddCommand("dumppal", L_DumpPalette);
-   Cmd_AddCommand("rubix", L_Rubix);
-   Cmd_AddCommand("rubixgrid", L_RubixGrid);
-   Cmd_AddCommand("hfit", L_HFit);
-   Cmd_AddCommand("vfit", L_VFit);
-   Cmd_AddCommand("fit", L_Fit);
-   Cmd_AddCommand("hfov", L_HFov);
-   Cmd_AddCommand("vfov", L_VFov);
-   Cmd_AddCommand("lens", L_Lens);
-   Cmd_SetCompletion("lens", L_LensArg);
-   Cmd_AddCommand("globe", L_Globe);
-   Cmd_SetCompletion("globe", L_GlobeArg);
-   Cmd_AddCommand("saveglobe", L_SaveGlobe);
    Cmd_AddCommand("fisheye", L_Fisheye);
+   Cmd_AddCommand("f_dumppal", L_DumpPalette);
+   Cmd_AddCommand("f_rubix", L_Rubix);
+   Cmd_AddCommand("f_rubixgrid", L_RubixGrid);
+   Cmd_AddCommand("f_hfit", L_HFit);
+   Cmd_AddCommand("f_vfit", L_VFit);
+   Cmd_AddCommand("f_fit", L_Fit);
+   Cmd_AddCommand("f_hfov", L_HFov);
+   Cmd_AddCommand("f_vfov", L_VFov);
+   Cmd_AddCommand("f_lens", L_Lens);
+   Cmd_SetCompletion("f_lens", L_LensArg);
+   Cmd_AddCommand("f_globe", L_Globe);
+   Cmd_SetCompletion("f_globe", L_GlobeArg);
+   Cmd_AddCommand("f_saveglobe", L_SaveGlobe);
 
    // defaults
-   Cmd_ExecuteString("globe cube", src_command);
-   Cmd_ExecuteString("lens panini", src_command);
-   Cmd_ExecuteString("hfov 180", src_command);
-   Cmd_ExecuteString("rubixgrid 10 4 1", src_command);
+   Cmd_ExecuteString("f_globe cube", src_command);
+   Cmd_ExecuteString("f_lens panini", src_command);
+   Cmd_ExecuteString("f_hfov 180", src_command);
+   Cmd_ExecuteString("f_rubixgrid 10 4 1", src_command);
 
    // create palette maps
    create_palmap();

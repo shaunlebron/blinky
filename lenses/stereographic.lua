@@ -3,7 +3,7 @@ angleScale = 0.5
 max_hfov = 360
 max_vfov = 360
 
-onload = "hfov 180"
+onload = "f_hfov 180"
 
 function lens_inverse(x,y)
    local r = sqrt(x*x+y*y)

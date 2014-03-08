@@ -49,4 +49,4 @@ t = solveTheta(0)
 lens_width = 2/sqrt(pi*(4+pi))*pi*(1+cos(t))*2
 lens_height = 2*maxy
 
-onload = "fit"
+onload = "f_fit"

@@ -3,7 +3,7 @@ max_vfov = 180
 
 lens_width = 2*pi
 
-onload = "fit"
+onload = "f_fit"
 
 function lens_inverse(x,y)
    if abs(x) > pi then
