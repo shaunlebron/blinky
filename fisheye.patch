@@ -1,15 +1,15 @@
 diff --git a/Makefile b/Makefile
-index 0a6c4d0..4545240 100644
+index 0a6c4d0..143e03e 100644
 --- a/Makefile
 +++ b/Makefile
-@@ -643,6 +643,7 @@ CL_OBJS := \
+@@ -642,6 +642,7 @@ CL_OBJS := \
+ 	cl_parse.o	\
  	cl_tent.o	\
  	console.o	\
++	fisheye.o	\
  	keys.o		\
-+	lens.o		\
  	menu.o		\
  	r_efrag.o	\
- 	r_light.o	\
 @@ -814,7 +815,7 @@ COMMON_CPPFLAGS += -DWIN32_LEAN_AND_MEAN
  COMMON_OBJS += net_wins.o sys_win.o
  CL_OBJS     += winquake.res
@@ -29,22 +29,22 @@ index 0a6c4d0..4545240 100644
  
  # FIXME - stupid hack
 diff --git a/NQ/host.c b/NQ/host.c
-index c6c3e06..784dd3e 100644
+index c6c3e06..584ea3a 100644
 --- a/NQ/host.c
 +++ b/NQ/host.c
-@@ -26,6 +26,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
+@@ -23,6 +23,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
+ #include "cmd.h"
+ #include "console.h"
+ #include "draw.h"
++#include "fisheye.h"
  #include "host.h"
  #include "input.h"
  #include "keys.h"
-+#include "lens.h"
- #include "menu.h"
- #include "model.h"
- #include "net.h"
 @@ -284,6 +285,8 @@ Host_WriteConfiguration(void)
  	Key_WriteBindings(f);
  	Cvar_WriteVariables(f);
  
-+	L_WriteConfig(f);
++	F_WriteConfig(f);
 +
  	fclose(f);
      }
@@ -54,7 +54,7 @@ index c6c3e06..784dd3e 100644
  
  	IN_Init();
 +
-+	L_Init();
++	F_Init();
      }
      Mod_InitAliasCache();
  
@@ -62,7 +62,7 @@ index c6c3e06..784dd3e 100644
      CDAudio_Shutdown();
      NET_Shutdown();
      S_Shutdown();
-+    L_Shutdown();
++    F_Shutdown();
      IN_Shutdown();
  
      if (cls.state != ca_dedicated) {
@@ -83,26 +83,25 @@ index 63c03bb..33a69c0 100644
      scr_copyeverything = 1;
  
 diff --git a/NQ/view.c b/NQ/view.c
-index c88604b..6199bac 100644
+index c88604b..55b9dce 100644
 --- a/NQ/view.c
 +++ b/NQ/view.c
-@@ -26,6 +26,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
+@@ -25,6 +25,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
+ #include "console.h"
  #include "cvar.h"
  #include "draw.h"
++#include "fisheye.h"
  #include "host.h"
-+#include "lens.h"
  #include "quakedef.h"
  #include "screen.h"
- #include "view.h"
-@@ -943,8 +944,14 @@ V_RenderView(void)
+@@ -943,8 +944,13 @@ V_RenderView(void)
  	    V_CalcRefdef();
      }
  
 -    R_PushDlights();
 -    R_RenderView();
-+    extern int fisheye_enabled;
 +    if (fisheye_enabled) {
-+        L_RenderView();
++        F_RenderView();
 +    }
 +    else {
 +        R_PushDlights();
@@ -112,7 +111,7 @@ index c88604b..6199bac 100644
  #ifndef GLQUAKE
      if (crosshair.value)
 diff --git a/common/r_main.c b/common/r_main.c
-index ec9e1da..eb462c0 100644
+index ec9e1da..a60ba79 100644
 --- a/common/r_main.c
 +++ b/common/r_main.c
 @@ -404,7 +404,23 @@ R_ViewChanged(vrect_t *pvrect, int lineadj, float aspect)
@@ -120,7 +119,7 @@ index ec9e1da..eb462c0 100644
      R_SetVrect(pvrect, &r_refdef.vrect, lineadj);
  
 -    r_refdef.horizontalFieldOfView = 2.0 * tan(r_refdef.fov_x / 360 * M_PI);
-+    extern int fisheye_enabled;
++    extern qboolean fisheye_enabled;
 +    if (fisheye_enabled) {
 +
 +        // Make render size a square
@@ -130,8 +129,8 @@ index ec9e1da..eb462c0 100644
 +        r_refdef.vrect.width = r_refdef.vrect.height = minsize;
 +
 +        // set fov
-+        extern double renderfov;
-+        r_refdef.horizontalFieldOfView = 2.0 * tan(renderfov / 2);
++        extern double fisheye_plate_fov;
++        r_refdef.horizontalFieldOfView = 2.0 * tan(fisheye_plate_fov / 2);
 +    }
 +    else {
 +        r_refdef.horizontalFieldOfView = 2.0 * tan(r_refdef.fov_x / 360 * M_PI);
@@ -155,15 +154,15 @@ index ec9e1da..eb462c0 100644
      yOrigin = r_refdef.yOrigin;
  
 diff --git a/common/r_misc.c b/common/r_misc.c
-index f052690..4d218fc 100644
+index f052690..30fed3c 100644
 --- a/common/r_misc.c
 +++ b/common/r_misc.c
-@@ -493,14 +493,28 @@ R_SetupFrame(void)
+@@ -493,14 +493,27 @@ R_SetupFrame(void)
      VectorCopy(r_refdef.vieworg, modelorg);
      VectorCopy(r_refdef.vieworg, r_origin);
  
 -    AngleVectors(r_refdef.viewangles, vpn, vright, vup);
-+    extern int fisheye_enabled;
++    extern qboolean fisheye_enabled;
 +    if (fisheye_enabled) {
 +        VectorCopy(r_refdef.forward, vpn);
 +        VectorCopy(r_refdef.right, vright);
@@ -179,7 +178,6 @@ index f052690..4d218fc 100644
  
      r_dowarpold = r_dowarp;
 -    r_dowarp = r_waterwarp.value && (r_viewleaf->contents <= CONTENTS_WATER);
-+    extern int fisheye_enabled;
 +    if (fisheye_enabled) {
 +        r_dowarp = 0;
 +    }

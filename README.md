@@ -36,5 +36,5 @@ I'm generating the current [fisheye patch](fisheye.patch) with the command:
 git diff 23119f4eb2ac6b5cef3e1ebfc785189b011aae26.. NQ common include Makefile
 ```
 
-(The patch does not include the new files "NQ/lens.c" and "include/lens.h", so
+(The patch does not include the new files "NQ/fisheye.c" and "include/fisheye.h", so
 you can better see the existing changes to the engine)
