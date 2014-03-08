@@ -5,8 +5,8 @@ x replace fit commands with f_contain, f_cover commands
     - don't rubix-color invisible pixels
         - compromise between the desire to see the full rendered plate and just the visible part
 - add f_help command
-- rename lens.c to fisheye.c
-- change function prefix from "L_" to "F_"
+x rename lens.c to fisheye.c
+x change function prefix from "L_" to "F_"
 
 O fix symmetry optimizations
 X fix platedisplay optimizations
