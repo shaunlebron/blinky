@@ -1,40 +1,39 @@
 
-- add cover command
+- replace fit commands with f_contain, f_cover commands
+- improve debug lens for better clarity
+    - better layout?
+    - don't rubix-color invisible pixels
+        - compromise between the desire to see the full rendered plate and just the visible part
+- add f_help command
+
 O fix symmetry optimizations
 X fix platedisplay optimizations
 X remove dfov command
-
 X make variables static if possible
-- rename commands
+
+x rename commands
     - fisheye
-
-    - f_help
-
     - f_lens
     - f_globe
-
     - f_fov
     - f_vfov
-    - f_contain
-    - f_cover
-
     - f_rubix
     - f_saveglobe
 
-- organize vars
-    - fisheye_enabled
-    - Lua
-        - pointer to intepreter state
-        - reference indexes
+x organize vars
+    x fisheye_enabled
+    x Lua
+        X pointer to intepreter state
+        X reference indexes
             - forward func
             - inverse func
             - plate func
-    - drawing area on screen (in pixels)
+    X drawing area on screen (in pixels)
         - left
         - top
         - width
         - height
-    - fov
+    x fov
         - change flag
         - active fov in radians (value of hfov or vfov)
         - hfov in degrees
@@ -43,37 +42,37 @@ X make variables static if possible
         - max vfov
         - renderfov (global var used as a function argument when rendering each plate)
         - framesize (pointer to width or height -- pixel screen size vars)
-        - scale (lens to pixel scale)
-    - lens
-        - lensmap
-        - palimap
-        - lens build state vars
-        - stopwatch var
-        - name
-        - has changed flag
-        - is valid flag
-        - lens width
-        - lens height
-        - scale
-        - map type (forward/inverse)
-        - fit flags:
+        x scale (lens to pixel scale)
+    x lens
+        x lensmap
+        x palimap
+        x lens build state vars
+        x stopwatch var
+        x name
+        x has changed flag
+        x is valid flag
+        x lens width
+        x lens height
+        x scale
+        x map type (forward/inverse)
+        x fit flags:
             - hfit
             - vfit
             - fit
-    - rubix
+    x rubix
         - is enabled
         - number of cells
         - divs per cell (cells are separated by 1 div)
-    - globe
-        - name
-        - is valid flag
-        - has changed flag
-        - platemap
-        - plate camera configs
-        - plate size
-        - plate palettes
-        - plate display flags
-        - save globe
+    x globe
+        x name
+        x is valid flag
+        x has changed flag
+        x platemap
+        x plate camera configs
+        x plate size
+        x plate palettes
+        x plate display flags
+        x save globe
             - should save globe this frame
             - filename
             - should save full globe (cut out unused margins)
@@ -92,6 +91,8 @@ X make variables static if possible
             - hfit
             - vfit
             - fit
+        - lens
+        - globe
     - palette
         - find closest
         - create palmap
