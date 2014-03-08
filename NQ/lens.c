@@ -136,7 +136,7 @@ qboolean fisheye_enabled;
 
 // This is a globally accessible variable that is used to set the fov of each
 // camera view that we render.
-double renderfov;
+double fisheye_plate_fov;
 
 // Lens computation is slow, so we don't want to block the game while its busy.
 // Instead of dealing with threads, we are just limiting the time that the
@@ -2034,7 +2034,7 @@ void L_RenderView(void)
       if (globe.plates[i].display) {
 
          // set view to change plate FOV
-         renderfov = globe.plates[i].fov;
+         fisheye_plate_fov = globe.plates[i].fov;
          R_ViewChanged(&vrect, sb_lines, vid.aspect);
 
          // compute absolute view vectors

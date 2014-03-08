@@ -414,8 +414,8 @@ R_ViewChanged(vrect_t *pvrect, int lineadj, float aspect)
         r_refdef.vrect.width = r_refdef.vrect.height = minsize;
 
         // set fov
-        extern double renderfov;
-        r_refdef.horizontalFieldOfView = 2.0 * tan(renderfov / 2);
+        extern double fisheye_plate_fov;
+        r_refdef.horizontalFieldOfView = 2.0 * tan(fisheye_plate_fov / 2);
     }
     else {
         r_refdef.horizontalFieldOfView = 2.0 * tan(r_refdef.fov_x / 360 * M_PI);
