@@ -171,9 +171,6 @@ static struct _lua_refs {
    int globe_plate;
 } lua_refs;
 
-// type to represent one pixel (one byte)
-typedef unsigned char B;
-
 static struct _globe {
 
    // name of the current globe
@@ -187,7 +184,7 @@ static struct _globe {
 
    // the environment map
    // a large array of pixels that hold all rendered views
-   B *pixels;  
+   byte *pixels;  
    // retrieves a pointer to a pixel in the platemap
    #define GLOBEPIXEL(plate,x,y) (globe.pixels + (plate)*(globe.platesize)*(globe.platesize) + (x) + (y)*(globe.platesize))
 
@@ -199,7 +196,7 @@ static struct _globe {
       vec3_t up;
       vec_t fov;
       vec_t dist;
-      B palette[256];
+      byte palette[256];
       int display;
    } plates[MAX_PLATES];
 
@@ -267,7 +264,7 @@ static struct _lens {
    // 
    //    <------- width_px ------->
    // 
-   B **pixels;
+   byte **pixels;
 
    // retrieves a pointer to a lens pixel
    #define LENSPIXEL(x,y) (lens.pixels + (x) + (y)*lens.width_px)
@@ -286,7 +283,7 @@ static struct _lens {
    // 
    //    <------- width_px ------->
    // 
-   B *pixel_tints;
+   byte *pixel_tints;
 
    // retrieves a pointer to a lens pixel tint
    #define LENSPIXELTINT(x,y) (lens.pixel_tints + (x) + (y)*lens.width_px)
@@ -401,7 +398,7 @@ static int find_closest_pal_index(int r, int g, int b)
    int i;
    int mindist = 256*256*256;
    int minindex = 0;
-   B* pal = host_basepal;
+   byte* pal = host_basepal;
    for (i=0; i<256; ++i)
    {
       int dr = (int)pal[0]-r;
@@ -449,7 +446,7 @@ static void create_palmap(void)
             break;
       }
    
-      B* pal = host_basepal;
+      byte* pal = host_basepal;
       for (i=0; i<256; ++i)
       {
          int r = pal[0];
@@ -474,7 +471,7 @@ static void create_palmap(void)
 static void L_DumpPalette(void)
 {
    int i;
-   B *pal = host_basepal;
+   byte *pal = host_basepal;
    FILE *pFile = fopen("palette","w");
    if (NULL == pFile) {
       Con_Printf("could not open \"palette\" for writing\n");
@@ -1922,8 +1919,8 @@ static void create_lensmap(void)
 // draw the lensmap to the vidbuffer
 static void render_lensmap(void)
 {
-   B **lmap = lens.pixels;
-   B *pmap = lens.pixel_tints;
+   byte **lmap = lens.pixels;
+   byte *pmap = lens.pixel_tints;
    int x, y;
    for(y=0; y<lens.height_px; y++)
       for(x=0; x<lens.width_px; x++,lmap++,pmap++)
@@ -1943,7 +1940,7 @@ static void render_lensmap(void)
 // render a specific plate
 static void render_plate(int plate_index, vec3_t forward, vec3_t right, vec3_t up) 
 {
-   B *pixels = GLOBEPIXEL(plate_index, 0, 0);
+   byte *pixels = GLOBEPIXEL(plate_index, 0, 0);
 
    // set camera orientation
    VectorCopy(forward, r_refdef.forward);
@@ -1955,7 +1952,7 @@ static void render_plate(int plate_index, vec3_t forward, vec3_t right, vec3_t u
    R_RenderView();
 
    // copy from vid buffer to cubeface, row by row
-   B *vbuffer = VBUFFER(scr_vrect.x,scr_vrect.y);
+   byte *vbuffer = VBUFFER(scr_vrect.x,scr_vrect.y);
    int y;
    for(y = 0;y<globe.platesize;y++) {
       memcpy(pixels, vbuffer, globe.platesize);
@@ -1986,9 +1983,9 @@ void L_RenderView(void)
       if(lens.pixels) free(lens.pixels);
       if(lens.pixel_tints) free(lens.pixel_tints);
 
-      globe.pixels = (B*)malloc(platesize*platesize*MAX_PLATES*sizeof(B));
-      lens.pixels = (B**)malloc(area*sizeof(B*));
-      lens.pixel_tints = (B*)malloc(area*sizeof(B));
+      globe.pixels = (byte*)malloc(platesize*platesize*MAX_PLATES*sizeof(byte));
+      lens.pixels = (byte**)malloc(area*sizeof(byte*));
+      lens.pixel_tints = (byte*)malloc(area*sizeof(byte));
       
       // the rude way
       if(!globe.pixels || !lens.pixels || !lens.pixel_tints) {
@@ -1999,8 +1996,8 @@ void L_RenderView(void)
 
    // recalculate lens
    if (sizechange || zoom.changed || lens.changed || globe.changed) {
-      memset(lens.pixels, 0, area*sizeof(B*));
-      memset(lens.pixel_tints, 255, area*sizeof(B));
+      memset(lens.pixels, 0, area*sizeof(byte*));
+      memset(lens.pixel_tints, 255, area*sizeof(byte));
 
       // load lens again
       // (NOTE: this will be the second time this lens will be loaded in this frame if it has just changed)
