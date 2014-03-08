@@ -134,6 +134,10 @@ LENSES
 // depends on (e.g. square refdef, disabling water warp, hooking renderer).
 int fisheye_enabled;
 
+// This is a globally accessible variable that is used to set the fov of each
+// camera view that we render.
+double renderfov;
+
 // Lens computation is slow, so we don't want to block the game while its busy.
 // Instead of dealing with threads, we are just limiting the time that the
 // lens builder can work each frame.  It keeps track of its work between frames
@@ -289,6 +293,20 @@ static struct _lens {
 
 } lens;
 
+static struct _zoom {
+
+   int changed;
+
+   enum { ZOOM_NONE, ZOOM_HFOV, ZOOM_VFOV, ZOOM_HFIT, ZOOM_VFIT, ZOOM_FIT } type;
+
+   // desired FOV in degrees
+   int fov;
+
+   // maximum FOV width and height of the current lens in degrees
+   int max_vfov, max_hfov;
+
+} zoom;
+
 static struct _rubix {
 
    // boolean signaling if rubix should be drawn
@@ -373,32 +391,6 @@ static int is_lens_builder_time_up(void) {
 // |                                                                              |
 // --------------------------------------------------------------------------------
 
-
-// desired FOV in radians
-static double fov;
-
-// specific desired FOVs in degrees
-static double hfov, vfov;
-
-// render FOV for each plate
-double renderfov;
-
-// fit mode
-static int fit;
-static int hfit;
-static int vfit;
-
-// pointer to the screen dimension (width,height) attached to the desired fov
-static int* framesize;
-
-// maximum FOV width of the current lens
-static double max_vfov;
-
-// maximum FOV height of the current lens
-static double max_hfov;
-
-// change flags
-static int fovchange;
 
 // retrieves a pointer to a pixel in the video buffer
 #define VBUFFER(x,y) (vid.buffer + (x) + (y)*vid.rowbytes)
@@ -588,68 +580,56 @@ static void L_InitLua(void)
 
 static void clearFov(void)
 {
-   fit = hfit = vfit = 0;
-   fov = hfov = vfov = 0;
-   framesize = 0; // clear framesize pointer
-   fovchange = 1; // trigger change
+   zoom.type = ZOOM_NONE;
+   zoom.fov = 0;
+   zoom.changed = 1; // trigger change
 }
 
 static void L_HFit(void)
 {
    clearFov();
-   hfit = 1;
+   zoom.type = ZOOM_HFIT;
 }
 
 static void L_VFit(void)
 {
    clearFov();
-   vfit = 1;
+   zoom.type = ZOOM_VFIT;
 }
 
 static void L_Fit(void)
 {
    clearFov();
-   fit = 1;
+   zoom.type = ZOOM_FIT;
 }
 
 void L_WriteConfig(FILE* f)
 {
-   if (hfov != 0)
-   {
-      fprintf(f,"hfov %f\n", hfov);
-   }
-   else if (vfov != 0)
-   {
-      fprintf(f,"vfov %f\n", vfov);
-   }
-   else if (hfit) 
-   {
-      fprintf(f,"hfit\n");
-   }
-   else if (vfit)
-   {
-      fprintf(f,"vfit\n");
-   }
-   else if (fit)
-   {
-      fprintf(f,"fit\n");
-   }
-
    fprintf(f,"fisheye %d\n", fisheye_enabled);
    fprintf(f,"lens \"%s\"\n", lens.name);
    fprintf(f,"globe \"%s\"\n", globe.name);
    fprintf(f,"rubixgrid %d %f %f\n", rubix.numcells, rubix.cell_size, rubix.pad_size);
+   switch (zoom.type) {
+      case ZOOM_HFOV: fprintf(f,"hfov %d\n", zoom.fov); break;
+      case ZOOM_VFOV: fprintf(f,"vfov %d\n", zoom.fov); break;
+      case ZOOM_HFIT: fprintf(f,"hfit\n"); break;
+      case ZOOM_VFIT: fprintf(f,"vfit\n"); break;
+      case ZOOM_FIT:  fprintf(f,"fit\n"); break;
+   }
 }
 
-static void printActiveFov(void)
+static void printActiveZoom(void)
 {
-   Con_Printf("Currently: ");
-   if (hfov != 0) {
-      Con_Printf("hfov %d\n",(int)hfov);
+   Con_Printf("Zoom currently: ");
+   switch (zoom.type) {
+      case ZOOM_HFOV: Con_Printf("hfov %d", zoom.fov); break;
+      case ZOOM_VFOV: Con_Printf("vfov %d", zoom.fov); break;
+      case ZOOM_HFIT: Con_Printf("hfit"); break;
+      case ZOOM_VFIT: Con_Printf("vfit"); break;
+      case ZOOM_FIT:  Con_Printf("fit"); break;
+      default:        Con_Printf("none");
    }
-   else if (vfov != 0) {
-      Con_Printf("vfov %d\n",(int)vfov);
-   }
+   Con_Printf("\n");
 }
 
 static void L_Fisheye(void)
@@ -667,29 +647,28 @@ static void L_HFov(void)
 {
    if (Cmd_Argc() < 2) { // no fov given
       Con_Printf("hfov <degrees>: set horizontal FOV\n");
-      printActiveFov();
+      printActiveZoom();
       return;
    }
 
    clearFov();
 
-   hfov = Q_atof(Cmd_Argv(1)); // will return 0 if not valid
-   framesize = &lens.width_px;
-   fov = hfov * M_PI / 180;
+   zoom.type = ZOOM_HFOV;
+   zoom.fov = (int)Q_atof(Cmd_Argv(1)); // will return 0 if not valid
 }
 
 static void L_VFov(void)
 {
    if (Cmd_Argc() < 2) { // no fov given
       Con_Printf("vfov <degrees>: set vertical FOV\n");
-      printActiveFov();
+      printActiveZoom();
       return;
    }
 
    clearFov();
-   vfov = Q_atof(Cmd_Argv(1)); // will return 0 if not valid
-   framesize = &lens.height_px;
-   fov = vfov * M_PI / 180;
+
+   zoom.type = ZOOM_VFOV;
+   zoom.fov = (int)Q_atof(Cmd_Argv(1)); // will return 0 if not valid
 }
 
 static int lua_lens_load(void);
@@ -1335,14 +1314,11 @@ static int lua_lens_load(void)
    lua_pop(lua,1); // pop map
 
    lua_getglobal(lua, "max_hfov");
-   max_hfov = lua_isnumber(lua,-1) ? lua_tonumber(lua,-1) : 0;
-   // TODO: use degrees to prevent roundoff errors (e.g. capping at 179 instead of 180)
-   max_hfov *= M_PI / 180;
+   zoom.max_hfov = (int)lua_isnumber(lua,-1) ? lua_tonumber(lua,-1) : 0;
    lua_pop(lua,1); // pop max_hfov
 
    lua_getglobal(lua, "max_vfov");
-   max_vfov = lua_isnumber(lua,-1) ? lua_tonumber(lua,-1) : 0;
-   max_vfov *= M_PI / 180;
+   zoom.max_vfov = (int)lua_isnumber(lua,-1) ? lua_tonumber(lua,-1) : 0;
    lua_pop(lua,1); // pop max_vfov
 
    lua_getglobal(lua, "lens_width");
@@ -1365,21 +1341,20 @@ static int determine_lens_scale(void)
    // clear lens scale
    lens.scale = -1;
 
-   if (fit == 0 && hfit == 0 && vfit == 0) // scale based on FOV
+   if (zoom.type == ZOOM_HFOV || zoom.type == ZOOM_VFOV)
    {
       // check FOV limits
-      if (max_hfov <= 0 || max_vfov <= 0)
+      if (zoom.max_hfov <= 0 || zoom.max_vfov <= 0)
       {
          Con_Printf("max_hfov & max_vfov not specified, try \"fit\"\n");
          return 0;
       }
-
-      if (lens.width_px == *framesize && fov > max_hfov) {
-         Con_Printf("hfov must be less than %d\n", (int)(max_hfov * 180 / M_PI));
+      else if (zoom.type == ZOOM_HFOV && zoom.fov > zoom.max_hfov) {
+         Con_Printf("hfov must be less than %d\n", zoom.max_hfov);
          return 0;
       }
-      else if (lens.height_px == *framesize && fov > max_vfov) {
-         Con_Printf("vfov must be less than %d\n", (int)(max_vfov * 180/ M_PI));
+      else if (zoom.type == ZOOM_VFOV && zoom.fov > zoom.max_vfov) {
+         Con_Printf("vfov must be less than %d\n", zoom.max_vfov);
          return 0;
       }
 
@@ -1387,29 +1362,26 @@ static int determine_lens_scale(void)
       if (lua_refs.lens_forward != -1) {
          vec3_t ray;
          double x,y;
-         if (*framesize == lens.width_px) {
-            latlon_to_ray(0,fov*0.5,ray);
+         double fovr = zoom.fov * M_PI / 180;
+         if (zoom.type == ZOOM_HFOV) {
+            latlon_to_ray(0,fovr*0.5,ray);
             if (lua_lens_forward(ray,&x,&y)) {
-               lens.scale = x / (*framesize * 0.5);
+               lens.scale = x / (lens.width_px * 0.5);
             }
             else {
                Con_Printf("ray_to_xy did not return a valid r value for determining FOV scale\n");
                return 0;
             }
          }
-         else if (*framesize == lens.height_px) {
-            latlon_to_ray(fov*0.5,0,ray);
+         else if (zoom.type == ZOOM_VFOV) {
+            latlon_to_ray(fovr*0.5,0,ray);
             if (lua_lens_forward(ray,&x,&y)) {
-               lens.scale = y / (*framesize * 0.5);
+               lens.scale = y / (lens.height_px * 0.5);
             }
             else {
                Con_Printf("ray_to_xy did not return a valid r value for determining FOV scale\n");
                return 0;
             }
-         }
-         else {
-            Con_Printf("ray_to_xy does not support diagonal FOVs\n");
-            return 0;
          }
       }
       else
@@ -1420,33 +1392,37 @@ static int determine_lens_scale(void)
    }
    else // scale based on fitting
    {
-      if (hfit) {
+      if (zoom.type == ZOOM_HFIT) {
          if (lens.width <= 0)
          {
-            //Con_Printf("Cannot use hfit unless a positive lens_width is in your script\n");
             Con_Printf("lens_width not specified.  Try hfov instead.\n");
             return 0;
          }
          lens.scale = lens.width / lens.width_px;
       }
-      else if (vfit) {
+      else if (zoom.type == ZOOM_VFIT) {
          if (lens.height <= 0)
          {
-            //Con_Printf("Cannot use vfit unless a positive lens_height is in your script\n");
             Con_Printf("lens_height not specified.  Try vfov instead.\n");
             return 0;
          }
          lens.scale = lens.height / lens.height_px;
       }
-      else if (fit) {
+      else if (zoom.type == ZOOM_FIT) {
          if (lens.width <= 0 && lens.height > 0) {
+            // ( ) width provided
+            // (X) height provided
             lens.scale = lens.height / lens.height_px;
          }
-         else if (lens.height <=0 && lens.width > 0) {
+         else if (lens.height <= 0 && lens.width > 0) {
+            // (X) width provided
+            // ( ) height provided
             lens.scale = lens.width / lens.width_px;
          }
          else if (lens.height <= 0 && lens.width <= 0) {
-            Con_Printf("lens.height and lens_width not specified.  Try hfov instead.\n");
+            // ( ) width provided
+            // ( ) height provided
+            Con_Printf("lens_height and lens_width not specified.  Try hfov instead.\n");
             return 0;
          }
          else if (lens.width / lens.height > (double)lens.width_px / lens.height_px) {
@@ -2022,7 +1998,7 @@ void L_RenderView(void)
    }
 
    // recalculate lens
-   if (sizechange || fovchange || lens.changed || globe.changed) {
+   if (sizechange || zoom.changed || lens.changed || globe.changed) {
       memset(lens.pixels, 0, area*sizeof(B*));
       memset(lens.pixel_tints, 255, area*sizeof(B));
 
@@ -2102,7 +2078,7 @@ void L_RenderView(void)
    pheight = lens.height_px;
 
    // reset change flags
-   lens.changed = globe.changed = fovchange = 0;
+   lens.changed = globe.changed = zoom.changed = 0;
 }
 
 // vim: et:ts=3:sts=3:sw=3
