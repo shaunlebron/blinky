@@ -944,7 +944,6 @@ V_RenderView(void)
 	    V_CalcRefdef();
     }
 
-    extern int fisheye_enabled;
     if (fisheye_enabled) {
         L_RenderView();
     }

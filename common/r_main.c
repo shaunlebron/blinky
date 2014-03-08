@@ -404,7 +404,7 @@ R_ViewChanged(vrect_t *pvrect, int lineadj, float aspect)
 
     R_SetVrect(pvrect, &r_refdef.vrect, lineadj);
 
-    extern int fisheye_enabled;
+    extern qboolean fisheye_enabled;
     if (fisheye_enabled) {
 
         // Make render size a square

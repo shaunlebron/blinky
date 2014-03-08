@@ -132,7 +132,7 @@ LENSES
 // This is a globally accessible variable that determines if these fisheye features
 // should be on.  It is used by other files for modifying behaviors that fisheye 
 // depends on (e.g. square refdef, disabling water warp, hooking renderer).
-int fisheye_enabled;
+qboolean fisheye_enabled;
 
 // This is a globally accessible variable that is used to set the fov of each
 // camera view that we render.
@@ -145,7 +145,7 @@ double renderfov;
 // pixels become visible as they are calculated.
 static struct _lens_builder
 {
-   int working;
+   qboolean working;
    int start_time;
    float seconds_per_frame;
    struct _inverse_state
@@ -177,10 +177,10 @@ static struct _globe {
    char name[50];
 
    // indicates if the current globe is valid
-   int valid;
+   qboolean valid;
 
-   // boolean signaling if the lens has changed and needs updating
-   int changed;
+   // indiciates if the lens has changed and needs updating
+   qboolean changed;
 
    // the environment map
    // a large array of pixels that hold all rendered views
@@ -209,7 +209,7 @@ static struct _globe {
    // set when we want to save each globe plate
    // (make sure they are visible (i.e. current lens is using all plates))
    struct {
-      int should;
+      qboolean should;
       int with_margins;
       char name[32];
    } save;
@@ -219,10 +219,10 @@ static struct _globe {
 static struct _lens {
 
    // boolean signaling if the lens is properly loaded
-   int valid;
+   qboolean valid;
 
    // boolean signaling if the lens has changed and needs updating
-   int changed;
+   qboolean changed;
 
    // name of the current lens
    char name[50];
@@ -292,7 +292,7 @@ static struct _lens {
 
 static struct _zoom {
 
-   int changed;
+   qboolean changed;
 
    enum { ZOOM_NONE, ZOOM_FOV, ZOOM_VFOV, ZOOM_HFIT, ZOOM_VFIT, ZOOM_FIT } type;
 
@@ -307,7 +307,7 @@ static struct _zoom {
 static struct _rubix {
 
    // boolean signaling if rubix should be drawn
-   int enabled;
+   qboolean enabled;
 
    int numcells;
    double cell_size;
@@ -376,7 +376,7 @@ static struct _rubix {
 static void start_lens_builder_clock(void) {
    lens_builder.start_time = clock();
 }
-static int is_lens_builder_time_up(void) {
+static qboolean is_lens_builder_time_up(void) {
    clock_t time = clock() - lens_builder.start_time;
    float s = ((float)time) / CLOCKS_PER_SEC;
    return (s >= lens_builder.seconds_per_frame);
@@ -487,7 +487,7 @@ static void L_DumpPalette(void)
 
 static void L_Rubix(void)
 {
-   rubix.enabled = rubix.enabled ? 0 : 1;
+   rubix.enabled = !rubix.enabled;
    Con_Printf("Rubix is %s\n", rubix.enabled ? "ON" : "OFF");
 }
 
@@ -579,7 +579,7 @@ static void clearFov(void)
 {
    zoom.type = ZOOM_NONE;
    zoom.fov = 0;
-   zoom.changed = 1; // trigger change
+   zoom.changed = true; // trigger change
 }
 
 static void L_HFit(void)
@@ -668,7 +668,7 @@ static void L_VFov(void)
    zoom.fov = (int)Q_atof(Cmd_Argv(1)); // will return 0 if not valid
 }
 
-static int lua_lens_load(void);
+static qboolean lua_lens_load(void);
 
 // lens command
 static void L_Lens(void)
@@ -680,7 +680,7 @@ static void L_Lens(void)
    }
 
    // trigger change
-   lens.changed = 1;
+   lens.changed = true;
 
    // get name
    strcpy(lens.name, Cmd_Argv(1));
@@ -723,7 +723,7 @@ static struct stree_root * L_LensArg(const char *arg)
    return root;
 }
 
-static int lua_globe_load(void);
+static qboolean lua_globe_load(void);
 
 static void L_SaveGlobe(void)
 {
@@ -740,7 +740,7 @@ static void L_SaveGlobe(void)
    else {
       globe.save.with_margins = 0;
    }
-   globe.save.should = 1;
+   globe.save.should = true;
 }
 
 static int ray_to_plate_index(vec3_t ray);
@@ -823,7 +823,7 @@ static void SaveGlobe(void)
    int i;
    char pcxname[32];
 
-   globe.save.should = 0;
+   globe.save.should = false;
 
     D_EnableBackBufferAccess();	// enable direct drawing of console to back
 
@@ -848,7 +848,7 @@ static void L_Globe(void)
    }
 
    // trigger change
-   globe.changed = 1;
+   globe.changed = true;
 
    // get name
    strcpy(globe.name, Cmd_Argv(1));
@@ -878,10 +878,10 @@ static struct stree_root * L_GlobeArg(const char *arg)
 
 void L_Init(void)
 {
-   lens_builder.working = 0;
+   lens_builder.working = false;
    lens_builder.seconds_per_frame = 1.0f / 60;
 
-   rubix.enabled = 0;
+   rubix.enabled = false;
 
    L_InitLua();
 
@@ -1103,7 +1103,7 @@ static void lua_globe_clear(void)
 
 #undef CLEARVAR
 
-static int lua_func_exists(const char* name)
+static qboolean lua_func_exists(const char* name)
 {
    lua_getglobal(lua, name);
    int exists = lua_isfunction(lua,-1);
@@ -1111,7 +1111,7 @@ static int lua_func_exists(const char* name)
    return exists;
 }
 
-static int lua_globe_load(void)
+static qboolean lua_globe_load(void)
 {
    // clear Lua variables
    lua_globe_clear();
@@ -1125,13 +1125,13 @@ static int lua_globe_load(void)
    if ((errcode=luaL_loadfile(lua, filename))) {
       Con_Printf("could not loadfile (%d) \nERROR: %s", errcode, lua_tostring(lua,-1));
       lua_pop(lua,1); // pop error message
-      return 0;
+      return false;
    }
    else {
       if ((errcode=lua_pcall(lua, 0, 0, 0))) {
          Con_Printf("could not pcall (%d) \nERROR: %s", errcode, lua_tostring(lua,-1));
          lua_pop(lua,1); // pop error message
-         return 0;
+         return false;
       }
    }
 
@@ -1149,7 +1149,7 @@ static int lua_globe_load(void)
    {
       Con_Printf("plates must be an array of one or more elements\n");
       lua_pop(lua, 1); // pop plates
-      return 0;
+      return false;
    }
 
    // iterate plates
@@ -1165,7 +1165,7 @@ static int lua_globe_load(void)
       {
          Con_Printf("plate %d: forward vector is not a 3d vector\n", i+1);
          lua_pop(lua, 3); // pop forward vector, plate, and plates
-         return 0;
+         return false;
       }
 
       // get forward vector elements
@@ -1175,7 +1175,7 @@ static int lua_globe_load(void)
          {
             Con_Printf("plate %d: forward vector: element %d not a number\n", i+1, j+1);
             lua_pop(lua, 4); // pop element, vector, plate, and plates
-            return 0;
+            return false;
          }
          globe.plates[i].forward[j] = lua_tonumber(lua,-1);
          lua_pop(lua, 1); // pop element
@@ -1190,7 +1190,7 @@ static int lua_globe_load(void)
       {
          Con_Printf("plate %d: up vector is not a 3d vector\n", i+1);
          lua_pop(lua, 3); // pop forward vector, plate, and plates
-         return 0;
+         return false;
       }
 
       // get up vector elements
@@ -1200,7 +1200,7 @@ static int lua_globe_load(void)
          {
             Con_Printf("plate %d: up vector: element %d not a number\n", i+1, j+1);
             lua_pop(lua, 4); // pop element, vector, plate, and plates
-            return 0;
+            return false;
          }
          globe.plates[i].up[j] = lua_tonumber(lua,-1);
          lua_pop(lua,1); // pop element
@@ -1223,7 +1223,7 @@ static int lua_globe_load(void)
       if (globe.plates[i].fov <= 0)
       {
          Con_Printf("plate %d: fov must > 0\n", i+1);
-         return 0;
+         return false;
       }
 
       // calculate distance to camera
@@ -1233,10 +1233,10 @@ static int lua_globe_load(void)
 
    globe.numplates = i;
 
-   return 1;
+   return true;
 }
 
-static int lua_lens_load(void)
+static qboolean lua_lens_load(void)
 {
    // clear Lua variables
    lua_lens_clear();
@@ -1250,13 +1250,13 @@ static int lua_lens_load(void)
    if ((errcode=luaL_loadfile(lua, filename))) {
       Con_Printf("could not loadfile (%d) \nERROR: %s", errcode, lua_tostring(lua,-1));
       lua_pop(lua,1); // pop error message
-      return 0;
+      return false;
    }
    else {
       if ((errcode=lua_pcall(lua, 0, 0, 0))) {
          Con_Printf("could not pcall (%d) \nERROR: %s", errcode, lua_tostring(lua,-1));
          lua_pop(lua,1); // pop error message
-         return 0;
+         return false;
       }
    }
 
@@ -1305,7 +1305,7 @@ static int lua_lens_load(void)
       else {
          Con_Printf("Unsupported map function: %s\n", funcname);
          lua_pop(lua, 1); // pop map
-         return 0;
+         return false;
       }
    }
    lua_pop(lua,1); // pop map
@@ -1326,14 +1326,14 @@ static int lua_lens_load(void)
    lens.height = lua_isnumber(lua,-1) ? lua_tonumber(lua,-1) : 0;
    lua_pop(lua,1); // pop lens_height
 
-   return 1;
+   return true;
 }
 
 // -----------------------------------
 // End Lua Functions
 // -----------------------------------
 
-static int determine_lens_scale(void)
+static qboolean determine_lens_scale(void)
 {
    // clear lens scale
    lens.scale = -1;
@@ -1344,15 +1344,15 @@ static int determine_lens_scale(void)
       if (zoom.max_fov <= 0 || zoom.max_vfov <= 0)
       {
          Con_Printf("max_fov & max_vfov not specified, try \"fit\"\n");
-         return 0;
+         return false;
       }
       else if (zoom.type == ZOOM_FOV && zoom.fov > zoom.max_fov) {
          Con_Printf("fov must be less than %d\n", zoom.max_fov);
-         return 0;
+         return false;
       }
       else if (zoom.type == ZOOM_VFOV && zoom.fov > zoom.max_vfov) {
          Con_Printf("vfov must be less than %d\n", zoom.max_vfov);
-         return 0;
+         return false;
       }
 
       // try to scale based on FOV using the forward map
@@ -1367,7 +1367,7 @@ static int determine_lens_scale(void)
             }
             else {
                Con_Printf("ray_to_xy did not return a valid r value for determining FOV scale\n");
-               return 0;
+               return false;
             }
          }
          else if (zoom.type == ZOOM_VFOV) {
@@ -1377,14 +1377,14 @@ static int determine_lens_scale(void)
             }
             else {
                Con_Printf("ray_to_xy did not return a valid r value for determining FOV scale\n");
-               return 0;
+               return false;
             }
          }
       }
       else
       {
          Con_Printf("Please specify a forward mapping function in your script for FOV scaling\n");
-         return 0;
+         return false;
       }
    }
    else // scale based on fitting
@@ -1393,7 +1393,7 @@ static int determine_lens_scale(void)
          if (lens.width <= 0)
          {
             Con_Printf("lens_width not specified.  Try f_fov instead.\n");
-            return 0;
+            return false;
          }
          lens.scale = lens.width / lens.width_px;
       }
@@ -1401,7 +1401,7 @@ static int determine_lens_scale(void)
          if (lens.height <= 0)
          {
             Con_Printf("lens_height not specified.  Try f_vfov instead.\n");
-            return 0;
+            return false;
          }
          lens.scale = lens.height / lens.height_px;
       }
@@ -1420,7 +1420,7 @@ static int determine_lens_scale(void)
             // ( ) width provided
             // ( ) height provided
             Con_Printf("lens_height and lens_width not specified.  Try f_fov instead.\n");
-            return 0;
+            return false;
          }
          else if (lens.width / lens.height > (double)lens.width_px / lens.height_px) {
             lens.scale = lens.width / lens.width_px;
@@ -1434,10 +1434,10 @@ static int determine_lens_scale(void)
    // validate scale
    if (lens.scale <= 0) {
       Con_Printf("init returned a scale of %f, which is  <= 0\n", lens.scale);
-      return 0;
+      return false;
    }
 
-   return 1;
+   return true;
 }
 
 // ----------------------------------------
@@ -1564,7 +1564,7 @@ static void plate_uv_to_ray(int plate_index, double u, double v, vec3_t ray)
    VectorNormalize(ray);
 }
 
-static int ray_to_plate_uv(int plate_index, vec3_t ray, double *u, double *v)
+static qboolean ray_to_plate_uv(int plate_index, vec3_t ray, double *u, double *v)
 {
    // get ray in the plate's relative view frame
    double x = DotProduct(globe.plates[plate_index].right, ray);
@@ -1601,7 +1601,7 @@ static void set_lensmap_from_ray(int lx, int ly, double sx, double sy, double sz
    set_lensmap_from_plate_uv(lx,ly,u,v,plate_index);
 }
 
-static int resume_lensmap_inverse(void)
+static qboolean resume_lensmap_inverse(void)
 {
    // image coordinates
    double x,y;
@@ -1758,7 +1758,7 @@ static void drawQuad(int *tl, int *tr, int *bl, int *br,
    }
 }
 
-static int resume_lensmap_forward(void)
+static qboolean resume_lensmap_forward(void)
 {
    int *top = lens_builder.forward_state.top;
    int *bot = lens_builder.forward_state.bot;
@@ -2075,7 +2075,7 @@ void L_RenderView(void)
    pheight = lens.height_px;
 
    // reset change flags
-   lens.changed = globe.changed = zoom.changed = 0;
+   lens.changed = globe.changed = zoom.changed = false;
 }
 
 // vim: et:ts=3:sts=3:sw=3
