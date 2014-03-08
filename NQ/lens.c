@@ -205,6 +205,14 @@ static struct _globe {
    // size of each rendered square plate in the vid buffer
    int platesize;
 
+   // set when we want to save each globe plate
+   // (make sure they are visible (i.e. current lens is using all plates))
+   struct {
+      int should;
+      int with_margins;
+      char name[32];
+   } save;
+
 } globe;
 
 static struct _lens {
@@ -741,9 +749,6 @@ static struct stree_root * L_LensArg(const char *arg)
 
 static int lua_globe_load(void);
 
-static int save_globe;
-static int save_globe_full;
-static char save_globe_name[32];
 static void L_SaveGlobe(void)
 {
    if (Cmd_Argc() < 2) { // no file name given
@@ -751,22 +756,22 @@ static void L_SaveGlobe(void)
       return;
    }
 
-   strncpy(save_globe_name, Cmd_Argv(1), 32);
+   strncpy(globe.save.name, Cmd_Argv(1), 32);
 
    if (Cmd_Argc() >= 3) {
-      save_globe_full = Q_atoi(Cmd_Argv(2));
+      globe.save.with_margins = Q_atoi(Cmd_Argv(2));
    }
    else {
-      save_globe_full = 0;
+      globe.save.with_margins = 0;
    }
-   save_globe = 1;
+   globe.save.should = 1;
 }
 
 static int ray_to_plate_index(vec3_t ray);
 
 // copied from WritePCXfile in NQ/screen.c
 // write a plate 
-static void WritePCXplate(char *filename, int plate_index, int full)
+static void WritePCXplate(char *filename, int plate_index, int with_margins)
 {
     // parameters from WritePCXfile
     int platesize = globe.platesize;
@@ -813,7 +818,7 @@ static void WritePCXplate(char *filename, int plate_index, int full)
           // 
           vec3_t ray;
           plate_uv_to_ray(plate_index, u, v, ray);
-          byte col = full || plate_index == ray_to_plate_index(ray) ? *data : 0xFE;
+          byte col = with_margins || plate_index == ray_to_plate_index(ray) ? *data : 0xFE;
 
           if ((col & 0xc0) == 0xc0) {
              *pack++ = 0xc1;
@@ -842,14 +847,14 @@ static void SaveGlobe(void)
    int i;
    char pcxname[32];
 
-   save_globe = 0;
+   globe.save.should = 0;
 
     D_EnableBackBufferAccess();	// enable direct drawing of console to back
 
    for (i=0; i<globe.numplates; ++i) 
    {
-      snprintf(pcxname, 32, "%s%d.pcx", save_globe_name, i);
-      WritePCXplate(pcxname, i, save_globe_full);
+      snprintf(pcxname, 32, "%s%d.pcx", globe.save.name, i);
+      WritePCXplate(pcxname, i, globe.save.with_margins);
 
     Con_Printf("Wrote %s\n", pcxname);
    }
@@ -2084,7 +2089,7 @@ void L_RenderView(void)
    }
 
    // save plates upon request from the "saveglobe" command
-   if (save_globe) {
+   if (globe.save.should) {
       SaveGlobe();
    }
 
