@@ -1,7 +1,7 @@
 /*
 
-LENS.C
-======
+FISHEYE.C
+=========
 
    This is a fisheye addon based on Fisheye Quake.  It renders up to 6 camera views
    per frame, and melds them together to allow a Field of View (FoV) greater than 180 degrees:
@@ -108,8 +108,8 @@ LENSES
 #include "console.h"
 #include "cvar.h"
 #include "draw.h"
+#include "fisheye.h"
 #include "host.h"
-#include "lens.h"
 #include "mathlib.h"
 #include "quakedef.h"
 #include "r_local.h"
@@ -468,7 +468,7 @@ static void create_palmap(void)
    }
 }
 
-static void L_DumpPalette(void)
+static void F_DumpPalette(void)
 {
    int i;
    byte *pal = host_basepal;
@@ -485,13 +485,13 @@ static void L_DumpPalette(void)
    fclose(pFile);
 }
 
-static void L_Rubix(void)
+static void F_Rubix(void)
 {
    rubix.enabled = !rubix.enabled;
    Con_Printf("Rubix is %s\n", rubix.enabled ? "ON" : "OFF");
 }
 
-static void L_RubixGrid(void)
+static void F_RubixGrid(void)
 {
    if (Cmd_Argc() == 4) {
       rubix.numcells = Q_atof(Cmd_Argv(1));
@@ -530,7 +530,7 @@ static void plate_uv_to_ray(int plate_index, double u, double v, vec3_t ray);
 
 /* END CONVERSION LUA HELPER FUNCTIONS */
 
-static void L_InitLua(void)
+static void F_InitLua(void)
 {
    // create Lua state
    lua = luaL_newstate();
@@ -582,19 +582,19 @@ static void clearFov(void)
    zoom.changed = true; // trigger change
 }
 
-static void L_Cover(void)
+static void F_Cover(void)
 {
    clearFov();
    zoom.type = ZOOM_COVER;
 }
 
-static void L_Contain(void)
+static void F_Contain(void)
 {
    clearFov();
    zoom.type = ZOOM_CONTAIN;
 }
 
-void L_WriteConfig(FILE* f)
+void F_WriteConfig(FILE* f)
 {
    fprintf(f,"fisheye %d\n", fisheye_enabled);
    fprintf(f,"f_lens \"%s\"\n", lens.name);
@@ -622,7 +622,7 @@ static void printActiveZoom(void)
    Con_Printf("\n");
 }
 
-static void L_Fisheye(void)
+static void F_Fisheye(void)
 {
    if (Cmd_Argc() < 2) {
       Con_Printf("Currently: ");
@@ -633,7 +633,7 @@ static void L_Fisheye(void)
    vid.recalc_refdef = true;
 }
 
-static void L_Fov(void)
+static void F_Fov(void)
 {
    if (Cmd_Argc() < 2) { // no fov given
       Con_Printf("f_fov <degrees>: set horizontal FOV\n");
@@ -647,7 +647,7 @@ static void L_Fov(void)
    zoom.fov = (int)Q_atof(Cmd_Argv(1)); // will return 0 if not valid
 }
 
-static void L_VFov(void)
+static void F_VFov(void)
 {
    if (Cmd_Argc() < 2) { // no fov given
       Con_Printf("f_vfov <degrees>: set vertical FOV\n");
@@ -664,7 +664,7 @@ static void L_VFov(void)
 static qboolean lua_lens_load(void);
 
 // lens command
-static void L_Lens(void)
+static void F_Lens(void)
 {
    if (Cmd_Argc() < 2) { // no lens name given
       Con_Printf("f_lens <name>: use a new lens\n");
@@ -702,7 +702,7 @@ static void L_Lens(void)
 }
 
 // autocompletion for lens names
-static struct stree_root * L_LensArg(const char *arg)
+static struct stree_root * F_LensArg(const char *arg)
 {
    struct stree_root *root;
 
@@ -718,7 +718,7 @@ static struct stree_root * L_LensArg(const char *arg)
 
 static qboolean lua_globe_load(void);
 
-static void L_SaveGlobe(void)
+static void F_SaveGlobe(void)
 {
    if (Cmd_Argc() < 2) { // no file name given
       Con_Printf("f_saveglobe <name> [full flag=0]: screenshot the globe plates\n");
@@ -832,7 +832,7 @@ static void SaveGlobe(void)
     //  for linear writes all the time
 }
 
-static void L_Globe(void)
+static void F_Globe(void)
 {
    if (Cmd_Argc() < 2) { // no globe name given
       Con_Printf("f_globe <name>: use a new globe\n");
@@ -855,7 +855,7 @@ static void L_Globe(void)
 }
 
 // autocompletion for globe names
-static struct stree_root * L_GlobeArg(const char *arg)
+static struct stree_root * F_GlobeArg(const char *arg)
 {
    struct stree_root *root;
 
@@ -869,28 +869,28 @@ static struct stree_root * L_GlobeArg(const char *arg)
    return root;
 }
 
-void L_Init(void)
+void F_Init(void)
 {
    lens_builder.working = false;
    lens_builder.seconds_per_frame = 1.0f / 60;
 
    rubix.enabled = false;
 
-   L_InitLua();
+   F_InitLua();
 
-   Cmd_AddCommand("fisheye", L_Fisheye);
-   Cmd_AddCommand("f_dumppal", L_DumpPalette);
-   Cmd_AddCommand("f_rubix", L_Rubix);
-   Cmd_AddCommand("f_rubixgrid", L_RubixGrid);
-   Cmd_AddCommand("f_cover", L_Cover);
-   Cmd_AddCommand("f_contain", L_Contain);
-   Cmd_AddCommand("f_fov", L_Fov);
-   Cmd_AddCommand("f_vfov", L_VFov);
-   Cmd_AddCommand("f_lens", L_Lens);
-   Cmd_SetCompletion("f_lens", L_LensArg);
-   Cmd_AddCommand("f_globe", L_Globe);
-   Cmd_SetCompletion("f_globe", L_GlobeArg);
-   Cmd_AddCommand("f_saveglobe", L_SaveGlobe);
+   Cmd_AddCommand("fisheye", F_Fisheye);
+   Cmd_AddCommand("f_dumppal", F_DumpPalette);
+   Cmd_AddCommand("f_rubix", F_Rubix);
+   Cmd_AddCommand("f_rubixgrid", F_RubixGrid);
+   Cmd_AddCommand("f_cover", F_Cover);
+   Cmd_AddCommand("f_contain", F_Contain);
+   Cmd_AddCommand("f_fov", F_Fov);
+   Cmd_AddCommand("f_vfov", F_VFov);
+   Cmd_AddCommand("f_lens", F_Lens);
+   Cmd_SetCompletion("f_lens", F_LensArg);
+   Cmd_AddCommand("f_globe", F_Globe);
+   Cmd_SetCompletion("f_globe", F_GlobeArg);
+   Cmd_AddCommand("f_saveglobe", F_SaveGlobe);
 
    // defaults
    Cmd_ExecuteString("f_globe cube", src_command);
@@ -902,7 +902,7 @@ void L_Init(void)
    create_palmap();
 }
 
-void L_Shutdown(void)
+void F_Shutdown(void)
 {
    lua_close(lua);
 }
@@ -1943,7 +1943,7 @@ static void render_plate(int plate_index, vec3_t forward, vec3_t right, vec3_t u
    }
 }
 
-void L_RenderView(void)
+void F_RenderView(void)
 {
    static int pwidth = -1;
    static int pheight = -1;

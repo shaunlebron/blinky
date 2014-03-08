@@ -25,8 +25,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "console.h"
 #include "cvar.h"
 #include "draw.h"
+#include "fisheye.h"
 #include "host.h"
-#include "lens.h"
 #include "quakedef.h"
 #include "screen.h"
 #include "view.h"
@@ -945,7 +945,7 @@ V_RenderView(void)
     }
 
     if (fisheye_enabled) {
-        L_RenderView();
+        F_RenderView();
     }
     else {
         R_PushDlights();

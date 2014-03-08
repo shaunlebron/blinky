@@ -642,8 +642,8 @@ CL_OBJS := \
 	cl_parse.o	\
 	cl_tent.o	\
 	console.o	\
+	fisheye.o	\
 	keys.o		\
-	lens.o		\
 	menu.o		\
 	r_efrag.o	\
 	r_light.o	\
