@@ -6,7 +6,7 @@ max_vfov = 180
 lens_width = 2*pi
 lens_height = maxy*2
 
-onload = "f_fit"
+onload = "f_contain"
 
 function lens_inverse(x,y)
    if abs(y) > maxy or abs(x) > pi then

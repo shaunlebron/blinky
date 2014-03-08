@@ -10,7 +10,7 @@ max_vfov = 180
 lens_width = FC * pi * 2
 lens_height = FC * pi
 
-onload = "f_fit"
+onload = "f_contain"
 
 function lens_forward(x,y,z)
    local lat,lon = ray_to_latlon(x,y,z)

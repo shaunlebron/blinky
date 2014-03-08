@@ -6,7 +6,7 @@ max_vfov = 360
 lens_width = maxr*2
 lens_height = maxr*2
 
-onload = "f_fit"
+onload = "f_contain"
 
 function lens_inverse(x,y)
    local r = sqrt(x*x+y*y)

@@ -5,7 +5,7 @@ gumbyScaleInv = 1.0/gumbyScale
 max_fov = 360
 max_vfov = 180
 
-onload = "f_fit"
+onload = "f_contain"
 
 function lens_inverse(x,y)
    local k = x*x/((d+1)*(d+1))

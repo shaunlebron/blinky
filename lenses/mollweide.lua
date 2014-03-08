@@ -6,7 +6,7 @@ max_vfov = 180
 lens_width = 2*sqrt(2)*2
 lens_height = sqrt(2)*2
 
-onload = "f_fit"
+onload = "f_contain"
 
 function solveTheta(lat)
    local t = lat

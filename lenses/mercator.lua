@@ -6,7 +6,7 @@ max_vfov = 180
 
 lens_width = 2*pi
 
-onload = "f_fit"
+onload = "f_cover"
 
 -- inverse mapping (screen to environment)
 function lens_inverse(x,y)

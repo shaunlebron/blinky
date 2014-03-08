@@ -1,10 +1,12 @@
 
-- replace fit commands with f_contain, f_cover commands
+x replace fit commands with f_contain, f_cover commands
 - improve debug lens for better clarity
     - better layout?
     - don't rubix-color invisible pixels
         - compromise between the desire to see the full rendered plate and just the visible part
 - add f_help command
+- rename lens.c to fisheye.c
+- change function prefix from "L_" to "F_"
 
 O fix symmetry optimizations
 X fix platedisplay optimizations

@@ -294,7 +294,7 @@ static struct _zoom {
 
    qboolean changed;
 
-   enum { ZOOM_NONE, ZOOM_FOV, ZOOM_VFOV, ZOOM_HFIT, ZOOM_VFIT, ZOOM_FIT } type;
+   enum { ZOOM_NONE, ZOOM_FOV, ZOOM_VFOV, ZOOM_COVER, ZOOM_CONTAIN } type;
 
    // desired FOV in degrees
    int fov;
@@ -582,22 +582,16 @@ static void clearFov(void)
    zoom.changed = true; // trigger change
 }
 
-static void L_HFit(void)
+static void L_Cover(void)
 {
    clearFov();
-   zoom.type = ZOOM_HFIT;
+   zoom.type = ZOOM_COVER;
 }
 
-static void L_VFit(void)
+static void L_Contain(void)
 {
    clearFov();
-   zoom.type = ZOOM_VFIT;
-}
-
-static void L_Fit(void)
-{
-   clearFov();
-   zoom.type = ZOOM_FIT;
+   zoom.type = ZOOM_CONTAIN;
 }
 
 void L_WriteConfig(FILE* f)
@@ -607,11 +601,11 @@ void L_WriteConfig(FILE* f)
    fprintf(f,"f_globe \"%s\"\n", globe.name);
    fprintf(f,"f_rubixgrid %d %f %f\n", rubix.numcells, rubix.cell_size, rubix.pad_size);
    switch (zoom.type) {
-      case ZOOM_FOV:  fprintf(f,"f_fov %d\n", zoom.fov); break;
-      case ZOOM_VFOV: fprintf(f,"f_vfov %d\n", zoom.fov); break;
-      case ZOOM_HFIT: fprintf(f,"f_hfit\n"); break;
-      case ZOOM_VFIT: fprintf(f,"f_vfit\n"); break;
-      case ZOOM_FIT:  fprintf(f,"f_fit\n"); break;
+      case ZOOM_FOV:     fprintf(f,"f_fov %d\n", zoom.fov); break;
+      case ZOOM_VFOV:    fprintf(f,"f_vfov %d\n", zoom.fov); break;
+      case ZOOM_COVER:   fprintf(f,"f_cover\n"); break;
+      case ZOOM_CONTAIN: fprintf(f,"f_contain\n"); break;
+      default: break;
    }
 }
 
@@ -619,12 +613,11 @@ static void printActiveZoom(void)
 {
    Con_Printf("Zoom currently: ");
    switch (zoom.type) {
-      case ZOOM_FOV:  Con_Printf("f_fov %d", zoom.fov); break;
-      case ZOOM_VFOV: Con_Printf("f_vfov %d", zoom.fov); break;
-      case ZOOM_HFIT: Con_Printf("f_hfit"); break;
-      case ZOOM_VFIT: Con_Printf("f_vfit"); break;
-      case ZOOM_FIT:  Con_Printf("f_fit"); break;
-      default:        Con_Printf("none");
+      case ZOOM_FOV:     Con_Printf("f_fov %d", zoom.fov); break;
+      case ZOOM_VFOV:    Con_Printf("f_vfov %d", zoom.fov); break;
+      case ZOOM_COVER:   Con_Printf("f_cover"); break;
+      case ZOOM_CONTAIN: Con_Printf("f_contain"); break;
+      default:           Con_Printf("none");
    }
    Con_Printf("\n");
 }
@@ -889,9 +882,8 @@ void L_Init(void)
    Cmd_AddCommand("f_dumppal", L_DumpPalette);
    Cmd_AddCommand("f_rubix", L_Rubix);
    Cmd_AddCommand("f_rubixgrid", L_RubixGrid);
-   Cmd_AddCommand("f_hfit", L_HFit);
-   Cmd_AddCommand("f_vfit", L_VFit);
-   Cmd_AddCommand("f_fit", L_Fit);
+   Cmd_AddCommand("f_cover", L_Cover);
+   Cmd_AddCommand("f_contain", L_Contain);
    Cmd_AddCommand("f_fov", L_Fov);
    Cmd_AddCommand("f_vfov", L_VFov);
    Cmd_AddCommand("f_lens", L_Lens);
@@ -1343,7 +1335,7 @@ static qboolean determine_lens_scale(void)
       // check FOV limits
       if (zoom.max_fov <= 0 || zoom.max_vfov <= 0)
       {
-         Con_Printf("max_fov & max_vfov not specified, try \"fit\"\n");
+         Con_Printf("max_fov & max_vfov not specified, try \"f_cover\"\n");
          return false;
       }
       else if (zoom.type == ZOOM_FOV && zoom.fov > zoom.max_fov) {
@@ -1387,46 +1379,34 @@ static qboolean determine_lens_scale(void)
          return false;
       }
    }
-   else // scale based on fitting
-   {
-      if (zoom.type == ZOOM_HFIT) {
-         if (lens.width <= 0)
-         {
-            Con_Printf("lens_width not specified.  Try f_fov instead.\n");
-            return false;
-         }
-         lens.scale = lens.width / lens.width_px;
+   else if (zoom.type == ZOOM_CONTAIN || zoom.type == ZOOM_COVER) { // scale based on fitting
+
+      double fit_width_scale = lens.width / lens.width_px;
+      double fit_height_scale = lens.height / lens.height_px;
+
+      qboolean width_provided = (lens.width > 0);
+      qboolean height_provided = (lens.height > 0);
+
+      if (!width_provided && height_provided) {
+         lens.scale = fit_height_scale;
       }
-      else if (zoom.type == ZOOM_VFIT) {
-         if (lens.height <= 0)
-         {
-            Con_Printf("lens_height not specified.  Try f_vfov instead.\n");
-            return false;
-         }
-         lens.scale = lens.height / lens.height_px;
+      else if (width_provided && !height_provided) {
+         lens.scale = fit_width_scale;
       }
-      else if (zoom.type == ZOOM_FIT) {
-         if (lens.width <= 0 && lens.height > 0) {
-            // ( ) width provided
-            // (X) height provided
-            lens.scale = lens.height / lens.height_px;
+      else if (!width_provided && !height_provided) {
+         Con_Printf("neither lens_height nor lens_width are valid/specified.  Try f_fov instead.\n");
+         return false;
+      }
+      else {
+         double lens_aspect = lens.width / lens.height;
+         double screen_aspect = (double)lens.width_px / lens.height_px;
+         qboolean lens_wider = lens_aspect > screen_aspect;
+
+         if (zoom.type == ZOOM_CONTAIN) {
+            lens.scale = lens_wider ? fit_width_scale : fit_height_scale;
          }
-         else if (lens.height <= 0 && lens.width > 0) {
-            // (X) width provided
-            // ( ) height provided
-            lens.scale = lens.width / lens.width_px;
-         }
-         else if (lens.height <= 0 && lens.width <= 0) {
-            // ( ) width provided
-            // ( ) height provided
-            Con_Printf("lens_height and lens_width not specified.  Try f_fov instead.\n");
-            return false;
-         }
-         else if (lens.width / lens.height > (double)lens.width_px / lens.height_px) {
-            lens.scale = lens.width / lens.width_px;
-         }
-         else {
-            lens.scale = lens.height / lens.height_px;
+         else if (zoom.type == ZOOM_COVER) {
+            lens.scale = lens_wider ? fit_height_scale : fit_width_scale;
          }
       }
    }
