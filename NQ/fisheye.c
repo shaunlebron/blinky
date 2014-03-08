@@ -373,6 +373,89 @@ static struct _rubix {
 // |                                                                              |
 // --------------------------------------------------------------------------------
 
+// public main functions
+void F_Init(void);
+void F_Shutdown(void);
+void F_WriteConfig(FILE* f);
+void F_RenderView(void);
+
+static void F_InitLua(void);
+
+// console commands
+static void F_Fisheye(void);
+static void F_Lens(void);
+static struct stree_root * F_LensArg(const char *arg);
+static void F_Globe(void);
+static struct stree_root * F_GlobeArg(const char *arg);
+static void F_Fov(void);
+static void F_VFov(void);
+static void F_DumpPalette(void);
+static void F_Rubix(void);
+static void F_RubixGrid(void);
+static void F_Cover(void);
+static void F_Contain(void);
+static void F_SaveGlobe(void);
+
+// lens builder timing functions
+static void start_lens_builder_clock(void);
+static qboolean is_lens_builder_time_up(void);
+
+// palette functions
+static int find_closest_pal_index(int r, int g, int b);
+static void create_palmap(void);
+
+static qboolean lua_lens_load(void);
+static qboolean lua_globe_load(void);
+
+static int lua_latlon_to_ray(lua_State *L);
+static int lua_ray_to_latlon(lua_State *L);
+static int lua_plate_to_ray(lua_State *L);
+static int lua_lens_inverse(double x, double y, vec3_t ray);
+static int lua_lens_forward(vec3_t ray, double *x, double *y);
+static int lua_globe_plate(vec3_t ray, int *plate);
+static void lua_lens_clear(void);
+static void lua_globe_clear(void);
+static qboolean lua_func_exists(const char* name);
+static qboolean lua_globe_load(void);
+static qboolean lua_lens_load(void);
+
+static qboolean determine_lens_scale(void);
+static void set_lensmap_grid(int lx, int ly, int px, int py, int plate_index);
+static void set_lensmap_from_plate(int lx, int ly, int px, int py, int plate_index);
+static void set_lensmap_from_plate_uv(int lx, int ly, double u, double v, int plate_index);
+
+static int ray_to_plate_index(vec3_t ray);
+static qboolean ray_to_plate_uv(int plate_index, vec3_t ray, double *u, double *v);
+static void set_lensmap_from_ray(int lx, int ly, double sx, double sy, double sz);
+
+static void latlon_to_ray(double lat, double lon, vec3_t ray);
+static void ray_to_latlon(vec3_t ray, double *lat, double *lon);
+static void plate_uv_to_ray(int plate_index, double u, double v, vec3_t ray);
+
+static qboolean resume_lensmap_inverse(void);
+static int uv_to_screen(int plate_index, double u, double v, int *lx, int *ly);
+static void drawQuad(int *tl, int *tr, int *bl, int *br, int plate_index, int px, int py);
+static qboolean resume_lensmap_forward(void);
+static void resume_lensmap(void);
+
+static void create_lensmap_inverse(void);
+static void create_lensmap_forward(void);
+static void create_lensmap(void);
+static void render_lensmap(void);
+static void render_plate(int plate_index, vec3_t forward, vec3_t right, vec3_t up);
+
+static void WritePCXplate(char *filename, int plate_index, int with_margins);
+
+static void clearFov(void);
+static void printActiveZoom(void);
+static void SaveGlobe(void);
+
+// -------------------------------------------------------------------------------- 
+// |                                                                              |
+// |                          STILL ORGANIZING BELOW                              |
+// |                                                                              |
+// --------------------------------------------------------------------------------
+
 static void start_lens_builder_clock(void) {
    lens_builder.start_time = clock();
 }
@@ -381,13 +464,6 @@ static qboolean is_lens_builder_time_up(void) {
    float s = ((float)time) / CLOCKS_PER_SEC;
    return (s >= lens_builder.seconds_per_frame);
 }
-
-// -------------------------------------------------------------------------------- 
-// |                                                                              |
-// |                          STILL ORGANIZING BELOW                              |
-// |                                                                              |
-// --------------------------------------------------------------------------------
-
 
 // retrieves a pointer to a pixel in the video buffer
 #define VBUFFER(x,y) (vid.buffer + (x) + (y)*vid.rowbytes)
@@ -507,11 +583,6 @@ static void F_RubixGrid(void)
    }
 }
 
-/* START CONVERSION LUA HELPER FUNCTIONS */
-static int lua_latlon_to_ray(lua_State *L);
-static int lua_ray_to_latlon(lua_State *L);
-static int lua_plate_to_ray(lua_State *L);
-
 static void latlon_to_ray(double lat, double lon, vec3_t ray)
 {
    double clat = cos(lat);
@@ -525,10 +596,6 @@ static void ray_to_latlon(vec3_t ray, double *lat, double *lon)
    *lon = atan2(ray[0], ray[2]);
    *lat = atan2(ray[1], sqrt(ray[0]*ray[0]+ray[2]*ray[2]));
 }
-
-static void plate_uv_to_ray(int plate_index, double u, double v, vec3_t ray);
-
-/* END CONVERSION LUA HELPER FUNCTIONS */
 
 static void F_InitLua(void)
 {
@@ -661,8 +728,6 @@ static void F_VFov(void)
    zoom.fov = (int)Q_atof(Cmd_Argv(1)); // will return 0 if not valid
 }
 
-static qboolean lua_lens_load(void);
-
 // lens command
 static void F_Lens(void)
 {
@@ -716,8 +781,6 @@ static struct stree_root * F_LensArg(const char *arg)
    return root;
 }
 
-static qboolean lua_globe_load(void);
-
 static void F_SaveGlobe(void)
 {
    if (Cmd_Argc() < 2) { // no file name given
@@ -735,8 +798,6 @@ static void F_SaveGlobe(void)
    }
    globe.save.should = true;
 }
-
-static int ray_to_plate_index(vec3_t ray);
 
 // copied from WritePCXfile in NQ/screen.c
 // write a plate 
