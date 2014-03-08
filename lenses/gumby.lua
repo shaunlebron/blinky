@@ -2,7 +2,7 @@ d = 1
 gumbyScale = 0.75
 gumbyScaleInv = 1.0/gumbyScale
 
-max_hfov = 360
+max_fov = 360
 max_vfov = 180
 
 onload = "f_fit"

@@ -1,6 +1,6 @@
 maxy = 1.25*log(tan(0.25*pi+0.4*pi*0.5))
 
-max_hfov = 360
+max_fov = 360
 max_vfov = 180
 
 lens_width = 2*pi

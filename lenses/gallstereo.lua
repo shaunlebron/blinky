@@ -6,7 +6,7 @@ RXF = 1.41421356237309504880
 maxx = XF * pi
 maxy = YF * tan(0.5*pi/2)
 
-max_hfov = 360
+max_fov = 360
 max_vfov = 180
 
 lens_width = maxx*2

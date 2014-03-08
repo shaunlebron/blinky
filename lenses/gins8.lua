@@ -2,7 +2,7 @@ Cl = 0.000952426
 Cp = 0.162388
 C12 = 0.08333333333333333
 
-max_hfov = 360
+max_fov = 360
 max_vfov = 180
 
 onload = "f_fit"

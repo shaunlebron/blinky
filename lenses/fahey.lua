@@ -1,7 +1,7 @@
 XR = 0.819152 * pi
 YR = 1.819152
 
-max_hfov = 360
+max_fov = 360
 max_vfov = 180
 
 lens_width = XR*2

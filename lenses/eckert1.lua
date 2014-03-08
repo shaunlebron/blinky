@@ -4,7 +4,7 @@ RP = 0.31830988618379067154
 hsym = true
 vsym = true
 
-max_hfov = 360
+max_fov = 360
 max_vfov = 180
 
 lens_width = FC * pi * 2

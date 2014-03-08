@@ -1,7 +1,7 @@
 -- cos of the standard parallel at 50 degrees 28'
 clat0 = 2/pi
 
-max_hfov = 360
+max_fov = 360
 max_vfov = 180
 
 onload = "f_fit"

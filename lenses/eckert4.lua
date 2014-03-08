@@ -42,7 +42,7 @@ end
 local t = solveTheta(pi*0.5)
 maxy = 2*sqrt(pi/(4+pi))*sin(t)
 
-max_hfov = 360
+max_fov = 360
 max_vfov = 180
 
 t = solveTheta(0)

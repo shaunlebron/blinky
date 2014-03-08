@@ -4,7 +4,7 @@ rows = 3
 lens_width = cols
 lens_height = rows
 
-max_hfov = 360
+max_fov = 360
 max_vfov = 180
 
 onload = "f_fit"

@@ -1,4 +1,4 @@
-max_hfov = 360
+max_fov = 360
 max_vfov = 180
 
 lens_width = 2*pi

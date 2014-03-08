@@ -17,16 +17,16 @@ non-intrusive edits that can be turned off, non-blocking lens computing, etc.
 ## Commands
 
 ```
-fisheye <0|1>  : enable/disable fisheye mode
-globe <name>   : choose a globe (affects picture quality and render speed)
-lens <name>    : choose a lens (affects the shape of your view)
-hfov <degrees> : zoom by specifying horizontal FOV
-vfov <degrees> : zoom by specifying vertical FOV
-hfit           : zoom by fitting your view horizontal bounds in the screen
-hfit           : zoom by fitting your view's vertical bounds in the screen
-fit            : zoom by fitting your whole view in the screen
-rubix          : display colored grid for each rendered view in the globe
-saveglobe      : take screenshots of each globe face (environment map)
+fisheye <0|1>     : enable/disable fisheye mode
+f_globe <name>    : choose a globe (affects picture quality and render speed)
+f_lens <name>     : choose a lens (affects the shape of your view)
+f_fov <degrees>   : zoom by specifying horizontal FOV
+f_vfov <degrees>  : zoom by specifying vertical FOV
+f_hfit            : zoom by fitting your view horizontal bounds in the screen
+f_vfit            : zoom by fitting your view's vertical bounds in the screen
+f_fit             : zoom by fitting your whole view in the screen
+f_rubix           : display colored grid for each rendered view in the globe
+f_saveglobe       : take screenshots of each globe face (environment map)
 ```
 
 ## Patch

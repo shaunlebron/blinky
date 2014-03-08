@@ -1,8 +1,8 @@
 
-max_hfov = 270
+max_fov = 270
 max_vfov = 270
 
-onload = "f_hfov 180"
+onload = "f_fov 180"
 
 function projectcube(x,y,z)
    local magx = abs(x)

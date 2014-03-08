@@ -1,9 +1,9 @@
 d = 1
 
-max_hfov = 360
+max_fov = 360
 max_vfov = 180
 
-onload = "f_hfov 180"
+onload = "f_fov 180"
 
 function lens_inverse(x,y)
    local k = x*x/((d+1)*(d+1))

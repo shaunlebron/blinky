@@ -1,8 +1,8 @@
 
-max_hfov = 360
+max_fov = 360
 max_vfov = 180
 
-onload = "f_hfov 360"
+onload = "f_fov 360"
 
 function lens_forward(x,y,z)
    local lat,lon = ray_to_latlon(x,y,z)

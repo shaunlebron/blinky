@@ -1,6 +1,6 @@
 maxr = 2*sin(pi*0.5)
 
-max_hfov = 360
+max_fov = 360
 max_vfov = 360
 
 lens_width = maxr*2
