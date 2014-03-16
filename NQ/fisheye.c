@@ -54,6 +54,20 @@ GLOBES
    up vector, and fov. Together, the plates should form a complete globe around
    the player.
 
+   Coordinate System:
+      
+               +Y = up
+                  ^
+                  |
+                  |
+                  |    / +Z = forward
+                  |   /
+                  |  /
+                  | /
+                  0------------------> +X = right
+
+   NOTE: Plate coordinates are relative to the camera's frame.  They are NOT absolute coordinates.
+
    For example, this is the default globe (globes/cube.lua):
 
    ```
@@ -99,6 +113,109 @@ LENSES
 ------
 
    The camera views are melded together by a "lens" script.
+   This is done with either a "forward" or "inverse" mapping.
+
+             ---------
+             |       |
+             |       |                              -----------------------------
+             |       |                              |\--                     --/|
+             ---------                      FORWARD |   \---             ---/   |
+   --------- --------- --------- ---------  ------> |       \-----------/       |
+   |       | |       | |       | |       |          |        |         |        |
+   |       | |       | |       | |       |          |        |         |        |
+   |       | |       | |       | |       |          |        |         |        |
+   --------- --------- --------- ---------  <------ |       /-----------\       |
+             ---------                      INVERSE |   /---             ---\   |
+             |       |                              |/--                     --\|
+             |       |                              -----------------------------
+             |       |
+             ---------
+
+   A "FORWARD" mapping does GLOBE -> LENS.
+   An "INVERSE" mapping does LENS -> GLOBE (this is faster!).
+
+   GLOBE COORDINATES:
+
+      (you can use any of the following coord systems to get a globe pixel):
+
+      - direction vector
+
+               +Y = up
+                  ^
+                  |
+                  |
+                  |    / +Z = forward
+                  |   /
+                  |  /
+                  | /
+                  0------------------> +X = right
+
+      - latitude/longitude (spherical degrees)
+
+               +latitude (degrees up)
+                  ^
+                  |
+                  |
+                  |
+                  |
+                  |
+                  |
+                  0------------------> +longitude (degrees right)
+
+      - plate index & uv (e.g. plate=1, u=0.5, v=0.5 to get the center pixel of plate 1)
+
+                  0----------> +u (max 1)
+                  | ---------
+                  | |       |
+                  | |       |
+                  | |       |
+                  | ---------
+                  V
+                  +v (max 1)
+
+   LENS COORDINATES:
+
+                 +Y
+                  ^
+                  |
+                  |
+                  |
+                  |
+                  |
+                  |
+                  0----------------> +X
+
+ZOOMING
+-------
+
+   To control how much of the resulting lens image we can see on screen,
+   we scale it such that the screen aligns with certain points on the lens' axes.
+
+   These alignment points are defined in terms of either:
+      - FOV
+      OR
+      - lens boundary
+      
+
+   -------------------------------------------------------------------------
+   | LENS IMAGE                        ^                                   |
+   |                                   |                                   |
+   |                                   |                                   |
+   |                 ------------------X-------------------                |
+   |                 | SCREEN          |                  |                |
+   |                 |                 |                  |                |
+   |                 |                 |                  |                |
+   |                 |                 0------------------X--------------> |
+   |                 |                                    |                |
+   |                 |                                    |                |
+   |                 |                                    |                |
+   |                 --------------------------------------                |
+   |                                                                       |
+   |                                                                       |
+   |                                                                       |
+   -------------------------------------------------------------------------
+
+   Sometimes the lens image can be infinite, so we can resort to FOV.
 
 */
 
