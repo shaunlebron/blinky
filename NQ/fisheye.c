@@ -191,15 +191,9 @@ ZOOMING
    To control how much of the resulting lens image we can see on screen,
    we scale it such that the screen aligns with certain points on the lens' axes.
 
-   These alignment points are defined in terms of either:
-      - FOV
-      OR
-      - lens boundary
-      
    For example, suppose we have a LENS image below.
    The (X) corresponds to the point at longitude=(FOV/2)º latitude=0º.
-   of longitude=0º latitude=(vertical FOV/2)º.
-   We flush the screen to these FORWARD projected points on the lens to achieve the desired FOV zoom.
+   We flush the screen edge to this point to achieve the desired FOV zoom.
 
    -------------------------------------------------------------------------
    | LENS IMAGE                        ^                                   |
@@ -219,13 +213,15 @@ ZOOMING
    |                                                                       |
    -------------------------------------------------------------------------
 
+   The process is similar when we want a vertical FOV:
+
    -------------------------------------------------------------------------
    | LENS IMAGE                        ^                                   |
    |                                   |                                   |
    |                                   |                                   |
    |                 ------------------X-------------------                |
    |                 | SCREEN          |\   point at      |                |
-   |                 | (90º vert FOV)  | \  lon = 0º      |                |
+   |                 | (90º vertical)  | \  lon = 0º      |                |
    |                 |                 |    lat = 45º     |                |
    |                 |                 0---------------------------------> |
    |                 |                                    |                |
@@ -236,6 +232,40 @@ ZOOMING
    |                                                                       |
    |                                                                       |
    -------------------------------------------------------------------------
+
+   We can also zoom the lens image such that its BOUNDARIES are flush with the screen.
+
+
+LUA DETAILS
+-----------
+   
+   Variables/Functions you provide:
+
+      Globe:
+      - plates (array of [forward, up, fov] objects)
+      - globe_plate (function (x,y,z) -> index)
+
+      Lens:
+
+         MAPPING FUNCTIONS
+         - forward (function (x,y,z) -> (x,y))
+         - inverse (function (x,y) -> (x,y,z))
+
+         BOUNDARIES
+         - lens_width (double)
+         - lens_height (double)
+         - max_fov (int)
+         - max_vfov (int)
+
+         (optional command to be called when lens is loaded)
+         - onload (string)
+
+   Variables/Functions provided to you:
+   
+      - numplates (int)
+      - latlon_to_ray (function (lat,lon) -> (x,y,z))
+      - ray_to_latlon (function (x,y,z) -> (lat,lon))
+      - plate_to_ray (function (i,u,v) -> (x,y,z))
 
 */
 
