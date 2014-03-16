@@ -196,16 +196,38 @@ ZOOMING
       OR
       - lens boundary
       
+   For example, suppose we have a LENS image below.
+   The (X) corresponds to the point at longitude=(FOV/2)º latitude=0º.
+   of longitude=0º latitude=(vertical FOV/2)º.
+   We flush the screen to these FORWARD projected points on the lens to achieve the desired FOV zoom.
+
+   -------------------------------------------------------------------------
+   | LENS IMAGE                        ^                                   |
+   |                                   |                                   |
+   |                                   |                                   |
+   |                 ------------------|-------------------                |
+   |                 | SCREEN          |                  |                |
+   |                 | (90º FOV)       |                  |                |
+   |                 |                 |                  |                |
+   |                 |                 0------------------X--------------> |
+   |                 |                                    |\               |
+   |                 |                                    | \              |
+   |                 |                                    |  \ point at    |
+   |                 --------------------------------------    lon = 45º   |
+   |                                                           lat = 0º    |
+   |                                                                       |
+   |                                                                       |
+   -------------------------------------------------------------------------
 
    -------------------------------------------------------------------------
    | LENS IMAGE                        ^                                   |
    |                                   |                                   |
    |                                   |                                   |
    |                 ------------------X-------------------                |
-   |                 | SCREEN          |                  |                |
-   |                 |                 |                  |                |
-   |                 |                 |                  |                |
-   |                 |                 0------------------X--------------> |
+   |                 | SCREEN          |\   point at      |                |
+   |                 | (90º vert FOV)  | \  lon = 0º      |                |
+   |                 |                 |    lat = 45º     |                |
+   |                 |                 0---------------------------------> |
    |                 |                                    |                |
    |                 |                                    |                |
    |                 |                                    |                |
@@ -214,8 +236,6 @@ ZOOMING
    |                                                                       |
    |                                                                       |
    -------------------------------------------------------------------------
-
-   Sometimes the lens image can be infinite, so we can resort to FOV.
 
 */
 
