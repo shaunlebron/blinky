@@ -6,6 +6,9 @@
 - add f_help command
 - add pinch lens for experiment
     - http://www.reddit.com/r/gaming/comments/1qzww7/the_best_way_to_play_skyrim_at_160_fov/cdih2n8
+- add stereographic mercator projection
+    - compare to panini
+    - is it conformal? (check indicatrix rubix)
 
 - organize functions
     - main
