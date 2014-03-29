@@ -546,24 +546,24 @@ void F_Shutdown(void);
 void F_WriteConfig(FILE* f);
 void F_RenderView(void);
 
-static void F_InitLua(void);
+static void init_lua(void);
 
 // console commands
-static void F_Fisheye(void);
-static void F_Lens(void);
-static void F_Globe(void);
-static void F_Fov(void);
-static void F_VFov(void);
-static void F_DumpPalette(void);
-static void F_Rubix(void);
-static void F_RubixGrid(void);
-static void F_Cover(void);
-static void F_Contain(void);
-static void F_SaveGlobe(void);
+static void cmd_fisheye(void);
+static void cmd_lens(void);
+static void cmd_globe(void);
+static void cmd_fov(void);
+static void cmd_vfov(void);
+static void cmd_dumppal(void);
+static void cmd_rubix(void);
+static void cmd_rubixgrid(void);
+static void cmd_cover(void);
+static void cmd_contain(void);
+static void cmd_saveglobe(void);
 
 // console autocomplete helpers
-static struct stree_root * F_LensArg(const char *arg);
-static struct stree_root * F_GlobeArg(const char *arg);
+static struct stree_root * cmdarg_lens(const char *arg);
+static struct stree_root * cmdarg_globe(const char *arg);
 
 // lens builder timing functions
 static void start_lens_builder_clock(void);
@@ -593,9 +593,9 @@ static void LUA_clear_globe(void);
 static qboolean lua_func_exists(const char* name);
 
 // zoom functions
-static qboolean calcZoom(void);
-static void clearZoom(void);
-static void printZoom(void);
+static qboolean calc_zoom(void);
+static void clear_zoom(void);
+static void print_zoom(void);
 
 // lens pixel setters
 static void set_lensmap_grid(int lx, int ly, int px, int py, int plate_index);
@@ -614,7 +614,7 @@ static void plate_uv_to_ray(int plate_index, double u, double v, vec3_t ray);
 
 // forward map getter/setter helpers
 static int uv_to_screen(int plate_index, double u, double v, int *lx, int *ly);
-static void drawQuad(int *tl, int *tr, int *bl, int *br, int plate_index, int px, int py);
+static void draw_quad(int *tl, int *tr, int *bl, int *br, int plate_index, int px, int py);
 
 // lens builder resumers
 static void resume_lensmap(void);
@@ -632,7 +632,7 @@ static void render_plate(int plate_index, vec3_t forward, vec3_t right, vec3_t u
 
 // globe saver functions
 static void WritePCXplate(char *filename, int plate_index, int with_margins);
-static void SaveGlobe(void);
+static void save_globe(void);
 
 
 // -------------------------------------------------------------------------------- 
@@ -729,7 +729,7 @@ static void create_palmap(void)
    }
 }
 
-static void F_DumpPalette(void)
+static void cmd_dumppal(void)
 {
    int i;
    byte *pal = host_basepal;
@@ -746,13 +746,13 @@ static void F_DumpPalette(void)
    fclose(pFile);
 }
 
-static void F_Rubix(void)
+static void cmd_rubix(void)
 {
    rubix.enabled = !rubix.enabled;
    Con_Printf("Rubix is %s\n", rubix.enabled ? "ON" : "OFF");
 }
 
-static void F_RubixGrid(void)
+static void cmd_rubixgrid(void)
 {
    if (Cmd_Argc() == 4) {
       rubix.numcells = Q_atof(Cmd_Argv(1));
@@ -782,7 +782,7 @@ static void ray_to_latlon(vec3_t ray, double *lat, double *lon)
    *lat = atan2(ray[1], sqrt(ray[0]*ray[0]+ray[2]*ray[2]));
 }
 
-static void F_InitLua(void)
+static void init_lua(void)
 {
    // create Lua state
    lua = luaL_newstate();
@@ -827,22 +827,22 @@ static void F_InitLua(void)
    lua_setglobal(lua, "plate_to_ray");
 }
 
-static void clearZoom(void)
+static void clear_zoom(void)
 {
    zoom.type = ZOOM_NONE;
    zoom.fov = 0;
    zoom.changed = true; // trigger change
 }
 
-static void F_Cover(void)
+static void cmd_cover(void)
 {
-   clearZoom();
+   clear_zoom();
    zoom.type = ZOOM_COVER;
 }
 
-static void F_Contain(void)
+static void cmd_contain(void)
 {
-   clearZoom();
+   clear_zoom();
    zoom.type = ZOOM_CONTAIN;
 }
 
@@ -861,7 +861,7 @@ void F_WriteConfig(FILE* f)
    }
 }
 
-static void printZoom(void)
+static void print_zoom(void)
 {
    Con_Printf("Zoom currently: ");
    switch (zoom.type) {
@@ -874,7 +874,7 @@ static void printZoom(void)
    Con_Printf("\n");
 }
 
-static void F_Fisheye(void)
+static void cmd_fisheye(void)
 {
    if (Cmd_Argc() < 2) {
       Con_Printf("Currently: ");
@@ -885,36 +885,36 @@ static void F_Fisheye(void)
    vid.recalc_refdef = true;
 }
 
-static void F_Fov(void)
+static void cmd_fov(void)
 {
    if (Cmd_Argc() < 2) { // no fov given
       Con_Printf("f_fov <degrees>: set horizontal FOV\n");
-      printZoom();
+      print_zoom();
       return;
    }
 
-   clearZoom();
+   clear_zoom();
 
    zoom.type = ZOOM_FOV;
    zoom.fov = (int)Q_atof(Cmd_Argv(1)); // will return 0 if not valid
 }
 
-static void F_VFov(void)
+static void cmd_vfov(void)
 {
    if (Cmd_Argc() < 2) { // no fov given
       Con_Printf("f_vfov <degrees>: set vertical FOV\n");
-      printZoom();
+      print_zoom();
       return;
    }
 
-   clearZoom();
+   clear_zoom();
 
    zoom.type = ZOOM_VFOV;
    zoom.fov = (int)Q_atof(Cmd_Argv(1)); // will return 0 if not valid
 }
 
 // lens command
-static void F_Lens(void)
+static void cmd_lens(void)
 {
    if (Cmd_Argc() < 2) { // no lens name given
       Con_Printf("f_lens <name>: use a new lens\n");
@@ -952,7 +952,7 @@ static void F_Lens(void)
 }
 
 // autocompletion for lens names
-static struct stree_root * F_LensArg(const char *arg)
+static struct stree_root * cmdarg_lens(const char *arg)
 {
    struct stree_root *root;
 
@@ -966,7 +966,7 @@ static struct stree_root * F_LensArg(const char *arg)
    return root;
 }
 
-static void F_SaveGlobe(void)
+static void cmd_saveglobe(void)
 {
    if (Cmd_Argc() < 2) { // no file name given
       Con_Printf("f_saveglobe <name> [full flag=0]: screenshot the globe plates\n");
@@ -1057,7 +1057,7 @@ static void WritePCXplate(char *filename, int plate_index, int with_margins)
     COM_WriteFile(filename, pcx, length);
 }
 
-static void SaveGlobe(void)
+static void save_globe(void)
 {
    int i;
    char pcxname[32];
@@ -1078,7 +1078,7 @@ static void SaveGlobe(void)
     //  for linear writes all the time
 }
 
-static void F_Globe(void)
+static void cmd_globe(void)
 {
    if (Cmd_Argc() < 2) { // no globe name given
       Con_Printf("f_globe <name>: use a new globe\n");
@@ -1101,7 +1101,7 @@ static void F_Globe(void)
 }
 
 // autocompletion for globe names
-static struct stree_root * F_GlobeArg(const char *arg)
+static struct stree_root * cmdarg_globe(const char *arg)
 {
    struct stree_root *root;
 
@@ -1122,21 +1122,21 @@ void F_Init(void)
 
    rubix.enabled = false;
 
-   F_InitLua();
+   init_lua();
 
-   Cmd_AddCommand("fisheye", F_Fisheye);
-   Cmd_AddCommand("f_dumppal", F_DumpPalette);
-   Cmd_AddCommand("f_rubix", F_Rubix);
-   Cmd_AddCommand("f_rubixgrid", F_RubixGrid);
-   Cmd_AddCommand("f_cover", F_Cover);
-   Cmd_AddCommand("f_contain", F_Contain);
-   Cmd_AddCommand("f_fov", F_Fov);
-   Cmd_AddCommand("f_vfov", F_VFov);
-   Cmd_AddCommand("f_lens", F_Lens);
-   Cmd_SetCompletion("f_lens", F_LensArg);
-   Cmd_AddCommand("f_globe", F_Globe);
-   Cmd_SetCompletion("f_globe", F_GlobeArg);
-   Cmd_AddCommand("f_saveglobe", F_SaveGlobe);
+   Cmd_AddCommand("fisheye", cmd_fisheye);
+   Cmd_AddCommand("f_dumppal", cmd_dumppal);
+   Cmd_AddCommand("f_rubix", cmd_rubix);
+   Cmd_AddCommand("f_rubixgrid", cmd_rubixgrid);
+   Cmd_AddCommand("f_cover", cmd_cover);
+   Cmd_AddCommand("f_contain", cmd_contain);
+   Cmd_AddCommand("f_fov", cmd_fov);
+   Cmd_AddCommand("f_vfov", cmd_vfov);
+   Cmd_AddCommand("f_lens", cmd_lens);
+   Cmd_SetCompletion("f_lens", cmdarg_lens);
+   Cmd_AddCommand("f_globe", cmd_globe);
+   Cmd_SetCompletion("f_globe", cmdarg_globe);
+   Cmd_AddCommand("f_saveglobe", cmd_saveglobe);
 
    // defaults
    Cmd_ExecuteString("f_globe cube", src_command);
@@ -1571,7 +1571,7 @@ static qboolean LUA_load_lens(void)
 // End Lua Functions
 // -----------------------------------
 
-static qboolean calcZoom(void)
+static qboolean calc_zoom(void)
 {
    // clear lens scale
    lens.scale = -1;
@@ -1890,7 +1890,7 @@ static int uv_to_screen(int plate_index, double u, double v, int *lx, int *ly)
 }
 
 // fills a quad on the lensmap using the given plate coordinate
-static void drawQuad(int *tl, int *tr, int *bl, int *br,
+static void draw_quad(int *tl, int *tr, int *bl, int *br,
       int plate_index, int px, int py)
 {
    // array for quad corners in clockwise order
@@ -2059,7 +2059,7 @@ static qboolean resume_lensmap_forward(void)
             }
 
             int index = 2*px;
-            drawQuad(&top[index], &top[index+2], &bot[index], &bot[index+2], *plate_index,px,*py);
+            draw_quad(&top[index], &top[index+2], &bot[index], &bot[index+2], *plate_index,px,*py);
          }
 
       }
@@ -2117,7 +2117,7 @@ static void create_lensmap(void)
       return;
 
    // test if this lens can support the current fov
-   if (!calcZoom()) {
+   if (!calc_zoom()) {
       //Con_Printf("This lens could not be initialized.\n");
       return;
    }
@@ -2289,7 +2289,7 @@ void F_RenderView(void)
 
    // save plates upon request from the "saveglobe" command
    if (globe.save.should) {
-      SaveGlobe();
+      save_globe();
    }
 
    // render our view
