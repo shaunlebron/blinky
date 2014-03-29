@@ -292,7 +292,7 @@ LUA DETAILS
 
 // -------------------------------------------------------------------------------- 
 // |                                                                              |
-// |                VARIABLES / FUNCTION SIGNATURES / DESCRIPTIONS                |
+// |                             VARIABLES                                        |
 // |                                                                              |
 // --------------------------------------------------------------------------------
 
@@ -536,7 +536,7 @@ static struct _rubix {
 
 // -------------------------------------------------------------------------------- 
 // |                                                                              |
-// |                      VARIABLE / FUNCTION DECLARATIONS                        |
+// |                      FUNCTION DECLARATIONS                                   |
 // |                                                                              |
 // --------------------------------------------------------------------------------
 
@@ -545,8 +545,6 @@ void F_Init(void);
 void F_Shutdown(void);
 void F_WriteConfig(FILE* f);
 void F_RenderView(void);
-
-static void init_lua(void);
 
 // console commands
 static void cmd_fisheye(void);
@@ -572,6 +570,9 @@ static qboolean is_lens_builder_time_up(void);
 // palette functions
 static int find_closest_pal_index(int r, int g, int b);
 static void create_palmap(void);
+
+// lua initializer
+static void init_lua(void);
 
 // c->lua (c functions for use in lua)
 static int CtoLUA_latlon_to_ray(lua_State *L);
@@ -634,10 +635,186 @@ static void render_plate(int plate_index, vec3_t forward, vec3_t right, vec3_t u
 static void WritePCXplate(char *filename, int plate_index, int with_margins);
 static void save_globe(void);
 
+// retrieves a pointer to a pixel in the video buffer
+#define VBUFFER(x,y) (vid.buffer + (x) + (y)*vid.rowbytes)
 
 // -------------------------------------------------------------------------------- 
 // |                                                                              |
-// |                          STILL ORGANIZING BELOW                              |
+// |                        PUBLIC MAIN FUNCTIONS                                 |
+// |                                                                              |
+// --------------------------------------------------------------------------------
+
+void F_Init(void)
+{
+   lens_builder.working = false;
+   lens_builder.seconds_per_frame = 1.0f / 60;
+
+   rubix.enabled = false;
+
+   init_lua();
+
+   Cmd_AddCommand("fisheye", cmd_fisheye);
+   Cmd_AddCommand("f_dumppal", cmd_dumppal);
+   Cmd_AddCommand("f_rubix", cmd_rubix);
+   Cmd_AddCommand("f_rubixgrid", cmd_rubixgrid);
+   Cmd_AddCommand("f_cover", cmd_cover);
+   Cmd_AddCommand("f_contain", cmd_contain);
+   Cmd_AddCommand("f_fov", cmd_fov);
+   Cmd_AddCommand("f_vfov", cmd_vfov);
+   Cmd_AddCommand("f_lens", cmd_lens);
+   Cmd_SetCompletion("f_lens", cmdarg_lens);
+   Cmd_AddCommand("f_globe", cmd_globe);
+   Cmd_SetCompletion("f_globe", cmdarg_globe);
+   Cmd_AddCommand("f_saveglobe", cmd_saveglobe);
+
+   // defaults
+   Cmd_ExecuteString("f_globe cube", src_command);
+   Cmd_ExecuteString("f_lens panini", src_command);
+   Cmd_ExecuteString("f_fov 180", src_command);
+   Cmd_ExecuteString("f_rubixgrid 10 4 1", src_command);
+
+   // create palette maps
+   create_palmap();
+}
+
+void F_Shutdown(void)
+{
+   lua_close(lua);
+}
+
+void F_WriteConfig(FILE* f)
+{
+   fprintf(f,"fisheye %d\n", fisheye_enabled);
+   fprintf(f,"f_lens \"%s\"\n", lens.name);
+   fprintf(f,"f_globe \"%s\"\n", globe.name);
+   fprintf(f,"f_rubixgrid %d %f %f\n", rubix.numcells, rubix.cell_size, rubix.pad_size);
+   switch (zoom.type) {
+      case ZOOM_FOV:     fprintf(f,"f_fov %d\n", zoom.fov); break;
+      case ZOOM_VFOV:    fprintf(f,"f_vfov %d\n", zoom.fov); break;
+      case ZOOM_COVER:   fprintf(f,"f_cover\n"); break;
+      case ZOOM_CONTAIN: fprintf(f,"f_contain\n"); break;
+      default: break;
+   }
+}
+
+void F_RenderView(void)
+{
+   static int pwidth = -1;
+   static int pheight = -1;
+
+   // update screen size
+   lens.width_px = scr_vrect.width;
+   lens.height_px = scr_vrect.height;
+   #define MIN(a,b) ((a) < (b) ? (a) : (b))
+   int platesize = globe.platesize = MIN(lens.height_px, lens.width_px);
+   int area = lens.width_px * lens.height_px;
+   int sizechange = (pwidth!=lens.width_px) || (pheight!=lens.height_px);
+
+   // allocate new buffers if size changes
+   if(sizechange)
+   {
+      if(globe.pixels) free(globe.pixels);
+      if(lens.pixels) free(lens.pixels);
+      if(lens.pixel_tints) free(lens.pixel_tints);
+
+      globe.pixels = (byte*)malloc(platesize*platesize*MAX_PLATES*sizeof(byte));
+      lens.pixels = (byte**)malloc(area*sizeof(byte*));
+      lens.pixel_tints = (byte*)malloc(area*sizeof(byte));
+      
+      // the rude way
+      if(!globe.pixels || !lens.pixels || !lens.pixel_tints) {
+         Con_Printf("Quake-Lenses: could not allocate enough memory\n");
+         exit(1); 
+      }
+   }
+
+   // recalculate lens
+   if (sizechange || zoom.changed || lens.changed || globe.changed) {
+      memset(lens.pixels, 0, area*sizeof(byte*));
+      memset(lens.pixel_tints, 255, area*sizeof(byte));
+
+      // load lens again
+      // (NOTE: this will be the second time this lens will be loaded in this frame if it has just changed)
+      // (I'm just trying to force re-evaluation of lens variables that are dependent on globe variables (e.g. "lens_width = numplates" in debug.lua))
+      lens.valid = LUA_load_lens();
+      if (!lens.valid) {
+         strcpy(lens.name,"");
+         Con_Printf("not a valid lens\n");
+      }
+      create_lensmap();
+   }
+   else if (lens_builder.working) {
+      resume_lensmap();
+   }
+
+   // get the orientations required to render the plates
+   vec3_t forward, right, up;
+   AngleVectors(r_refdef.viewangles, forward, right, up);
+
+   // do not do this every frame?
+   extern int sb_lines;
+   extern vrect_t scr_vrect;
+   vrect_t vrect;
+   vrect.x = 0;
+   vrect.y = 0;
+   vrect.width = vid.width;
+   vrect.height = vid.height;
+   R_SetVrect(&vrect, &scr_vrect, sb_lines);
+
+   // render plates
+   int i;
+   for (i=0; i<globe.numplates; ++i)
+   {
+      if (globe.plates[i].display) {
+
+         // set view to change plate FOV
+         fisheye_plate_fov = globe.plates[i].fov;
+         R_ViewChanged(&vrect, sb_lines, vid.aspect);
+
+         // compute absolute view vectors
+         // right = x
+         // top = y
+         // forward = z
+
+         vec3_t r = { 0,0,0};
+         VectorMA(r, globe.plates[i].right[0], right, r);
+         VectorMA(r, globe.plates[i].right[1], up, r);
+         VectorMA(r, globe.plates[i].right[2], forward, r);
+
+         vec3_t u = { 0,0,0};
+         VectorMA(u, globe.plates[i].up[0], right, u);
+         VectorMA(u, globe.plates[i].up[1], up, u);
+         VectorMA(u, globe.plates[i].up[2], forward, u);
+
+         vec3_t f = { 0,0,0};
+         VectorMA(f, globe.plates[i].forward[0], right, f);
+         VectorMA(f, globe.plates[i].forward[1], up, f);
+         VectorMA(f, globe.plates[i].forward[2], forward, f);
+
+         render_plate(i, f, r, u);
+      }
+   }
+
+   // save plates upon request from the "saveglobe" command
+   if (globe.save.should) {
+      save_globe();
+   }
+
+   // render our view
+   Draw_TileClear(0, 0, vid.width, vid.height);
+   render_lensmap();
+
+   // store current values for change detection
+   pwidth = lens.width_px;
+   pheight = lens.height_px;
+
+   // reset change flags
+   lens.changed = globe.changed = zoom.changed = false;
+}
+
+// -------------------------------------------------------------------------------- 
+// |                                                                              |
+// |                        LENS BUILD TIMING FUNCTIONS                           |
 // |                                                                              |
 // --------------------------------------------------------------------------------
 
@@ -650,8 +827,11 @@ static qboolean is_lens_builder_time_up(void) {
    return (s >= lens_builder.seconds_per_frame);
 }
 
-// retrieves a pointer to a pixel in the video buffer
-#define VBUFFER(x,y) (vid.buffer + (x) + (y)*vid.rowbytes)
+// -------------------------------------------------------------------------------- 
+// |                                                                              |
+// |                           PALLETE FUNCTIONS                                  |
+// |                                                                              |
+// --------------------------------------------------------------------------------
 
 // find closest pallete index for color
 static int find_closest_pal_index(int r, int g, int b)
@@ -729,6 +909,12 @@ static void create_palmap(void)
    }
 }
 
+// -------------------------------------------------------------------------------- 
+// |                                                                              |
+// |                           CONSOLE COMMANDS                                   |
+// |                                                                              |
+// --------------------------------------------------------------------------------
+
 static void cmd_dumppal(void)
 {
    int i;
@@ -768,72 +954,6 @@ static void cmd_rubixgrid(void)
    }
 }
 
-static void latlon_to_ray(double lat, double lon, vec3_t ray)
-{
-   double clat = cos(lat);
-   ray[0] = sin(lon)*clat;
-   ray[1] = sin(lat);
-   ray[2] = cos(lon)*clat;
-}
-
-static void ray_to_latlon(vec3_t ray, double *lat, double *lon)
-{
-   *lon = atan2(ray[0], ray[2]);
-   *lat = atan2(ray[1], sqrt(ray[0]*ray[0]+ray[2]*ray[2]));
-}
-
-static void init_lua(void)
-{
-   // create Lua state
-   lua = luaL_newstate();
-
-   // open Lua standard libraries
-   luaL_openlibs(lua);
-
-   char *aliases = 
-      "cos = math.cos\n"
-      "sin = math.sin\n"
-      "tan = math.tan\n"
-      "asin = math.asin\n"
-      "acos = math.acos\n"
-      "atan = math.atan\n"
-      "atan2 = math.atan2\n"
-      "sinh = math.sinh\n"
-      "cosh = math.cosh\n"
-      "tanh = math.tanh\n"
-      "log = math.log\n"
-      "log10 = math.log10\n"
-      "abs = math.abs\n"
-      "sqrt = math.sqrt\n"
-      "exp = math.exp\n"
-      "pi = math.pi\n"
-      "tau = math.pi*2\n"
-      "pow = math.pow\n";
-
-   int error = luaL_loadbuffer(lua, aliases, strlen(aliases), "aliases") ||
-      lua_pcall(lua, 0, 0, 0);
-   if (error) {
-      fprintf(stderr, "%s", lua_tostring(lua, -1));
-      lua_pop(lua, 1);  // pop error message from the stack
-   }
-
-   lua_pushcfunction(lua, CtoLUA_latlon_to_ray);
-   lua_setglobal(lua, "latlon_to_ray");
-
-   lua_pushcfunction(lua, CtoLUA_ray_to_latlon);
-   lua_setglobal(lua, "ray_to_latlon");
-
-   lua_pushcfunction(lua, CtoLUA_plate_to_ray);
-   lua_setglobal(lua, "plate_to_ray");
-}
-
-static void clear_zoom(void)
-{
-   zoom.type = ZOOM_NONE;
-   zoom.fov = 0;
-   zoom.changed = true; // trigger change
-}
-
 static void cmd_cover(void)
 {
    clear_zoom();
@@ -844,34 +964,6 @@ static void cmd_contain(void)
 {
    clear_zoom();
    zoom.type = ZOOM_CONTAIN;
-}
-
-void F_WriteConfig(FILE* f)
-{
-   fprintf(f,"fisheye %d\n", fisheye_enabled);
-   fprintf(f,"f_lens \"%s\"\n", lens.name);
-   fprintf(f,"f_globe \"%s\"\n", globe.name);
-   fprintf(f,"f_rubixgrid %d %f %f\n", rubix.numcells, rubix.cell_size, rubix.pad_size);
-   switch (zoom.type) {
-      case ZOOM_FOV:     fprintf(f,"f_fov %d\n", zoom.fov); break;
-      case ZOOM_VFOV:    fprintf(f,"f_vfov %d\n", zoom.fov); break;
-      case ZOOM_COVER:   fprintf(f,"f_cover\n"); break;
-      case ZOOM_CONTAIN: fprintf(f,"f_contain\n"); break;
-      default: break;
-   }
-}
-
-static void print_zoom(void)
-{
-   Con_Printf("Zoom currently: ");
-   switch (zoom.type) {
-      case ZOOM_FOV:     Con_Printf("f_fov %d", zoom.fov); break;
-      case ZOOM_VFOV:    Con_Printf("f_vfov %d", zoom.fov); break;
-      case ZOOM_COVER:   Con_Printf("f_cover"); break;
-      case ZOOM_CONTAIN: Con_Printf("f_contain"); break;
-      default:           Con_Printf("none");
-   }
-   Con_Printf("\n");
 }
 
 static void cmd_fisheye(void)
@@ -984,6 +1076,259 @@ static void cmd_saveglobe(void)
    globe.save.should = true;
 }
 
+static void cmd_globe(void)
+{
+   if (Cmd_Argc() < 2) { // no globe name given
+      Con_Printf("f_globe <name>: use a new globe\n");
+      Con_Printf("Currently: %s\n", globe.name);
+      return;
+   }
+
+   // trigger change
+   globe.changed = true;
+
+   // get name
+   strcpy(globe.name, Cmd_Argv(1));
+
+   // load globe
+   globe.valid = LUA_load_globe();
+   if (!globe.valid) {
+      strcpy(globe.name,"");
+      Con_Printf("not a valid globe\n");
+   }
+}
+
+// autocompletion for globe names
+static struct stree_root * cmdarg_globe(const char *arg)
+{
+   struct stree_root *root;
+
+   root = Z_Malloc(sizeof(struct stree_root));
+   if (root) {
+      *root = STREE_ROOT;
+
+      STree_AllocInit();
+      COM_ScanDir(root, "../globes", arg, ".lua", true);
+   }
+   return root;
+}
+
+// -------------------------------------------------------------------------------- 
+// |                                                                              |
+// |                    PURE COORDINATE CONVERTERS                                |
+// |                                                                              |
+// --------------------------------------------------------------------------------
+
+static void latlon_to_ray(double lat, double lon, vec3_t ray)
+{
+   double clat = cos(lat);
+   ray[0] = sin(lon)*clat;
+   ray[1] = sin(lat);
+   ray[2] = cos(lon)*clat;
+}
+
+static void ray_to_latlon(vec3_t ray, double *lat, double *lon)
+{
+   *lon = atan2(ray[0], ray[2]);
+   *lat = atan2(ray[1], sqrt(ray[0]*ray[0]+ray[2]*ray[2]));
+}
+
+static void plate_uv_to_ray(int plate_index, double u, double v, vec3_t ray)
+{
+   // transform to image coordinates
+   u -= 0.5;
+   v -= 0.5;
+   v = -v;
+
+   // clear ray
+   ray[0] = ray[1] = ray[2] = 0;
+
+   // get euclidean coordinate from texture uv
+   VectorMA(ray, globe.plates[plate_index].dist, globe.plates[plate_index].forward, ray);
+   VectorMA(ray, u, globe.plates[plate_index].right, ray);
+   VectorMA(ray, v, globe.plates[plate_index].up, ray);
+
+   VectorNormalize(ray);
+}
+
+// -------------------------------------------------------------------------------- 
+// |                                                                              |
+// |                           LUA INITIALIZER                                    |
+// |                                                                              |
+// --------------------------------------------------------------------------------
+
+static void init_lua(void)
+{
+   // create Lua state
+   lua = luaL_newstate();
+
+   // open Lua standard libraries
+   luaL_openlibs(lua);
+
+   char *aliases = 
+      "cos = math.cos\n"
+      "sin = math.sin\n"
+      "tan = math.tan\n"
+      "asin = math.asin\n"
+      "acos = math.acos\n"
+      "atan = math.atan\n"
+      "atan2 = math.atan2\n"
+      "sinh = math.sinh\n"
+      "cosh = math.cosh\n"
+      "tanh = math.tanh\n"
+      "log = math.log\n"
+      "log10 = math.log10\n"
+      "abs = math.abs\n"
+      "sqrt = math.sqrt\n"
+      "exp = math.exp\n"
+      "pi = math.pi\n"
+      "tau = math.pi*2\n"
+      "pow = math.pow\n";
+
+   int error = luaL_loadbuffer(lua, aliases, strlen(aliases), "aliases") ||
+      lua_pcall(lua, 0, 0, 0);
+   if (error) {
+      fprintf(stderr, "%s", lua_tostring(lua, -1));
+      lua_pop(lua, 1);  // pop error message from the stack
+   }
+
+   lua_pushcfunction(lua, CtoLUA_latlon_to_ray);
+   lua_setglobal(lua, "latlon_to_ray");
+
+   lua_pushcfunction(lua, CtoLUA_ray_to_latlon);
+   lua_setglobal(lua, "ray_to_latlon");
+
+   lua_pushcfunction(lua, CtoLUA_plate_to_ray);
+   lua_setglobal(lua, "plate_to_ray");
+}
+
+// -------------------------------------------------------------------------------- 
+// |                                                                              |
+// |                           ZOOM FUNCTIONS                                     |
+// |                                                                              |
+// --------------------------------------------------------------------------------
+
+static void clear_zoom(void)
+{
+   zoom.type = ZOOM_NONE;
+   zoom.fov = 0;
+   zoom.changed = true; // trigger change
+}
+
+static void print_zoom(void)
+{
+   Con_Printf("Zoom currently: ");
+   switch (zoom.type) {
+      case ZOOM_FOV:     Con_Printf("f_fov %d", zoom.fov); break;
+      case ZOOM_VFOV:    Con_Printf("f_vfov %d", zoom.fov); break;
+      case ZOOM_COVER:   Con_Printf("f_cover"); break;
+      case ZOOM_CONTAIN: Con_Printf("f_contain"); break;
+      default:           Con_Printf("none");
+   }
+   Con_Printf("\n");
+}
+
+static qboolean calc_zoom(void)
+{
+   // clear lens scale
+   lens.scale = -1;
+
+   if (zoom.type == ZOOM_FOV || zoom.type == ZOOM_VFOV)
+   {
+      // check FOV limits
+      if (zoom.max_fov <= 0 || zoom.max_vfov <= 0)
+      {
+         Con_Printf("max_fov & max_vfov not specified, try \"f_cover\"\n");
+         return false;
+      }
+      else if (zoom.type == ZOOM_FOV && zoom.fov > zoom.max_fov) {
+         Con_Printf("fov must be less than %d\n", zoom.max_fov);
+         return false;
+      }
+      else if (zoom.type == ZOOM_VFOV && zoom.fov > zoom.max_vfov) {
+         Con_Printf("vfov must be less than %d\n", zoom.max_vfov);
+         return false;
+      }
+
+      // try to scale based on FOV using the forward map
+      if (lua_refs.lens_forward != -1) {
+         vec3_t ray;
+         double x,y;
+         double fovr = zoom.fov * M_PI / 180;
+         if (zoom.type == ZOOM_FOV) {
+            latlon_to_ray(0,fovr*0.5,ray);
+            if (LUAtoC_lens_forward(ray,&x,&y)) {
+               lens.scale = x / (lens.width_px * 0.5);
+            }
+            else {
+               Con_Printf("ray_to_xy did not return a valid r value for determining FOV scale\n");
+               return false;
+            }
+         }
+         else if (zoom.type == ZOOM_VFOV) {
+            latlon_to_ray(fovr*0.5,0,ray);
+            if (LUAtoC_lens_forward(ray,&x,&y)) {
+               lens.scale = y / (lens.height_px * 0.5);
+            }
+            else {
+               Con_Printf("ray_to_xy did not return a valid r value for determining FOV scale\n");
+               return false;
+            }
+         }
+      }
+      else
+      {
+         Con_Printf("Please specify a forward mapping function in your script for FOV scaling\n");
+         return false;
+      }
+   }
+   else if (zoom.type == ZOOM_CONTAIN || zoom.type == ZOOM_COVER) { // scale based on fitting
+
+      double fit_width_scale = lens.width / lens.width_px;
+      double fit_height_scale = lens.height / lens.height_px;
+
+      qboolean width_provided = (lens.width > 0);
+      qboolean height_provided = (lens.height > 0);
+
+      if (!width_provided && height_provided) {
+         lens.scale = fit_height_scale;
+      }
+      else if (width_provided && !height_provided) {
+         lens.scale = fit_width_scale;
+      }
+      else if (!width_provided && !height_provided) {
+         Con_Printf("neither lens_height nor lens_width are valid/specified.  Try f_fov instead.\n");
+         return false;
+      }
+      else {
+         double lens_aspect = lens.width / lens.height;
+         double screen_aspect = (double)lens.width_px / lens.height_px;
+         qboolean lens_wider = lens_aspect > screen_aspect;
+
+         if (zoom.type == ZOOM_CONTAIN) {
+            lens.scale = lens_wider ? fit_width_scale : fit_height_scale;
+         }
+         else if (zoom.type == ZOOM_COVER) {
+            lens.scale = lens_wider ? fit_height_scale : fit_width_scale;
+         }
+      }
+   }
+
+   // validate scale
+   if (lens.scale <= 0) {
+      Con_Printf("init returned a scale of %f, which is  <= 0\n", lens.scale);
+      return false;
+   }
+
+   return true;
+}
+
+// -------------------------------------------------------------------------------- 
+// |                                                                              |
+// |                           GLOBE SAVER FUNCTIONS                              |
+// |                                                                              |
+// --------------------------------------------------------------------------------
+
 // copied from WritePCXfile in NQ/screen.c
 // write a plate 
 static void WritePCXplate(char *filename, int plate_index, int with_margins)
@@ -1078,84 +1423,11 @@ static void save_globe(void)
     //  for linear writes all the time
 }
 
-static void cmd_globe(void)
-{
-   if (Cmd_Argc() < 2) { // no globe name given
-      Con_Printf("f_globe <name>: use a new globe\n");
-      Con_Printf("Currently: %s\n", globe.name);
-      return;
-   }
-
-   // trigger change
-   globe.changed = true;
-
-   // get name
-   strcpy(globe.name, Cmd_Argv(1));
-
-   // load globe
-   globe.valid = LUA_load_globe();
-   if (!globe.valid) {
-      strcpy(globe.name,"");
-      Con_Printf("not a valid globe\n");
-   }
-}
-
-// autocompletion for globe names
-static struct stree_root * cmdarg_globe(const char *arg)
-{
-   struct stree_root *root;
-
-   root = Z_Malloc(sizeof(struct stree_root));
-   if (root) {
-      *root = STREE_ROOT;
-
-      STree_AllocInit();
-      COM_ScanDir(root, "../globes", arg, ".lua", true);
-   }
-   return root;
-}
-
-void F_Init(void)
-{
-   lens_builder.working = false;
-   lens_builder.seconds_per_frame = 1.0f / 60;
-
-   rubix.enabled = false;
-
-   init_lua();
-
-   Cmd_AddCommand("fisheye", cmd_fisheye);
-   Cmd_AddCommand("f_dumppal", cmd_dumppal);
-   Cmd_AddCommand("f_rubix", cmd_rubix);
-   Cmd_AddCommand("f_rubixgrid", cmd_rubixgrid);
-   Cmd_AddCommand("f_cover", cmd_cover);
-   Cmd_AddCommand("f_contain", cmd_contain);
-   Cmd_AddCommand("f_fov", cmd_fov);
-   Cmd_AddCommand("f_vfov", cmd_vfov);
-   Cmd_AddCommand("f_lens", cmd_lens);
-   Cmd_SetCompletion("f_lens", cmdarg_lens);
-   Cmd_AddCommand("f_globe", cmd_globe);
-   Cmd_SetCompletion("f_globe", cmdarg_globe);
-   Cmd_AddCommand("f_saveglobe", cmd_saveglobe);
-
-   // defaults
-   Cmd_ExecuteString("f_globe cube", src_command);
-   Cmd_ExecuteString("f_lens panini", src_command);
-   Cmd_ExecuteString("f_fov 180", src_command);
-   Cmd_ExecuteString("f_rubixgrid 10 4 1", src_command);
-
-   // create palette maps
-   create_palmap();
-}
-
-void F_Shutdown(void)
-{
-   lua_close(lua);
-}
-
-// -----------------------------------
-// Lua Functions
-// -----------------------------------
+// -------------------------------------------------------------------------------- 
+// |                                                                              |
+// |              C->Lua (c functions for use in lua)                             |
+// |                                                                              |
+// --------------------------------------------------------------------------------
 
 static int CtoLUA_latlon_to_ray(lua_State *L)
 {
@@ -1201,6 +1473,12 @@ static int CtoLUA_plate_to_ray(lua_State *L)
    lua_pushnumber(L, ray[2]);
    return 3;
 }
+
+// -------------------------------------------------------------------------------- 
+// |                                                                              |
+// |                 Lua->C (lua functions for use in c)                          |
+// |                                                                              |
+// --------------------------------------------------------------------------------
 
 static int LUAtoC_lens_inverse(double x, double y, vec3_t ray)
 {
@@ -1310,43 +1588,103 @@ static int LUAtoC_globe_plate(vec3_t ray, int *plate)
    return 1;
 }
 
+// -------------------------------------------------------------------------------- 
+// |                                                                              |
+// |                    Lua state management functions                            |
+// |                                                                              |
+// --------------------------------------------------------------------------------
 
-#define CLEARVAR(var) lua_pushnil(lua); lua_setglobal(lua, var);
-
-// used to clear the state when switching lenses
-static void LUA_clear_lens(void)
+static qboolean LUA_load_lens(void)
 {
-   CLEARVAR("map");
-   CLEARVAR("max_fov");
-   CLEARVAR("max_vfov");
-   CLEARVAR("lens_width");
-   CLEARVAR("lens_height");
-   CLEARVAR("lens_inverse");
-   CLEARVAR("lens_forward");
-   CLEARVAR("onload");
+   // clear Lua variables
+   LUA_clear_lens();
 
-   // set "numplates" var
-   lua_pushinteger(lua, globe.numplates);
-   lua_setglobal(lua, "numplates");
-}
+   // set full filename
+   char filename[100];
+   sprintf(filename,"%s/../lenses/%s.lua",com_gamedir, lens.name);
 
-// used to clear the state when switching globes
-static void LUA_clear_globe(void)
-{
-   CLEARVAR("plates");
-   CLEARVAR("globe_plate");
+   // check if loaded correctly
+   int errcode = 0;
+   if ((errcode=luaL_loadfile(lua, filename))) {
+      Con_Printf("could not loadfile (%d) \nERROR: %s", errcode, lua_tostring(lua,-1));
+      lua_pop(lua,1); // pop error message
+      return false;
+   }
+   else {
+      if ((errcode=lua_pcall(lua, 0, 0, 0))) {
+         Con_Printf("could not pcall (%d) \nERROR: %s", errcode, lua_tostring(lua,-1));
+         lua_pop(lua,1); // pop error message
+         return false;
+      }
+   }
 
-   globe.numplates = 0;
-}
+   // clear current maps
+   lens.map_type = MAP_NONE;
+   lua_refs.lens_forward = lua_refs.lens_inverse = -1;
 
-#undef CLEARVAR
+   // check if the inverse map function is provided
+   lua_getglobal(lua, "lens_inverse");
+   if (!lua_isfunction(lua,-1)) {
+      Con_Printf("lens_inverse is not found\n");
+      lua_pop(lua,1); // pop lens_inverse
+   }
+   else {
+      lua_refs.lens_inverse = luaL_ref(lua, LUA_REGISTRYINDEX);
+      lens.map_type = MAP_INVERSE;
+   }
 
-static qboolean lua_func_exists(const char* name)
-{
-   lua_getglobal(lua, name);
-   int exists = lua_isfunction(lua,-1);
-   lua_pop(lua, 1); // pop name
-   return exists;
+   // check if the forward map function is provided
+   lua_getglobal(lua, "lens_forward");
+   if (!lua_isfunction(lua,-1)) {
+      Con_Printf("lens_forward is not found\n");
+      lua_pop(lua,1); // pop lens_forward
+   }
+   else {
+      lua_refs.lens_forward = luaL_ref(lua, LUA_REGISTRYINDEX);
+      if (lens.map_type == MAP_NONE) {
+         lens.map_type = MAP_FORWARD;
+      }
+   }
+
+   // get map function preference if provided
+   lua_getglobal(lua, "map");
+   if (lua_isstring(lua, -1))
+   {
+      // get desired map function name
+      const char* funcname = lua_tostring(lua, -1);
+
+      // check for valid map function name
+      if (!strcmp(funcname, "lens_inverse")) {
+         lens.map_type = MAP_INVERSE;
+      }
+      else if (!strcmp(funcname, "lens_forward")) {
+         lens.map_type = MAP_FORWARD;
+      }
+      else {
+         Con_Printf("Unsupported map function: %s\n", funcname);
+         lua_pop(lua, 1); // pop map
+         return false;
+      }
+   }
+   lua_pop(lua,1); // pop map
+
+   lua_getglobal(lua, "max_fov");
+   zoom.max_fov = (int)lua_isnumber(lua,-1) ? lua_tonumber(lua,-1) : 0;
+   lua_pop(lua,1); // pop max_fov
+
+   lua_getglobal(lua, "max_vfov");
+   zoom.max_vfov = (int)lua_isnumber(lua,-1) ? lua_tonumber(lua,-1) : 0;
+   lua_pop(lua,1); // pop max_vfov
+
+   lua_getglobal(lua, "lens_width");
+   lens.width = lua_isnumber(lua,-1) ? lua_tonumber(lua,-1) : 0;
+   lua_pop(lua,1); // pop lens_width
+
+   lua_getglobal(lua, "lens_height");
+   lens.height = lua_isnumber(lua,-1) ? lua_tonumber(lua,-1) : 0;
+   lua_pop(lua,1); // pop lens_height
+
+   return true;
 }
 
 static qboolean LUA_load_globe(void)
@@ -1474,201 +1812,50 @@ static qboolean LUA_load_globe(void)
    return true;
 }
 
-static qboolean LUA_load_lens(void)
+#define CLEARVAR(var) lua_pushnil(lua); lua_setglobal(lua, var);
+
+// used to clear the state when switching lenses
+static void LUA_clear_lens(void)
 {
-   // clear Lua variables
-   LUA_clear_lens();
+   CLEARVAR("map");
+   CLEARVAR("max_fov");
+   CLEARVAR("max_vfov");
+   CLEARVAR("lens_width");
+   CLEARVAR("lens_height");
+   CLEARVAR("lens_inverse");
+   CLEARVAR("lens_forward");
+   CLEARVAR("onload");
 
-   // set full filename
-   char filename[100];
-   sprintf(filename,"%s/../lenses/%s.lua",com_gamedir, lens.name);
-
-   // check if loaded correctly
-   int errcode = 0;
-   if ((errcode=luaL_loadfile(lua, filename))) {
-      Con_Printf("could not loadfile (%d) \nERROR: %s", errcode, lua_tostring(lua,-1));
-      lua_pop(lua,1); // pop error message
-      return false;
-   }
-   else {
-      if ((errcode=lua_pcall(lua, 0, 0, 0))) {
-         Con_Printf("could not pcall (%d) \nERROR: %s", errcode, lua_tostring(lua,-1));
-         lua_pop(lua,1); // pop error message
-         return false;
-      }
-   }
-
-   // clear current maps
-   lens.map_type = MAP_NONE;
-   lua_refs.lens_forward = lua_refs.lens_inverse = -1;
-
-   // check if the inverse map function is provided
-   lua_getglobal(lua, "lens_inverse");
-   if (!lua_isfunction(lua,-1)) {
-      Con_Printf("lens_inverse is not found\n");
-      lua_pop(lua,1); // pop lens_inverse
-   }
-   else {
-      lua_refs.lens_inverse = luaL_ref(lua, LUA_REGISTRYINDEX);
-      lens.map_type = MAP_INVERSE;
-   }
-
-   // check if the forward map function is provided
-   lua_getglobal(lua, "lens_forward");
-   if (!lua_isfunction(lua,-1)) {
-      Con_Printf("lens_forward is not found\n");
-      lua_pop(lua,1); // pop lens_forward
-   }
-   else {
-      lua_refs.lens_forward = luaL_ref(lua, LUA_REGISTRYINDEX);
-      if (lens.map_type == MAP_NONE) {
-         lens.map_type = MAP_FORWARD;
-      }
-   }
-
-   // get map function preference if provided
-   lua_getglobal(lua, "map");
-   if (lua_isstring(lua, -1))
-   {
-      // get desired map function name
-      const char* funcname = lua_tostring(lua, -1);
-
-      // check for valid map function name
-      if (!strcmp(funcname, "lens_inverse")) {
-         lens.map_type = MAP_INVERSE;
-      }
-      else if (!strcmp(funcname, "lens_forward")) {
-         lens.map_type = MAP_FORWARD;
-      }
-      else {
-         Con_Printf("Unsupported map function: %s\n", funcname);
-         lua_pop(lua, 1); // pop map
-         return false;
-      }
-   }
-   lua_pop(lua,1); // pop map
-
-   lua_getglobal(lua, "max_fov");
-   zoom.max_fov = (int)lua_isnumber(lua,-1) ? lua_tonumber(lua,-1) : 0;
-   lua_pop(lua,1); // pop max_fov
-
-   lua_getglobal(lua, "max_vfov");
-   zoom.max_vfov = (int)lua_isnumber(lua,-1) ? lua_tonumber(lua,-1) : 0;
-   lua_pop(lua,1); // pop max_vfov
-
-   lua_getglobal(lua, "lens_width");
-   lens.width = lua_isnumber(lua,-1) ? lua_tonumber(lua,-1) : 0;
-   lua_pop(lua,1); // pop lens_width
-
-   lua_getglobal(lua, "lens_height");
-   lens.height = lua_isnumber(lua,-1) ? lua_tonumber(lua,-1) : 0;
-   lua_pop(lua,1); // pop lens_height
-
-   return true;
+   // set "numplates" var
+   lua_pushinteger(lua, globe.numplates);
+   lua_setglobal(lua, "numplates");
 }
 
-// -----------------------------------
-// End Lua Functions
-// -----------------------------------
-
-static qboolean calc_zoom(void)
+// used to clear the state when switching globes
+static void LUA_clear_globe(void)
 {
-   // clear lens scale
-   lens.scale = -1;
+   CLEARVAR("plates");
+   CLEARVAR("globe_plate");
 
-   if (zoom.type == ZOOM_FOV || zoom.type == ZOOM_VFOV)
-   {
-      // check FOV limits
-      if (zoom.max_fov <= 0 || zoom.max_vfov <= 0)
-      {
-         Con_Printf("max_fov & max_vfov not specified, try \"f_cover\"\n");
-         return false;
-      }
-      else if (zoom.type == ZOOM_FOV && zoom.fov > zoom.max_fov) {
-         Con_Printf("fov must be less than %d\n", zoom.max_fov);
-         return false;
-      }
-      else if (zoom.type == ZOOM_VFOV && zoom.fov > zoom.max_vfov) {
-         Con_Printf("vfov must be less than %d\n", zoom.max_vfov);
-         return false;
-      }
-
-      // try to scale based on FOV using the forward map
-      if (lua_refs.lens_forward != -1) {
-         vec3_t ray;
-         double x,y;
-         double fovr = zoom.fov * M_PI / 180;
-         if (zoom.type == ZOOM_FOV) {
-            latlon_to_ray(0,fovr*0.5,ray);
-            if (LUAtoC_lens_forward(ray,&x,&y)) {
-               lens.scale = x / (lens.width_px * 0.5);
-            }
-            else {
-               Con_Printf("ray_to_xy did not return a valid r value for determining FOV scale\n");
-               return false;
-            }
-         }
-         else if (zoom.type == ZOOM_VFOV) {
-            latlon_to_ray(fovr*0.5,0,ray);
-            if (LUAtoC_lens_forward(ray,&x,&y)) {
-               lens.scale = y / (lens.height_px * 0.5);
-            }
-            else {
-               Con_Printf("ray_to_xy did not return a valid r value for determining FOV scale\n");
-               return false;
-            }
-         }
-      }
-      else
-      {
-         Con_Printf("Please specify a forward mapping function in your script for FOV scaling\n");
-         return false;
-      }
-   }
-   else if (zoom.type == ZOOM_CONTAIN || zoom.type == ZOOM_COVER) { // scale based on fitting
-
-      double fit_width_scale = lens.width / lens.width_px;
-      double fit_height_scale = lens.height / lens.height_px;
-
-      qboolean width_provided = (lens.width > 0);
-      qboolean height_provided = (lens.height > 0);
-
-      if (!width_provided && height_provided) {
-         lens.scale = fit_height_scale;
-      }
-      else if (width_provided && !height_provided) {
-         lens.scale = fit_width_scale;
-      }
-      else if (!width_provided && !height_provided) {
-         Con_Printf("neither lens_height nor lens_width are valid/specified.  Try f_fov instead.\n");
-         return false;
-      }
-      else {
-         double lens_aspect = lens.width / lens.height;
-         double screen_aspect = (double)lens.width_px / lens.height_px;
-         qboolean lens_wider = lens_aspect > screen_aspect;
-
-         if (zoom.type == ZOOM_CONTAIN) {
-            lens.scale = lens_wider ? fit_width_scale : fit_height_scale;
-         }
-         else if (zoom.type == ZOOM_COVER) {
-            lens.scale = lens_wider ? fit_height_scale : fit_width_scale;
-         }
-      }
-   }
-
-   // validate scale
-   if (lens.scale <= 0) {
-      Con_Printf("init returned a scale of %f, which is  <= 0\n", lens.scale);
-      return false;
-   }
-
-   return true;
+   globe.numplates = 0;
 }
 
-// ----------------------------------------
-// Lens Map Creation
-// ----------------------------------------
+#undef CLEARVAR
+
+static qboolean lua_func_exists(const char* name)
+{
+   lua_getglobal(lua, name);
+   int exists = lua_isfunction(lua,-1);
+   lua_pop(lua, 1); // pop name
+   return exists;
+}
+
+
+// -------------------------------------------------------------------------------- 
+// |                                                                              |
+// |                           LENS PIXEL SETTERS                                 |
+// |                                                                              |
+// --------------------------------------------------------------------------------
 
 static void set_lensmap_grid(int lx, int ly, int px, int py, int plate_index)
 {
@@ -1742,6 +1929,34 @@ static void set_lensmap_from_plate_uv(int lx, int ly, double u, double v, int pl
    set_lensmap_from_plate(lx,ly,px,py,plate_index);
 }
 
+// set the (lx,ly) pixel on the lensmap to the (sx,sy,sz) view vector
+static void set_lensmap_from_ray(int lx, int ly, double sx, double sy, double sz)
+{
+   vec3_t ray = {sx,sy,sz};
+
+   // get plate index
+   int plate_index = ray_to_plate_index(ray);
+   if (plate_index < 0) {
+      return;
+   }
+
+   // get texture coordinates
+   double u,v;
+   if (!ray_to_plate_uv(plate_index, ray, &u, &v)) {
+      return;
+   }
+
+   // map lens pixel to plate pixel
+   set_lensmap_from_plate_uv(lx,ly,u,v,plate_index);
+}
+
+
+// -------------------------------------------------------------------------------- 
+// |                                                                              |
+// |                           GLOBE PIXEL GETTERS                                |
+// |                                                                              |
+// --------------------------------------------------------------------------------
+
 // retrieves the plate closest to the given ray
 static int ray_to_plate_index(vec3_t ray)
 {
@@ -1772,24 +1987,6 @@ static int ray_to_plate_index(vec3_t ray)
    return plate_index;
 }
 
-static void plate_uv_to_ray(int plate_index, double u, double v, vec3_t ray)
-{
-   // transform to image coordinates
-   u -= 0.5;
-   v -= 0.5;
-   v = -v;
-
-   // clear ray
-   ray[0] = ray[1] = ray[2] = 0;
-
-   // get euclidean coordinate from texture uv
-   VectorMA(ray, globe.plates[plate_index].dist, globe.plates[plate_index].forward, ray);
-   VectorMA(ray, u, globe.plates[plate_index].right, ray);
-   VectorMA(ray, v, globe.plates[plate_index].up, ray);
-
-   VectorNormalize(ray);
-}
-
 static qboolean ray_to_plate_uv(int plate_index, vec3_t ray, double *u, double *v)
 {
    // get ray in the plate's relative view frame
@@ -1806,25 +2003,20 @@ static qboolean ray_to_plate_uv(int plate_index, vec3_t ray, double *u, double *
    return *u>=0 && *u<=1 && *v>=0 && *v<=1;
 }
 
-// set the (lx,ly) pixel on the lensmap to the (sx,sy,sz) view vector
-static void set_lensmap_from_ray(int lx, int ly, double sx, double sy, double sz)
+// -------------------------------------------------------------------------------- 
+// |                                                                              |
+// |                           LENS BUILDER RESUMERS                              |
+// |                                                                              |
+// --------------------------------------------------------------------------------
+
+static void resume_lensmap(void)
 {
-   vec3_t ray = {sx,sy,sz};
-
-   // get plate index
-   int plate_index = ray_to_plate_index(ray);
-   if (plate_index < 0) {
-      return;
+   if (lens.map_type == MAP_FORWARD) {
+      lens_builder.working = resume_lensmap_forward();
    }
-
-   // get texture coordinates
-   double u,v;
-   if (!ray_to_plate_uv(plate_index, ray, &u, &v)) {
-      return;
+   else if (lens.map_type == MAP_INVERSE) {
+      lens_builder.working = resume_lensmap_inverse();
    }
-
-   // map lens pixel to plate pixel
-   set_lensmap_from_plate_uv(lx,ly,u,v,plate_index);
 }
 
 static qboolean resume_lensmap_inverse(void)
@@ -1868,6 +2060,105 @@ static qboolean resume_lensmap_inverse(void)
    // done building lens
    return false;
 }
+
+static qboolean resume_lensmap_forward(void)
+{
+   int *top = lens_builder.forward_state.top;
+   int *bot = lens_builder.forward_state.bot;
+   int *py = &(lens_builder.forward_state.py);
+   int *plate_index = &(lens_builder.forward_state.plate_index);
+   int platesize = globe.platesize;
+
+   start_lens_builder_clock();
+   for (; *plate_index < globe.numplates; ++(*plate_index))
+   {
+      int px;
+      for (; *py >=0; --(*py)) {
+
+         // pause building if we have exceeded time allowed per frame
+         if (is_lens_builder_time_up()) {
+            return true; 
+         }
+
+         // FIND ALL DESTINATION SCREEN COORDINATES FOR THIS TEXTURE ROW ********************
+
+         // compute lower points
+         if (*py == platesize-1) {
+            double v = (*py + 0.5) / platesize;
+            for (px = 0; px < platesize; ++px) {
+               // compute left point
+               if (px == 0) {
+                  double u = (px - 0.5) / platesize;
+                  int status = uv_to_screen(*plate_index, u, v, &bot[0], &bot[1]);
+                  if (status == 0) continue; else if (status == -1) return false;
+               }
+               // compute right point
+               double u = (px + 0.5) / platesize;
+               int index = 2*(px+1);
+               int status = uv_to_screen(*plate_index, u, v, &bot[index], &bot[index+1]);
+               if (status == 0) continue; else if (status == -1) return false;
+            }
+         }
+         else {
+            // swap references so that the previous bottom becomes our current top
+            int *temp = top;
+            top = bot;
+            bot = temp;
+         }
+
+         // compute upper points
+         double v = (*py - 0.5) / platesize;
+         for (px = 0; px < platesize; ++px) {
+            // compute left point
+            if (px == 0) {
+               double u = (px - 0.5) / platesize;
+               int status = uv_to_screen(*plate_index, u, v, &top[0], &top[1]);
+               if (status == 0) continue; else if (status == -1) return false;
+            }
+            // compute right point
+            double u = (px + 0.5) / platesize;
+            int index = 2*(px+1);
+            int status = uv_to_screen(*plate_index, u, v, &top[index], &top[index+1]);
+            if (status == 0) continue; else if (status == -1) return false;
+         }
+
+         // DRAW QUAD FOR EACH PIXEL IN THIS TEXTURE ROW ***********************************
+
+         v = ((double)*py)/platesize;
+         for (px = 0; px < platesize; ++px) {
+            
+            // skip overlapping region of texture
+            double u = ((double)px)/platesize;
+            vec3_t ray;
+            plate_uv_to_ray(*plate_index, u, v, ray);
+            if (*plate_index != ray_to_plate_index(ray)) {
+               continue;
+            }
+
+            int index = 2*px;
+            draw_quad(&top[index], &top[index+2], &bot[index], &bot[index+2], *plate_index,px,*py);
+         }
+
+      }
+
+      // reset row position
+      // (we have to do it here because it cannot be reset until it is done iterating)
+      // (we cannot do it at the beginning because the function could be resumed at some middle row)
+      *py = platesize-1;
+   }
+
+   free(top);
+   free(bot);
+
+   // done building lens
+   return false;
+}
+
+// -------------------------------------------------------------------------------- 
+// |                                                                              |
+// |                  FORWARD MAP GETTER/SETTER HELPERS                           |
+// |                                                                              |
+// --------------------------------------------------------------------------------
 
 // convenience function for forward map calculation:
 //    maps uv coordinate on a texture to a screen coordinate
@@ -1984,108 +2275,11 @@ static void draw_quad(int *tl, int *tr, int *bl, int *br,
    }
 }
 
-static qboolean resume_lensmap_forward(void)
-{
-   int *top = lens_builder.forward_state.top;
-   int *bot = lens_builder.forward_state.bot;
-   int *py = &(lens_builder.forward_state.py);
-   int *plate_index = &(lens_builder.forward_state.plate_index);
-   int platesize = globe.platesize;
-
-   start_lens_builder_clock();
-   for (; *plate_index < globe.numplates; ++(*plate_index))
-   {
-      int px;
-      for (; *py >=0; --(*py)) {
-
-         // pause building if we have exceeded time allowed per frame
-         if (is_lens_builder_time_up()) {
-            return true; 
-         }
-
-         // FIND ALL DESTINATION SCREEN COORDINATES FOR THIS TEXTURE ROW ********************
-
-         // compute lower points
-         if (*py == platesize-1) {
-            double v = (*py + 0.5) / platesize;
-            for (px = 0; px < platesize; ++px) {
-               // compute left point
-               if (px == 0) {
-                  double u = (px - 0.5) / platesize;
-                  int status = uv_to_screen(*plate_index, u, v, &bot[0], &bot[1]);
-                  if (status == 0) continue; else if (status == -1) return false;
-               }
-               // compute right point
-               double u = (px + 0.5) / platesize;
-               int index = 2*(px+1);
-               int status = uv_to_screen(*plate_index, u, v, &bot[index], &bot[index+1]);
-               if (status == 0) continue; else if (status == -1) return false;
-            }
-         }
-         else {
-            // swap references so that the previous bottom becomes our current top
-            int *temp = top;
-            top = bot;
-            bot = temp;
-         }
-
-         // compute upper points
-         double v = (*py - 0.5) / platesize;
-         for (px = 0; px < platesize; ++px) {
-            // compute left point
-            if (px == 0) {
-               double u = (px - 0.5) / platesize;
-               int status = uv_to_screen(*plate_index, u, v, &top[0], &top[1]);
-               if (status == 0) continue; else if (status == -1) return false;
-            }
-            // compute right point
-            double u = (px + 0.5) / platesize;
-            int index = 2*(px+1);
-            int status = uv_to_screen(*plate_index, u, v, &top[index], &top[index+1]);
-            if (status == 0) continue; else if (status == -1) return false;
-         }
-
-         // DRAW QUAD FOR EACH PIXEL IN THIS TEXTURE ROW ***********************************
-
-         v = ((double)*py)/platesize;
-         for (px = 0; px < platesize; ++px) {
-            
-            // skip overlapping region of texture
-            double u = ((double)px)/platesize;
-            vec3_t ray;
-            plate_uv_to_ray(*plate_index, u, v, ray);
-            if (*plate_index != ray_to_plate_index(ray)) {
-               continue;
-            }
-
-            int index = 2*px;
-            draw_quad(&top[index], &top[index+2], &bot[index], &bot[index+2], *plate_index,px,*py);
-         }
-
-      }
-
-      // reset row position
-      // (we have to do it here because it cannot be reset until it is done iterating)
-      // (we cannot do it at the beginning because the function could be resumed at some middle row)
-      *py = platesize-1;
-   }
-
-   free(top);
-   free(bot);
-
-   // done building lens
-   return false;
-}
-
-static void resume_lensmap(void)
-{
-   if (lens.map_type == MAP_FORWARD) {
-      lens_builder.working = resume_lensmap_forward();
-   }
-   else if (lens.map_type == MAP_INVERSE) {
-      lens_builder.working = resume_lensmap_inverse();
-   }
-}
+// -------------------------------------------------------------------------------- 
+// |                                                                              |
+// |                           LENS CREATORS                                      |
+// |                                                                              |
+// --------------------------------------------------------------------------------
 
 static void create_lensmap_inverse(void)
 {
@@ -2142,6 +2336,12 @@ static void create_lensmap(void)
    }
 }
 
+// -------------------------------------------------------------------------------- 
+// |                                                                              |
+// |                           LENS RENDERERS                                     |
+// |                                                                              |
+// --------------------------------------------------------------------------------
+
 // draw the lensmap to the vidbuffer
 static void render_lensmap(void)
 {
@@ -2187,121 +2387,6 @@ static void render_plate(int plate_index, vec3_t forward, vec3_t right, vec3_t u
       vbuffer += vid.rowbytes;
       pixels += globe.platesize;
    }
-}
-
-void F_RenderView(void)
-{
-   static int pwidth = -1;
-   static int pheight = -1;
-
-   // update screen size
-   lens.width_px = scr_vrect.width;
-   lens.height_px = scr_vrect.height;
-   #define MIN(a,b) ((a) < (b) ? (a) : (b))
-   int platesize = globe.platesize = MIN(lens.height_px, lens.width_px);
-   int area = lens.width_px * lens.height_px;
-   int sizechange = (pwidth!=lens.width_px) || (pheight!=lens.height_px);
-
-   // allocate new buffers if size changes
-   if(sizechange)
-   {
-      if(globe.pixels) free(globe.pixels);
-      if(lens.pixels) free(lens.pixels);
-      if(lens.pixel_tints) free(lens.pixel_tints);
-
-      globe.pixels = (byte*)malloc(platesize*platesize*MAX_PLATES*sizeof(byte));
-      lens.pixels = (byte**)malloc(area*sizeof(byte*));
-      lens.pixel_tints = (byte*)malloc(area*sizeof(byte));
-      
-      // the rude way
-      if(!globe.pixels || !lens.pixels || !lens.pixel_tints) {
-         Con_Printf("Quake-Lenses: could not allocate enough memory\n");
-         exit(1); 
-      }
-   }
-
-   // recalculate lens
-   if (sizechange || zoom.changed || lens.changed || globe.changed) {
-      memset(lens.pixels, 0, area*sizeof(byte*));
-      memset(lens.pixel_tints, 255, area*sizeof(byte));
-
-      // load lens again
-      // (NOTE: this will be the second time this lens will be loaded in this frame if it has just changed)
-      // (I'm just trying to force re-evaluation of lens variables that are dependent on globe variables (e.g. "lens_width = numplates" in debug.lua))
-      lens.valid = LUA_load_lens();
-      if (!lens.valid) {
-         strcpy(lens.name,"");
-         Con_Printf("not a valid lens\n");
-      }
-      create_lensmap();
-   }
-   else if (lens_builder.working) {
-      resume_lensmap();
-   }
-
-   // get the orientations required to render the plates
-   vec3_t forward, right, up;
-   AngleVectors(r_refdef.viewangles, forward, right, up);
-
-   // do not do this every frame?
-   extern int sb_lines;
-   extern vrect_t scr_vrect;
-   vrect_t vrect;
-   vrect.x = 0;
-   vrect.y = 0;
-   vrect.width = vid.width;
-   vrect.height = vid.height;
-   R_SetVrect(&vrect, &scr_vrect, sb_lines);
-
-   // render plates
-   int i;
-   for (i=0; i<globe.numplates; ++i)
-   {
-      if (globe.plates[i].display) {
-
-         // set view to change plate FOV
-         fisheye_plate_fov = globe.plates[i].fov;
-         R_ViewChanged(&vrect, sb_lines, vid.aspect);
-
-         // compute absolute view vectors
-         // right = x
-         // top = y
-         // forward = z
-
-         vec3_t r = { 0,0,0};
-         VectorMA(r, globe.plates[i].right[0], right, r);
-         VectorMA(r, globe.plates[i].right[1], up, r);
-         VectorMA(r, globe.plates[i].right[2], forward, r);
-
-         vec3_t u = { 0,0,0};
-         VectorMA(u, globe.plates[i].up[0], right, u);
-         VectorMA(u, globe.plates[i].up[1], up, u);
-         VectorMA(u, globe.plates[i].up[2], forward, u);
-
-         vec3_t f = { 0,0,0};
-         VectorMA(f, globe.plates[i].forward[0], right, f);
-         VectorMA(f, globe.plates[i].forward[1], up, f);
-         VectorMA(f, globe.plates[i].forward[2], forward, f);
-
-         render_plate(i, f, r, u);
-      }
-   }
-
-   // save plates upon request from the "saveglobe" command
-   if (globe.save.should) {
-      save_globe();
-   }
-
-   // render our view
-   Draw_TileClear(0, 0, vid.width, vid.height);
-   render_lensmap();
-
-   // store current values for change detection
-   pwidth = lens.width_px;
-   pheight = lens.height_px;
-
-   // reset change flags
-   lens.changed = globe.changed = zoom.changed = false;
 }
 
 // vim: et:ts=3:sts=3:sw=3
