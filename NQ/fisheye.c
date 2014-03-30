@@ -548,6 +548,7 @@ void F_RenderView(void);
 
 // console commands
 static void cmd_fisheye(void);
+static void cmd_help(void);
 static void cmd_lens(void);
 static void cmd_globe(void);
 static void cmd_fov(void);
@@ -654,6 +655,7 @@ void F_Init(void)
    init_lua();
 
    Cmd_AddCommand("fisheye", cmd_fisheye);
+   Cmd_AddCommand("f_help", cmd_help);
    Cmd_AddCommand("f_dumppal", cmd_dumppal);
    Cmd_AddCommand("f_rubix", cmd_rubix);
    Cmd_AddCommand("f_rubixgrid", cmd_rubixgrid);
@@ -971,10 +973,25 @@ static void cmd_fisheye(void)
    if (Cmd_Argc() < 2) {
       Con_Printf("Currently: ");
       Con_Printf("fisheye %d\n", fisheye_enabled);
+      Con_Printf("\nTry F_HELP for more options and commands.\n");
       return;
    }
    fisheye_enabled = Q_atoi(Cmd_Argv(1)); // will return 0 if not valid
    vid.recalc_refdef = true;
+}
+
+static void cmd_help(void)
+{
+   Con_Printf("-----------------------------\n");
+   Con_Printf("Welcome to the FISHEYE ADDON!\n");
+   Con_Printf("-> fisheye 1    (ENABLE)\n");
+   Con_Printf("-> fisheye 0    (DISABLE)\n");
+   Con_Printf("\n");
+   Con_Printf("-> f_lens <tab>    (CHANGE LENS)\n");
+   Con_Printf("-> f_fov <degrees> (SET FOV)\n");
+   Con_Printf("\n");
+   Con_Printf("-> f_<tab>         (MORE COMMANDS)\n");
+   Con_Printf("-----------------------------\n");
 }
 
 static void cmd_fov(void)
