@@ -1,16 +1,18 @@
 
 - improve debug lens for better clarity
-    - better layout?
-    - don't rubix-color invisible pixels
+    X better layout?
+    O don't rubix-color invisible pixels
         - compromise between the desire to see the full rendered plate and just the visible part
-- add f_help command
+X add f_help command
 - add pinch lens for experiment
     - http://www.reddit.com/r/gaming/comments/1qzww7/the_best_way_to_play_skyrim_at_160_fov/cdih2n8
-- add stereographic mercator projection
+    - https://github.com/GNOME/gimp/blob/e13b892c6ea576805cc438a92139fb235c999aea/plug-ins/pygimp/plug-ins/whirlpinch.py
+O add stereographic mercator projection
     - compare to panini
     - is it conformal? (check indicatrix rubix)
+    - failed, y distortion was too much
 
-- organize functions
+x organize functions
     - main
         - init
         - init lua
