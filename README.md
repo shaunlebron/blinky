@@ -1,11 +1,24 @@
-# Fisheye upgrade for TyrQuake
+# Hyper Wide FOV in Quake
 
-I'm preparing [blinky](http://github.com/shaunlebron/blinky) to be an official
-patch to [TyrQuake](http://disenchant.net/tyrquake/).  It is a fisheye mod for
-Quake in software rendering mode.  Changes will include: better defaults,
-non-intrusive edits that can be turned off, non-blocking lens computing, etc.
+This is a fisheye addon for [TyrQuake](http://disenchant.net/tyrquake/).  It is
+an evolution of [Fisheye Quake](http://strlen.com/gfxengine/fisheyequake/) that
+fully explores the potential of panoramic gaming.  With it, you can achieve practical,
+hyper-wide FOVs never before seen in games.
 
 ![mercator_anim](mercator_anim.gif)
+
+_View above with `f_lens mercator`, toggling `f_rubix`_
+
+## How does it work?
+
+View construction happens in two stages. 1) Capture surrounding pixels with
+multiple camera shots.  2) Stitch the shots together on the screen to get a
+hyper-wide FOV. These stages are done by Lua scripts; namely a Globe script and
+Lens script, respectively.  Your view can be customized by swapping each script
+out for another; choose from several presets or even create your own.
+
+__NOTE__: See the beginning of `NQ/fisheye.c` for extensive documentation and
+diagrams describing the fisheye process in detail.
 
 ## Setup
 
@@ -18,6 +31,7 @@ non-intrusive edits that can be turned off, non-blocking lens computing, etc.
 
 ```
 fisheye <0|1>     : enable/disable fisheye mode
+f_help            : show quick start options
 f_globe <name>    : choose a globe (affects picture quality and render speed)
 f_lens <name>     : choose a lens (affects the shape of your view)
 f_fov <degrees>   : zoom to a horizontal FOV
@@ -28,13 +42,22 @@ f_rubix           : display colored grid for each rendered view in the globe
 f_saveglobe       : take screenshots of each globe face (environment map)
 ```
 
-## Patch
+## The Patch
 
-I'm generating the current [fisheye patch](fisheye.patch) with the command:
+[This patch](fisheye.patch) contains all changes to EXISTING files in TyrQuake.
+
+These are the only NEW files:
+
+- NQ/fisheye.c
+- include/fisheye.h
+- lenses/*.lua
+- globes/*.lua
+
+### Patch-generation
+
+I generate the [fisheye patch](fisheye.patch) with the command:
 
 ```
 git diff 23119f4eb2ac6b5cef3e1ebfc785189b011aae26.. NQ common include Makefile
 ```
 
-(The patch does not include the new files "NQ/fisheye.c" and "include/fisheye.h", so
-you can better see the existing changes to the engine)
