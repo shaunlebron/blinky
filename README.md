@@ -1,4 +1,6 @@
-# Blinky (fisheye mod for Quake)
+# Blinky
+
+<img src="blinky.png" align="right"/>
 
 This is a fisheye addon for Quake (software mode).  It fully explores the
 potential of panoramic gaming.  With it, you can achieve hyper-wide FOVs (up to
