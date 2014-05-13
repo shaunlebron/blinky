@@ -670,6 +670,7 @@ void F_Init(void)
    Cmd_AddCommand("f_saveglobe", cmd_saveglobe);
 
    // defaults
+   Cmd_ExecuteString("fisheye 1", src_command);
    Cmd_ExecuteString("f_globe cube", src_command);
    Cmd_ExecuteString("f_lens panini", src_command);
    Cmd_ExecuteString("f_fov 180", src_command);
