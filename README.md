@@ -27,10 +27,12 @@ diagrams describing the fisheye process in detail.
 
 ## Setup
 
+1. Download [Quake Shareware](http://quakeone.com/freequake/en.html) if you don't have the full game.
 1. Install [Lua](http://www.lua.org/)
-1. `make bin/tyr-quake`
-1. Copy lenses/ and globes/ to the tyrquake user directory "~/.tyrquake"
-1. You should see Quake in 180º using the Panini projection.
+1. Mingw: `make bin/tyr-quake.exe`, Mac/Linux: `make bin/tyr-quake`
+1. Copy the executable to Quake directory.
+1. Copy lenses/ and globes/ to Quake directory, or "~/.tyrquake" on Mac/Linux.
+1. Run the executable.  You should see Quake in 180º using the Panini projection.
 
 ## Commands
 

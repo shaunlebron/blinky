@@ -815,7 +815,7 @@ COMMON_CPPFLAGS += -DWIN32_LEAN_AND_MEAN
 COMMON_OBJS += net_wins.o sys_win.o
 CL_OBJS     += winquake.res
 NQCL_OBJS   += conproc.o net_win.o
-COMMON_LIBS += ws2_32 winmm dxguid lua52
+COMMON_LIBS += ws2_32 winmm dxguid lua
 GL_LIBS     += opengl32
 ifeq ($(DEBUG),Y)
 CL_LFLAGS += -mconsole
