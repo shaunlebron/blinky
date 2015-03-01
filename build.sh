@@ -33,8 +33,8 @@ popd
 echo
 echo "Copying engine to play directory..."
 mkdir -p play
-rm -f play/blinky
-cp engine/bin/tyr-quake play/blinky
+rm -f play/blinky$EXT
+cp engine/bin/tyr-quake$EXT play/blinky$EXT
 
 echo
 echo "Copying lua scripts to play directory..."
