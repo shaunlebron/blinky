@@ -42,6 +42,6 @@ mkdir -p $QUAKE_DIR
 cp -r lua/* $QUAKE_DIR
 
 echo
-echo "Successfully built!"
+echo -e "\033[32mSuccessfully built!\033[0m"
+echo -e "  Run \033[36mplay.sh\033[0m to starting playing!"
 echo
-echo "Run play.sh to starting playing!"
