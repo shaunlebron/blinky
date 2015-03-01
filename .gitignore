@@ -1,4 +1,8 @@
 
 *.swp
 .DS_Store
+
 play/blinky
+play/blinky.exe
+play/lenses
+play/globes
