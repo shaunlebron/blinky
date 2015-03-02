@@ -1,3 +1,6 @@
+// NOTE: This file is a duplicate of "engine/NQ/fisheye.c".
+//       It is copied here purely for reader visibility of the main code.
+
 /*
 
 FISHEYE.C

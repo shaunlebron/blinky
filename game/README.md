@@ -1,0 +1,2 @@
+- The id1/ directory contains the Quake demo content (so you can test blinky without purchasing Quake)
+- lua52.dll is for Windows builds only
