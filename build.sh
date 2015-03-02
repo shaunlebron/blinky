@@ -46,7 +46,12 @@ echo "Adding default config..."
 CFG="$QUAKE_DIR/id1/config.cfg"
 if [ ! -f $CFG ]; then
   mkdir -p $(dirname $CFG)
-  cp default.cfg $CFG
+  touch $CFG
+  # add modern movement keys
+  echo "unbind w; bind w +forward" >> $CFG
+  echo "unbind s; bind s +back" >> $CFG
+  echo "unbind a; bind a +moveleft" >> $CFG
+  echo "unbind d; bind d +moveright" >> $CFG
 fi
 
 echo
