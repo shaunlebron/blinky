@@ -615,7 +615,7 @@ windowed_mouse_f(struct cvar_s *var)
 }
 
 static cvar_t m_filter = { "m_filter", "0" };
-cvar_t _windowed_mouse = { "_windowed_mouse", "0", true, false, 0,
+cvar_t _windowed_mouse = { "_windowed_mouse", "1", true, false, 1,
 			   windowed_mouse_f };
 
 // FIXME - is this target independent?
