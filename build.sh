@@ -42,6 +42,14 @@ mkdir -p $QUAKE_DIR
 cp -r lua/* $QUAKE_DIR
 
 echo
+echo "Adding default config..."
+CFG="$QUAKE_DIR/id1/config.cfg"
+if [ ! -f $CFG ]; then
+  mkdir -p $(dirname $CFG)
+  cp default.cfg $CFG
+fi
+
+echo
 echo -e "\033[32mSuccessfully built!\033[0m"
 echo -e "  Run \033[36mplay.sh\033[0m to starting playing!"
 echo
