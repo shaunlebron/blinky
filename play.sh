@@ -13,7 +13,7 @@ else
   echo "Unable to detect OS, assuming unix..."
 fi
 
-cd play
+cd game
 
 if [[ "$OS" == "unix" ]]; then
   ./blinky

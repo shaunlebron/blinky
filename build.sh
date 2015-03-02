@@ -21,7 +21,7 @@ if [[ "$OS" == "unix" ]]; then
   QUAKE_DIR=~/.tyrquake
 else
   EXT=.exe
-  QUAKE_DIR=play
+  QUAKE_DIR=game
 fi
 
 echo
@@ -31,15 +31,15 @@ make bin/tyr-quake$EXT
 popd
 
 echo
-echo "Copying engine to play directory..."
-mkdir -p play
-rm -f play/blinky$EXT
-cp engine/bin/tyr-quake$EXT play/blinky$EXT
+echo "Copying engine to game directory..."
+mkdir -p game
+rm -f game/blinky$EXT
+cp engine/bin/tyr-quake$EXT game/blinky$EXT
 
 echo
-echo "Copying lua scripts to play directory..."
+echo "Copying lua scripts to game directory..."
 mkdir -p $QUAKE_DIR
-cp -r lua/* $QUAKE_DIR
+cp -r lua-scripts/* $QUAKE_DIR
 
 echo
 echo "Adding default config..."
