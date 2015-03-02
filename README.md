@@ -7,8 +7,9 @@ __Break the FOV limit in the classic game Quake.__
 [>> Watch the video](http://youtu.be/jQOJ3yCK8pI)
 
 - continues the work of [Fisheye Quake](http://strlen.com/gfxengine/fisheyequake/)
-- adds a Lua scripting environment for easy experimenting of new panoramic views
 - uses the cross-platform [TyrQuake engine](http://disenchant.net/tyrquake/)
+- adds a Lua scripting environment for easy experimenting
+- includes many new views ranging 180º-360º
 
 ## How does it work?
 
