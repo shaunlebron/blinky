@@ -26,14 +26,12 @@ diagrams describing the fisheye process in detail.
 
 ## Setup
 
-1. Install [Lua](http://www.lua.org/)
-1. Install [SDL2 Dev Libs](https://www.libsdl.org/download-2.0.php)
-1. Build and play
+Please install [Lua](http://www.lua.org/) and [SDL2 dev libs](https://www.libsdl.org/download-2.0.php), then run:
 
-    ```
-    ./build.sh
-    ./play.sh
-    ```
+```
+$ ./build.sh
+$ ./play.sh
+```
 
 ## Commands
 
