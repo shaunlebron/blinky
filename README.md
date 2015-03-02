@@ -2,7 +2,7 @@
 
 <img src="readme-img/blinky.png" align="right" width="220px"/>
 
-__Break the FOV limit in the classic game Quake.__
+__An exhaustive fisheye experiment for the classic game Quake.__
 
 [>> Watch the video](http://youtu.be/jQOJ3yCK8pI)
 
