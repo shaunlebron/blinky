@@ -2,15 +2,13 @@
 
 <img src="readme-img/blinky.png" align="right" width="220px"/>
 
-This is a fisheye addon for Quake (software mode).  It fully explores the
-potential of panoramic gaming.  With it, you can achieve hyper-wide FOVs (up to
-360º) never before seen in games.
+__Break the FOV limit in the classic game Quake.__
 
-It is an evolution of the original [Fisheye
-Quake](http://strlen.com/gfxengine/fisheyequake/) by Wouter van Oortmerssen. It
-has been heavily modified with new lenses (via Lua scripts) and has been ported
-to the [TyrQuake engine](http://disenchant.net/tyrquake/) for use in modern
-__Windows, Mac, and Linux__.
+[>> Watch the video](http://youtu.be/jQOJ3yCK8pI)
+
+- continues the work of [Fisheye Quake](http://strlen.com/gfxengine/fisheyequake/)
+- adds a Lua scripting environment for easy experimenting of new panoramic views
+- uses the cross-platform [TyrQuake engine](http://disenchant.net/tyrquake/)
 
 ## How does it work?
 
@@ -29,16 +27,11 @@ diagrams describing the fisheye process in detail.
 
 1. Install [Lua](http://www.lua.org/)
 1. Install [SDL2 Dev Libs](https://www.libsdl.org/download-2.0.php)
-1. Build the engine:
+1. Build and play
 
     ```
-    $ ./build.sh
-    ```
-
-1. Run the game.  You should see Quake in 180º using the Panini projection:
-
-    ```
-    $ ./play.sh
+    ./build.sh
+    ./play.sh
     ```
 
 ## Commands
