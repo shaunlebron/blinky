@@ -21,8 +21,7 @@ see around 160º, but games rarely go above 90º.
 - No preferences for FOV ≤ 360º.  They are more aesthetic than practical.
 
 <img src="readme-img/standard110.png" width="360px"> <img src="readme-img/standard160.png" width="360px">  
-![panini180](readme-img/panini180.png)  
-![mercator360](readme-img/mercator360.png)
+<img src="readme-img/panini180.png" width="360px"> <img src="readme-img/mercator360.png" width="360px">
 
 ## How does it work?
 
