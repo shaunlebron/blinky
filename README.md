@@ -2,17 +2,17 @@
 
 <img src="readme-img/blinky.png" align="right" width="220px"/>
 
-Blinky is a fisheye addon for the classic game, Quake.
-Its purpose is to find a __practical fisheye for gaming__.
+Blinky is a fisheye addon for the game, Quake.  Its purpose was to find a
+__practical fisheye for gaming__, and we found one, the [Panini] lens!
 
 [>> Watch the video](http://youtu.be/jQOJ3yCK8pI)
 
 - continues the work of [Fisheye Quake](http://strlen.com/gfxengine/fisheyequake/)
 - uses the cross-platform [TyrQuake engine](http://disenchant.net/tyrquake/)
 - adds a Lua scripting environment for easy experimenting
-- includes many new views to explore previously unreachable FOVs (180º-360º)
+- explores different ways to see 180º-360º around you
 
-<img src="readme-img/old.png" width="360px"> <img src="readme-img/new.png" width="360px">
+<img src="readme-img/old-way.png" width="360px"> <img src="readme-img/new-way.png" width="360px">
 
 
 ## Try it out
@@ -94,3 +94,4 @@ new additions to the engine:
 - lua/lenses/*.lua
 - lua/globes/*.lua
 
+[Panini]: http://tksharpless.net/vedutismo/Pannini/
