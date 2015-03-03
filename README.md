@@ -9,7 +9,24 @@ __An exhaustive fisheye experiment for the classic game Quake.__
 - continues the work of [Fisheye Quake](http://strlen.com/gfxengine/fisheyequake/)
 - uses the cross-platform [TyrQuake engine](http://disenchant.net/tyrquake/)
 - adds a Lua scripting environment for easy experimenting
-- includes many new views ranging 180º-360º
+- includes many new views to explore previously unreachable FOVs\* (180º-360º)
+
+\*FOV = Field of View, the angular distance of your visual cone.  People can
+see around 160º, but games rarely go above 90º.
+
+## Experiment Results
+
+- Use Standard projection for FOV ≤ 110º.  Anything more leads to increasing distortion.
+- Use Panini projection for FOV ≤ 200º.  Very good practical, wide lens with low distortion.
+- There are plenty of projections for FOV ≤ 360º, but they are more aesthetic than practical.
+
+![standard110](readme-img/standard110.png)
+
+![standard160](readme-img/standard160.png)
+
+![panini180](readme-img/panini180.png)
+
+![mercator360](readme-img/mercator360.png)
 
 ## How does it work?
 
