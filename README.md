@@ -12,7 +12,7 @@ __practical fisheye for gaming__, and we found one, the [Panini] lens!
 - adds a Lua scripting environment for easy experimenting
 - explores different ways to see 180º-360º around you
 
-![old-and-new](readme-img/old-and-new.png)
+![old-and-new](readme-img/old-and-new.jpg)
 
 ## Try it out
 
