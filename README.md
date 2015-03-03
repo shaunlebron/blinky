@@ -1,7 +1,5 @@
 # Blinky
 
-<img src="readme-img/old.png" width="360px"> <img src="readme-img/new.png" width="360px">
-
 <img src="readme-img/blinky.png" align="right" width="220px"/>
 
 Blinky is a fisheye addon for the classic game, Quake.
@@ -13,6 +11,9 @@ Its purpose is to find a __practical fisheye for gaming__.
 - uses the cross-platform [TyrQuake engine](http://disenchant.net/tyrquake/)
 - adds a Lua scripting environment for easy experimenting
 - includes many new views to explore previously unreachable FOVs (180º-360º)
+
+<img src="readme-img/old.png" width="360px"> <img src="readme-img/new.png" width="360px">
+
 
 ## Try it out
 
