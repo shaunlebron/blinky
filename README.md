@@ -31,7 +31,7 @@ sudo apt-get install libsdl2-dev
 
 Then build and play:
 
-```
+```sh
 # Build blinky
 ./build.sh
 
