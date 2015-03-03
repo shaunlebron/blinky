@@ -1,27 +1,63 @@
 # Blinky
 
+<img src="readme-img/old.png" width="360px"> <img src="readme-img/new.png" width="360px">
+
 <img src="readme-img/blinky.png" align="right" width="220px"/>
 
-__An exhaustive fisheye experiment for the classic game Quake.__
+Blinky is a fisheye addon for the classic game, Quake.
+Its purpose is to find a __practical fisheye for gaming__.
 
 [>> Watch the video](http://youtu.be/jQOJ3yCK8pI)
 
 - continues the work of [Fisheye Quake](http://strlen.com/gfxengine/fisheyequake/)
 - uses the cross-platform [TyrQuake engine](http://disenchant.net/tyrquake/)
 - adds a Lua scripting environment for easy experimenting
-- includes many new views to explore previously unreachable FOVs\* (180º-360º)
+- includes many new views to explore previously unreachable FOVs (180º-360º)
 
-\*FOV = Field of View, the angular distance of your visual cone.  People can
-see around 160º, but games rarely go above 90º.
+## Try it out
+
+Please install [Lua](http://www.lua.org/) and [SDL2 dev libs](https://www.libsdl.org/download-2.0.php):
+
+```sh
+# Mac OSX
+brew install lua
+brew install sdl2
+
+# Linux
+sudo apt-get install lua
+sudo apt-get install libsdl2-dev
+```
+
+Then build and play:
+
+```
+# Build blinky
+./build.sh
+
+# Play blinky by launching Quake demo
+./play.sh
+```
+
+## Full list of commands
+
+```
+fisheye <0|1>     : enable/disable fisheye mode
+f_help            : show quick start options
+f_globe <name>    : choose a globe (affects picture quality and render speed)
+f_lens <name>     : choose a lens (affects the shape of your view)
+f_fov <degrees>   : zoom to a horizontal FOV
+f_vfov <degrees>  : zoom to a vertical FOV
+f_cover           : zoom in until screen is covered (some parts may be hidden)
+f_contain         : zoom out until screen contains the entire image (if possible)
+f_rubix           : display colored grid for each rendered view in the globe
+f_saveglobe       : take screenshots of each globe face (environment map)
+```
 
 ## Experiment Results
 
 - Use Standard projection for FOV ≤ 110º.  Anything more leads to increasing distortion.
 - Use Panini projection for FOV ≤ 200º.  Very practical, wide motion lens with low distortion.
 - No preferences for FOV ≤ 360º.  They are more aesthetic than practical.
-
-<img src="readme-img/standard110.png" width="360px"> <img src="readme-img/standard160.png" width="360px">  
-<img src="readme-img/panini180.png" width="360px"> <img src="readme-img/mercator360.png" width="360px">
 
 ## How does it work?
 
@@ -36,29 +72,6 @@ from several presets or even create your own.
 __NOTE__: See the beginning of `NQ/fisheye.c` for extensive documentation and
 diagrams describing the fisheye process in detail.
 
-## Setup
-
-Please install [Lua](http://www.lua.org/) and [SDL2 dev libs](https://www.libsdl.org/download-2.0.php), then run:
-
-```
-$ ./build.sh
-$ ./play.sh
-```
-
-## Commands
-
-```
-fisheye <0|1>     : enable/disable fisheye mode
-f_help            : show quick start options
-f_globe <name>    : choose a globe (affects picture quality and render speed)
-f_lens <name>     : choose a lens (affects the shape of your view)
-f_fov <degrees>   : zoom to a horizontal FOV
-f_vfov <degrees>  : zoom to a vertical FOV
-f_cover           : zoom in until screen is covered (some parts may be hidden)
-f_contain         : zoom out until screen contains the entire image (if possible)
-f_rubix           : display colored grid for each rendered view in the globe
-f_saveglobe       : take screenshots of each globe face (environment map)
-```
 
 ## Code Navigation
 
