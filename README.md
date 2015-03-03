@@ -20,9 +20,7 @@ see around 160º, but games rarely go above 90º.
 - Use Panini projection for FOV ≤ 200º.  Very good practical, wide lens with low distortion.
 - There are plenty of projections for FOV ≤ 360º, but they are more aesthetic than practical.
 
-![standard110](readme-img/standard110.png)
-
-![standard160](readme-img/standard160.png)
+<img src="readme-img/standard110.png" width="320"> <img src="readme-img/standard160.png" width="320">
 
 ![panini180](readme-img/panini180.png)
 
