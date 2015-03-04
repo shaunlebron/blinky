@@ -301,6 +301,8 @@ LUA DETAILS
 // depends on (e.g. square refdef, disabling water warp, hooking renderer).
 qboolean fisheye_enabled;
 
+qboolean shortcutkeys_enabled;
+
 // This is a globally accessible variable that is used to set the fov of each
 // camera view that we render.
 double fisheye_plate_fov;
@@ -559,6 +561,7 @@ static void cmd_rubixgrid(void);
 static void cmd_cover(void);
 static void cmd_contain(void);
 static void cmd_saveglobe(void);
+static void cmd_shortcutkeys(void);
 
 // console autocomplete helpers
 static struct stree_root * cmdarg_lens(const char *arg);
@@ -668,6 +671,7 @@ void F_Init(void)
    Cmd_AddCommand("f_globe", cmd_globe);
    Cmd_SetCompletion("f_globe", cmdarg_globe);
    Cmd_AddCommand("f_saveglobe", cmd_saveglobe);
+   Cmd_AddCommand("f_shortcutkeys", cmd_shortcutkeys);
 
    // defaults
    Cmd_ExecuteString("fisheye 1", src_command);
@@ -981,6 +985,45 @@ static void cmd_fisheye(void)
    vid.recalc_refdef = true;
 }
 
+static void cmd_shortcutkeys(void)
+{
+   shortcutkeys_enabled = !shortcutkeys_enabled;
+   if (shortcutkeys_enabled) {
+      Con_Printf("Enabled Fisheye shortcut keys: 1-9 = Lenses, Y,U,I,O,P = Globes\n");
+      Cmd_ExecuteString("bind 1 \"f_lens panini\"", src_command);
+      Cmd_ExecuteString("bind 2 \"f_lens stereographic\"", src_command);
+      Cmd_ExecuteString("bind 3 \"f_lens hammer\"", src_command);
+      Cmd_ExecuteString("bind 4 \"f_lens winkeltripel\"", src_command);
+      Cmd_ExecuteString("bind 5 \"f_lens fisheye1\"", src_command);
+      Cmd_ExecuteString("bind 6 \"f_lens mercator\"", src_command);
+      Cmd_ExecuteString("bind 7 \"f_lens quincuncial\"", src_command);
+      Cmd_ExecuteString("bind 8 \"f_lens cube\"", src_command);
+      Cmd_ExecuteString("bind 9 \"f_lens debug\"", src_command);
+      Cmd_ExecuteString("bind y \"f_globe cube\"", src_command);
+      Cmd_ExecuteString("bind u \"f_globe cube_edge\"", src_command);
+      Cmd_ExecuteString("bind i \"f_globe trism\"", src_command);
+      Cmd_ExecuteString("bind o \"f_globe tetra\"", src_command);
+      Cmd_ExecuteString("bind p \"f_globe fast\"", src_command);
+   }
+   else {
+      Con_Printf("Disabled Fisheye shortcut keys\n");
+      Cmd_ExecuteString("bind 1 \"impulse 1\"", src_command);
+      Cmd_ExecuteString("bind 2 \"impulse 2\"", src_command);
+      Cmd_ExecuteString("bind 3 \"impulse 3\"", src_command);
+      Cmd_ExecuteString("bind 4 \"impulse 4\"", src_command);
+      Cmd_ExecuteString("bind 5 \"impulse 5\"", src_command);
+      Cmd_ExecuteString("bind 6 \"impulse 6\"", src_command);
+      Cmd_ExecuteString("bind 7 \"impulse 7\"", src_command);
+      Cmd_ExecuteString("bind 8 \"impulse 8\"", src_command);
+      Cmd_ExecuteString("unbind 9", src_command);
+      Cmd_ExecuteString("unbind y", src_command);
+      Cmd_ExecuteString("unbind u", src_command);
+      Cmd_ExecuteString("unbind i", src_command);
+      Cmd_ExecuteString("unbind o", src_command);
+      Cmd_ExecuteString("unbind p", src_command);
+   }
+}
+
 static void cmd_help(void)
 {
    Con_Printf("-----------------------------\n");
@@ -1038,6 +1081,9 @@ static void cmd_lens(void)
    // get name
    strcpy(lens.name, Cmd_Argv(1));
 
+   // Display name
+   Con_Printf("f_lens %s", lens.name);
+
    // load lens
    lens.valid = LUA_load_lens();
    if (!lens.valid) {
@@ -1052,11 +1098,15 @@ static void cmd_lens(void)
    {
       const char* onload = lua_tostring(lua, -1);
       Cmd_ExecuteString(onload, src_command);
+
+      // display onload
+      Con_Printf("; %s\n", onload);
    }
    else {
       // fail silently for now, resulting from two cases:
       // 1. onload is nil (undefined)
       // 2. onload is not a string
+      Con_Printf("\n");
    }
    lua_pop(lua, 1); // pop "onload"
 }
@@ -1107,6 +1157,9 @@ static void cmd_globe(void)
 
    // get name
    strcpy(globe.name, Cmd_Argv(1));
+
+   // display name
+   Con_Printf("f_globe %s\n", globe.name);
 
    // load globe
    globe.valid = LUA_load_globe();
@@ -1643,7 +1696,7 @@ static qboolean LUA_load_lens(void)
    // check if the inverse map function is provided
    lua_getglobal(lua, "lens_inverse");
    if (!lua_isfunction(lua,-1)) {
-      Con_Printf("lens_inverse is not found\n");
+      // Con_Printf("lens_inverse is not found\n");
       lua_pop(lua,1); // pop lens_inverse
    }
    else {
@@ -1654,7 +1707,7 @@ static qboolean LUA_load_lens(void)
    // check if the forward map function is provided
    lua_getglobal(lua, "lens_forward");
    if (!lua_isfunction(lua,-1)) {
-      Con_Printf("lens_forward is not found\n");
+      // Con_Printf("lens_forward is not found\n");
       lua_pop(lua,1); // pop lens_forward
    }
    else {
@@ -2342,11 +2395,9 @@ static void create_lensmap(void)
 
    // create lensmap
    if (lens.map_type == MAP_FORWARD) {
-      Con_Printf("using forward map\n");
       create_lensmap_forward();
    }
    else if (lens.map_type == MAP_INVERSE) {
-      Con_Printf("using inverse map\n");
       create_lensmap_inverse();
    }
    else { // MAP_NONE

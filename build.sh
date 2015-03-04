@@ -48,10 +48,13 @@ if [ ! -f $CFG ]; then
   mkdir -p $(dirname $CFG)
   touch $CFG
   # add modern movement keys
-  echo "unbind w; bind w +forward" >> $CFG
-  echo "unbind s; bind s +back" >> $CFG
-  echo "unbind a; bind a +moveleft" >> $CFG
-  echo "unbind d; bind d +moveright" >> $CFG
+  echo "bind w +forward" >> $CFG
+  echo "bind s +back" >> $CFG
+  echo "bind a +moveleft" >> $CFG
+  echo "bind d +moveright" >> $CFG
+  # and some helpful shortcuts
+  echo "bind 0 f_shortcutkeys" >> $CFG
+  echo "bind r f_rubix" >> $CFG
 fi
 
 echo

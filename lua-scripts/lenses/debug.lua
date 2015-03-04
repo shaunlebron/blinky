@@ -11,7 +11,7 @@ else
     rows = 1
     cols = {numplates}
 end
-maxcols = math.max(unpack(cols))
+maxcols = math.max(table.unpack(cols))
 
 lens_width = maxcols
 lens_height = rows

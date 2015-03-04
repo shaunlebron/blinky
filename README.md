@@ -38,7 +38,16 @@ Then build and play:
 ./play.sh
 ```
 
-## Full list of commands
+### Things you can do
+
+When you first start the game, you will already be viewing the most practical,
+wide angle lens-- Panini with 180º horizontal FOV.
+
+Press `~` in-game to pull up the console
+
+TODO: pending some shortcut keys to make this walkthrough easier.
+
+## Command reference
 
 ```sh
 fisheye <0|1>     # enable/disable fisheye mode
@@ -53,7 +62,7 @@ f_rubix           # display colored grid for each rendered view in the globe
 f_saveglobe       # take screenshots of each globe face (environment map)
 ```
 
-## Experiment Results
+## Conclusions
 
 - Use Standard projection for FOV ≤ 110º.  Anything more leads to increasing distortion.
 - Use Panini projection for FOV ≤ 200º.  Very practical, wide motion lens with low distortion.
