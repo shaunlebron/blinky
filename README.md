@@ -14,38 +14,36 @@ __practical fisheye for gaming__, and we found one, the [Panini] lens!
 
 ![old-and-new](readme-img/old-and-new.jpg)
 
-## Try it out
+## Play!
 
-Please install [Lua](http://www.lua.org/) and [SDL2 dev libs](https://www.libsdl.org/download-2.0.php):
+Blinky includes the Quake demo so you can play with it for free.
 
-```sh
-# Mac OSX
-brew install lua
-brew install sdl2
+[readme-img/windows.png] For Windows, download [blinky-1.0-windows.zip](https://github.com/shaunlebron/blinky/releases/download/1.0/blinky-1.0-windows.zip)
 
-# Linux
-sudo apt-get install lua
-sudo apt-get install libsdl2-dev
-```
-
-Then build and play:
+[readme-img/mac.png] For Mac, please build/run from source:
 
 ```sh
-# Build blinky
-./build.sh
-
-# Play blinky by launching Quake demo
-./play.sh
+$ brew install lua
+$ brew install sdl2
+$ ./build.sh
+$ ./play.sh
 ```
 
-### Things you can do
+[readme-img/linux.png] For Linux, please build/run from source:
+
+```sh
+$ sudo apt-get install lua
+$ sudo apt-get install libsdl2-dev
+$ ./build.sh
+$ ./play.sh
+```
+
+### Walkthrough
 
 When you first start the game, you will already be viewing the most practical,
 wide angle lens-- Panini with 180º horizontal FOV.
 
-Press `~` in-game to pull up the console
-
-TODO: pending some shortcut keys to make this walkthrough easier.
+TODO: write
 
 ## Command reference
 
