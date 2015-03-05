@@ -43,7 +43,9 @@ $ ./play.sh
 When you first start the game, you will already be viewing the most practical,
 wide angle lens-- Panini with 180º horizontal FOV.
 
-TODO: write
+![keys](readme-img/keys.png)
+
+TODO: write more
 
 ## Command reference
 
