@@ -1,6 +1,6 @@
 # Blinky
 
-<img src="readme-img/blinky.png" align="right" width="220px"/>
+<img src="readme-img/blinky-rocket.png" align="right" width="220px"/>
 
 Blinky is a fisheye addon for the game, Quake.  Its purpose was to find a
 __practical fisheye for gaming__, and we found one, the [Panini] lens!
