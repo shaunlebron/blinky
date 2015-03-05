@@ -18,9 +18,9 @@ __practical fisheye for gaming__, and we found one, the [Panini] lens!
 
 Blinky includes the Quake demo so you can play with it for free.
 
-[readme-img/windows.png] For Windows, download [blinky-1.0-windows.zip](https://github.com/shaunlebron/blinky/releases/download/1.0/blinky-1.0-windows.zip)
+![windows](readme-img/windows.png) For __Windows__, download [blinky-1.0-windows.zip](https://github.com/shaunlebron/blinky/releases/download/1.0/blinky-1.0-windows.zip)
 
-[readme-img/mac.png] For Mac, please build/run from source:
+![mac](readme-img/mac.png) For __Mac__, please build/run from source:
 
 ```sh
 $ brew install lua
@@ -29,7 +29,7 @@ $ ./build.sh
 $ ./play.sh
 ```
 
-[readme-img/linux.png] For Linux, please build/run from source:
+![linux](readme-img/linux.png) For __Linux__, please build/run from source:
 
 ```sh
 $ sudo apt-get install lua
