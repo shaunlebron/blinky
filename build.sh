@@ -57,6 +57,11 @@ if [ ! -f $CFG ]; then
   echo "bind r f_rubix" >> $CFG
 fi
 
+if [[ "$OS" == "win" ]]; then
+  rm game/README.md
+  mv game/README-windows.txt game/README.txt
+fi
+
 echo
 echo -e "\033[32mSuccessfully built!\033[0m"
 echo -e "  Run \033[36mplay.sh\033[0m to starting playing!"
