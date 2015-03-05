@@ -58,8 +58,14 @@ if [ ! -f $CFG ]; then
 fi
 
 if [[ "$OS" == "win" ]]; then
-  rm game/README.md
-  mv game/README-windows.txt game/README.txt
+  echo
+  echo "Making sure windows README is ready..."
+  pushd game
+  rm -f README.md
+  if [[ -f README-windows.txt ]]; then
+    mv README-windows.txt README.txt
+  fi
+  popd
 fi
 
 echo
