@@ -112,6 +112,14 @@ useful in post-processed videos using something like [WolfCam].  For example,
 spectators could benefit from wide-angle viewings of previously recorded
 competitive matches or even [artistic montages].
 
+## License
+
+Copyright © 2011-2015 Shaun Williams
+
+The MIT License
+
+
+
 [Fisheye Quake]:http://strlen.com/gfxengine/fisheyequake/
 [TyrQuake engine]:http://disenchant.net/tyrquake/
 [Panini]: http://tksharpless.net/vedutismo/Pannini/
