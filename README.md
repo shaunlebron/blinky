@@ -94,11 +94,9 @@ To create/edit globes and lenses, check out the following guides:
 - Use Panini or Stereographic lenses for FOV ≤ 200º.  Very practical, shape-preserving lenses with low distortion.
 - No preferences for FOV ≤ 360º.  They are more aesthetic than practical.
 
-## The Code
+## Engine Code
 
-- [engine/NQ/fisheye.c](engine/NQ/fisheye.c) - main code (heavy documentation with diagrams)
-- [lua-scripts/lenses/*.lua](lua-scripts/lenses) - Lua script for each Lens
-- [lua-scripts/globes/*.lua](lua-scripts/globes) - Lua script for each Globe
+- [engine/NQ/fisheye.c](engine/NQ/fisheye.c) - new engine code
 - [engine patch](engine/fisheye.patch) - engine modifications
 
 ## Future
