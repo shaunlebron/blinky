@@ -30,7 +30,7 @@ __Quincuncial__ lens:
 
 ## Play!
 
-<img src="readme-img/windows.png" height="16px"> __Windows__ users, download [blinky-1.2-windows.zip](https://github.com/shaunlebron/blinky/releases/download/1.2/blinky-1.2-windows.zip)
+<img src="readme-img/windows.png" height="16px"> __[Download for Windows]__
 
 <img src="readme-img/apple.png"   height="16px"> __Mac__ users, please build/run from source:
 
@@ -52,20 +52,16 @@ $ ./play.sh
 
 ### Shortcut Keys
 
-Use the keys below to quickly try things out.  The command executed by the key
-will be echoed to the top-left of your screen for your reference.
-
-__Pro-Tip:__ Press `R` for the Rubix grid if you get confused. It makes the
-relationship between the Globe & Lens apparent.
-
 ![keys](readme-img/keys.png)
 
-If you actually want to restore `1-9` keys for weapon selection, hit `0`.
+- The command executed by each key will be printed to the top-left of your screen.
+- If you actually want to use `1-9` keys for weapon selection, hit `0` to toggle.
+- Press `R` for the Rubix grid if you get confused. It makes the
+relationship between the Globe & Lens apparent.
 
 ### Console Commands
 
-Press the `~` key to bring down the console for entering commands.  You can use
-the commands below.
+Press `~` to access the command console.  You can use the commands below.
 
 __Pro-Tip:__ use the `Tab` key for help completing a partial command.
 
@@ -116,3 +112,4 @@ competitive matches or even [artistic montages].
 [Quincuncial]:http://en.wikipedia.org/wiki/Peirce_quincuncial_projection
 [artistic montages]:http://youtu.be/-T6IAHWMd2I
 [WolfCam]:http://www.wolfcamql.fr/en
+[Download for Windows]:https://github.com/shaunlebron/blinky/releases/download/1.2/blinky-1.2-windows.zip
