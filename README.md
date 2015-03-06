@@ -2,8 +2,10 @@
 
 <img src="readme-img/blinky-rocket.png" align="right" width="220px"/>
 
-Blinky is a fisheye addon for the game, Quake.  Its purpose was to find a
-__practical fisheye for gaming__, and we found one, the [Panini] lens!
+Fisheye lenses suck for gaming and are poorly explored. Math gives us
+innumerable ways to view wide fields of view, so Blinky allows you to explore
+several permutations in the game, Quake.  We used it to find a __practical
+fisheye for gaming__, the [Panini] lens!
 
 [>> Watch the video](http://youtu.be/jQOJ3yCK8pI)
 
