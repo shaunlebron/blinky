@@ -13,7 +13,7 @@ Photography and offer visual aid for analyzing their shape.
 - continues the work of [Fisheye Quake]
 - adds a Lua scripting environment for defining custom Lenses and Globes
 - includes the Quake demo as a free testing sandbox
-- uses the cross-platform [TyrQuake engine]
+- uses the cross-platform [TyrQuake] engine
 
 For example, all current games use the standard projection below on the left,
 which is poorly suited for wide-angle video.  But using the [Panini] projection
@@ -129,7 +129,7 @@ The MIT License
 
 
 [Fisheye Quake]:http://strlen.com/gfxengine/fisheyequake/
-[TyrQuake engine]:http://disenchant.net/tyrquake/
+[TyrQuake]:http://disenchant.net/tyrquake/
 [Panini]: http://tksharpless.net/vedutismo/Pannini/
 [Quincuncial]:http://en.wikipedia.org/wiki/Peirce_quincuncial_projection
 [artistic montages]:http://youtu.be/-T6IAHWMd2I
