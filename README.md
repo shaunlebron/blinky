@@ -18,7 +18,7 @@ __practical fisheye for gaming__, and we found one, the [Panini] lens!
 
 Blinky includes the Quake demo so you can play with it for free.
 
-<img src="readme-img/windows.png" height="16px"> __Windows__ users, download [blinky-1.1-windows.zip](https://github.com/shaunlebron/blinky/releases/download/1.1/blinky-1.1-windows.zip)
+<img src="readme-img/windows.png" height="16px"> __Windows__ users, download [blinky-1.2-windows.zip](https://github.com/shaunlebron/blinky/releases/download/1.2/blinky-1.2-windows.zip)
 
 <img src="readme-img/apple.png"   height="16px"> __Mac__ users, please build/run from source:
 
