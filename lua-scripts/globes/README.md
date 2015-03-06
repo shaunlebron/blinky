@@ -33,6 +33,7 @@ around the player.  For example, this is from [cube.lua](cube.lua):
 
 ```lua
 plates = {
+   -- forward     up           fov
    { { 0, 0, 1 }, { 0, 1, 0 }, 90 }, -- front
    { { 1, 0, 0 }, { 0, 1, 0 }, 90 }, -- right
    { { -1, 0, 0 }, { 0, 1, 0 }, 90 }, -- left
