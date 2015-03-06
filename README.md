@@ -2,34 +2,39 @@
 
 <img src="readme-img/blinky-rocket.png" align="right" width="220px"/>
 
-Blinky is an experiment to explore wide-angle gaming (180º-360º).  It uses the
-game Quake with its own plugins for _capturing_ a panorama of the environment
-(__Globes__) and _projecting_ a wide-angle image to the screen (__Lenses__).
-We explore the rich space of projections found in Cartography and Panoramic
-Photography and offer visual aid for analyzing their shape.
+An experiment to __break the 180º Field of View limit in games__.
+
+Blinky is a modification of Quake that allows it reach a 360º FoV.  A fisheye
+is one way to do this, but this project also uses map projections from
+cartography and other panoramic techniques to explore a myriad of different
+views:
 
 [>> Watch a demo video](http://youtu.be/jQOJ3yCK8pI)
 
+In short, Blinky:
+
 - continues the work of [Fisheye Quake]
-- adds a Lua scripting environment for defining custom Lenses and Globes
+- adds a Lua scripting environment for defining:
+  - _Globes_ (for capturing the environment)
+  - _Lenses_ (for projecting a wide-angle image)
+- uses the cross-platform [TyrQuake] engine for Windows, Mac, and Linux
 - includes the Quake demo as a free testing sandbox
-- uses the cross-platform [TyrQuake] engine
 
 ### Problem & Solution
 
 All current games and most 3D applications use the standard projection below on
-the left, which you can see produces bad distortion when pushing it to its 180º
-limit.  But using the [Panini] projection on the right allows us to see wider
-angles with little distortion.  It even has less distortion than a standard
-circular fisheye (e.g.  GoPro), and it maintains the relative shape of objects,
-resulting in less nausea.
+the left, which you can see produces bad distortion when pushing it near its
+180º limit.  But using the [Panini] projection on the right allows us to see
+wider angles with little distortion.  It even has less distortion than a
+standard circular fisheye (e.g.  GoPro), and it maintains the relative shape of
+objects, resulting in less nausea.
 
 ![old-and-new](readme-img/old-and-new.jpg)
 
 The image construction happens in two customizable phases.  In the example
 below, the environment is captured by a __Cube__ globe, and then projected with
-a __Quincuncial__ lens.  Each is defined by a Lua script that you can play
-with.
+a __Quincuncial__ lens.  Each is defined by a Lua script that you can play with
+and swap out for others.
 
 ![map](readme-img/map.gif)
 
