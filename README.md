@@ -2,17 +2,23 @@
 
 <img src="readme-img/blinky-rocket.png" align="right" width="220px"/>
 
-Fisheye lenses suck for gaming and are poorly explored. Math gives us
-innumerable ways to view wide fields of view, so Blinky allows you to explore
-several permutations in the game, Quake.  We used it to find a __practical
-fisheye for gaming__, the [Panini] lens!
+Blinky is the ultimate experiment for wide-angle video (180º-360º) in gaming.
+It uses the game Quake to explore how to _capture_ a panorama of the
+environment (__Globes__) and how to _project_ its image to the screen
+(__Lenses__).  We explore the rich space of projections found in Cartography
+and Panoramic Photography and offer visual aid for exploring their shape.
 
 [>> Watch the video](http://youtu.be/jQOJ3yCK8pI)
 
 - continues the work of [Fisheye Quake](http://strlen.com/gfxengine/fisheyequake/)
+- adds a Lua scripting environment for defining custom Lenses and Globes
+- includes the Quake demo as a free testing sandbox
 - uses the cross-platform [TyrQuake engine](http://disenchant.net/tyrquake/)
-- adds a Lua scripting environment for easy experimenting
-- explores different ways to see 180º-360º around you
+
+For example, the common projection below on the left is poorly suited for
+wide-angle video.  But using the Panini projection on the right allows us to
+see wider angles with little distortion and can keep vertical lines unlike a
+standard fisheye (e.g. GoPro).
 
 ![old-and-new](readme-img/old-and-new.jpg)
 
