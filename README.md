@@ -15,10 +15,14 @@ Photography and offer visual aid for analyzing their shape.
 - includes the Quake demo as a free testing sandbox
 - uses the cross-platform [TyrQuake] engine
 
-For example, all current games use the standard projection below on the left,
-which is poorly suited for wide-angle video.  But using the [Panini] projection
-on the right allows us to see wider angles with little distortion.  It even has
-less distortion than a standard circular fisheye (e.g.  GoPro).
+### Problem & Solution
+
+All current games and most 3D applications use the standard projection below on
+the left, which you can see produces bad distortion when pushing it to its 180º
+limit.  But using the [Panini] projection on the right allows us to see wider
+angles with little distortion.  It even has less distortion than a standard
+circular fisheye (e.g.  GoPro), and it maintains the relative shape of objects,
+resulting in less nausea.
 
 ![old-and-new](readme-img/old-and-new.jpg)
 
