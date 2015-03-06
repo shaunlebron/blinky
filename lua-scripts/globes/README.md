@@ -113,7 +113,7 @@ end
 To use a globe in-game, enter the command:
 
 ```
-] globe <name>
+f_globe <name>
 ```
 
 The available globes are:

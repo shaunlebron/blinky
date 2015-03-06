@@ -100,7 +100,7 @@ GLOBES
    To use this globe, enter the command:
 
    ```
-   ] globe cube
+   ] f_globe cube
    ```
 
    There are other included globes:
@@ -248,8 +248,8 @@ LUA DETAILS
       Lens:
 
          MAPPING FUNCTIONS
-         - forward (function (x,y,z) -> (x,y))
-         - inverse (function (x,y) -> (x,y,z))
+         - lens_forward (function (x,y,z) -> (x,y))
+         - lens_inverse (function (x,y) -> (x,y,z))
 
          BOUNDARIES
          - lens_width (double)

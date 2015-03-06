@@ -81,6 +81,13 @@ f_rubix           # display colored grid for each rendered view in the globe
 f_saveglobe       # take screenshots of each globe face (environment map)
 ```
 
+### Lua Scripts
+
+To create/edit globes and lenses, check out the following guides:
+
+- [Create a Globe](lua-scripts/globes)
+- [Create a Lens](lua-scripts/lenses)
+
 ## Conclusions
 
 - Use Standard projection for FOV ≤ 110º.  Anything more leads to increasing distortion.
