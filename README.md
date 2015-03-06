@@ -2,13 +2,13 @@
 
 <img src="readme-img/blinky-rocket.png" align="right" width="220px"/>
 
-Blinky is the ultimate experiment for wide-angle gaming (180º-360º).  It uses
-the game Quake to explore how to _capture_ a panorama of the environment
-(__Globes__) and how to _project_ its image to the screen (__Lenses__).  We
-explore the rich space of projections found in Cartography and Panoramic
+Blinky is an experiment to explore wide-angle gaming (180º-360º).  It uses the
+game Quake with its own plugins for _capturing_ a panorama of the environment
+(__Globes__) and _projecting_ a wide-angle image to the screen (__Lenses__).
+We explore the rich space of projections found in Cartography and Panoramic
 Photography and offer visual aid for analyzing their shape.
 
-[>> Watch the video](http://youtu.be/jQOJ3yCK8pI)
+[>> Watch a demo video](http://youtu.be/jQOJ3yCK8pI)
 
 - continues the work of [Fisheye Quake]
 - adds a Lua scripting environment for defining custom Lenses and Globes
@@ -112,6 +112,14 @@ useful in post-processed videos using something like [WolfCam].  For example,
 spectators could benefit from wide-angle viewings of previously recorded
 competitive matches or even [artistic montages].
 
+## Thanks
+
+This project would not exist without these people!
+
+- __Wouter van Oortmerssen__ for creating & open-sourcing [Fisheye Quake]
+- __Peter Weiden__ for creating [fisheye diagrams] on Wikipedia
+- __Kevin Shanahan__ for creating/maintaining a cross-platform Quake engine, [TyrQuake]
+
 ## License
 
 Copyright © 2011-2015 Shaun Williams
@@ -127,3 +135,4 @@ The MIT License
 [artistic montages]:http://youtu.be/-T6IAHWMd2I
 [WolfCam]:http://www.wolfcamql.fr/en
 [Download for Windows]:https://github.com/shaunlebron/blinky/releases/download/1.2/blinky-1.2-windows.zip
+[fisheye diagrams]:http://en.wikipedia.org/wiki/Fisheye_lens#Mapping_function
