@@ -252,3 +252,9 @@ For example, [fahey.lua](fahey.lua) defines:
 ```lua
 onload = "f_contain"
 ```
+
+## References
+
+Many of the projections here were taken from:
+
+- [PROJ.4 Cartographic Projections Library](http://trac.osgeo.org/proj/)
