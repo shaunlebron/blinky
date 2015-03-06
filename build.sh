@@ -57,6 +57,12 @@ if [ ! -f $CFG ]; then
   echo "bind 0 f_shortcutkeys" >> $CFG
   echo "bind r f_rubix" >> $CFG
 fi
+EXEC_CFG="$QUAKE_DIR/id1/autoexec.cfg"
+if [ ! -f $EXEC_CFG ]; then
+  touch $EXEC_CFG
+  # enter first map as soon as game is opened
+  echo "map start" >> $EXEC_CFG
+fi
 
 if [[ "$OS" == "win" ]]; then
   echo
