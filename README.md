@@ -6,7 +6,7 @@ Blinky is the ultimate experiment for wide-angle video (180º-360º) in gaming.
 It uses the game Quake to explore how to _capture_ a panorama of the
 environment (__Globes__) and how to _project_ its image to the screen
 (__Lenses__).  We explore the rich space of projections found in Cartography
-and Panoramic Photography and offer visual aid for exploring their shape.
+and Panoramic Photography and offer visual aid for analyzing their shape.
 
 [>> Watch the video](http://youtu.be/jQOJ3yCK8pI)
 
@@ -23,8 +23,6 @@ standard fisheye (e.g. GoPro).
 ![old-and-new](readme-img/old-and-new.jpg)
 
 ## Play!
-
-Blinky includes the Quake demo so you can play with it for free.
 
 <img src="readme-img/windows.png" height="16px"> __Windows__ users, download [blinky-1.2-windows.zip](https://github.com/shaunlebron/blinky/releases/download/1.2/blinky-1.2-windows.zip)
 
