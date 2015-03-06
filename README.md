@@ -2,11 +2,11 @@
 
 <img src="readme-img/blinky-rocket.png" align="right" width="220px"/>
 
-Blinky is the ultimate experiment for wide-angle video (180º-360º) in gaming.
-It uses the game Quake to explore how to _capture_ a panorama of the
-environment (__Globes__) and how to _project_ its image to the screen
-(__Lenses__).  We explore the rich space of projections found in Cartography
-and Panoramic Photography and offer visual aid for analyzing their shape.
+Blinky is the ultimate experiment for wide-angle gaming (180º-360º).  It uses
+the game Quake to explore how to _capture_ a panorama of the environment
+(__Globes__) and how to _project_ its image to the screen (__Lenses__).  We
+explore the rich space of projections found in Cartography and Panoramic
+Photography and offer visual aid for analyzing their shape.
 
 [>> Watch the video](http://youtu.be/jQOJ3yCK8pI)
 
@@ -15,16 +15,17 @@ and Panoramic Photography and offer visual aid for analyzing their shape.
 - includes the Quake demo as a free testing sandbox
 - uses the cross-platform [TyrQuake engine]
 
-For example, the common projection below on the left is poorly suited for
-wide-angle video.  But using the [Panini] projection on the right allows us to
-see wider angles with less distortion than a standard circular fisheye (e.g.
-GoPro).
+For example, all current games use the standard projection below on the left,
+which is poorly suited for wide-angle video.  But using the [Panini] projection
+on the right allows us to see wider angles with little distortion.  It even has
+less distortion than a standard circular fisheye (e.g.  GoPro).
 
 ![old-and-new](readme-img/old-and-new.jpg)
 
-This construction happens in two customizable phases.  In the example below,
-the environment is captured by a __Cube__ globe, and then projected with a
-__Quincuncial__ lens:
+The image construction happens in two customizable phases.  In the example
+below, the environment is captured by a __Cube__ globe, and then projected with
+a __Quincuncial__ lens.  Each is defined by a Lua script that you can play
+with.
 
 ![map](readme-img/map.gif)
 
