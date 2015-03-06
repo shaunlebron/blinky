@@ -11,7 +11,7 @@ views:
 
 [>> Watch a demo video](http://youtu.be/jQOJ3yCK8pI)
 
-In short, Blinky:
+### Overview
 
 - continues the work of [Fisheye Quake]
 - adds a Lua scripting environment for defining:
