@@ -53,6 +53,7 @@ if [ ! -f $CFG ]; then
   echo "bind a +moveleft" >> $CFG
   echo "bind d +moveright" >> $CFG
   # and some helpful shortcuts
+  echo "f_shortcutkeys" >> $CFG
   echo "bind 0 f_shortcutkeys" >> $CFG
   echo "bind r f_rubix" >> $CFG
 fi
