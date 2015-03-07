@@ -40,11 +40,9 @@ and swap out for others.
 
 ## Play!
 
-<img src="readme-img/windows.png" height="16px"> __[Download for Windows]__
-
-<img src="readme-img/apple.png"   height="16px"> __Mac__ (no binary for mac yet [#71](https://github.com/shaunlebron/blinky/issues/71))
-
-<img src="readme-img/linux.png"   height="16px"> __Linux__ (no binary for linux yet)
+<img src="readme-img/windows.png" height="16px"> __[Download for Windows]__  
+<img src="readme-img/apple.png"   height="16px"> __Mac__ (none yet [#71](https://github.com/shaunlebron/blinky/issues/71))  
+<img src="readme-img/linux.png"   height="16px"> __Linux__ (none yet)
 
 ### Building from source
 
