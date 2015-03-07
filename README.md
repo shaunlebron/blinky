@@ -11,7 +11,7 @@ from cartography and panoramic photography.
 <img src="readme-img/apple.png"   height="16px"> __[Blinky for Mac + Quake demo]__  
 <img src="readme-img/linux.png"   height="16px"> __[Blinky for Linux + Quake demo]__
 
-### Problem & Solution
+### Overview
 
 Standard projections are not intended for wide-angle viewing.  The [Panini]
 projection seems to be the best way to represent your natural 180º field of
@@ -19,21 +19,28 @@ view.
 
 ![old-and-new](readme-img/old-and-new.jpg)
 
-In the example below, Blinky first snaps multiple pictures around you to form a
-__Globe__ of pixels.  Then it projects all those pixels to the screen using a
-__Lens__.  There are several globes and lenses to choose from in the form of
-Lua scripts.
+To use non-standard projections, Blinky first snaps multiple pictures around
+you to form a __Globe__ of pixels.  Then it projects all those pixels to the
+screen using a __Lens__.
 
 ![map](readme-img/map.gif)
 
-### Technical Details
+Use the shorctut keys in Blinky to try several Globes and Lenses.  You can
+customize them further with [console commands](#console-commands).  If you like
+math, you can even [make your own globes and lebses](#lua-scripts)!
 
-- continues the work of [Fisheye Quake]
+![keys](readme-img/keys.png)
+
+Here are some samples (TODO)
+
+## Technical Details
+
+Blinky is a modification of the famous [Fisheye Quake].
+
 - adds a Lua scripting environment for defining:
   - _Globes_ (for capturing the environment)
   - _Lenses_ (for projecting a wide-angle image)
 - uses the cross-platform [TyrQuake] engine for Windows, Mac, and Linux
-- includes the Quake demo as a free testing sandbox
 
 ### Building from source
 
@@ -44,20 +51,10 @@ $ ./build.sh
 $ ./play.sh
 ```
 
-### Shortcut Keys
-
-![keys](readme-img/keys.png)
-
-- The command executed by each key will be printed to the top-left of your screen.
-- If you actually want to use `1-9` keys for weapon selection, hit `0` to toggle.
-- Press `R` for the Rubix grid if you get confused. It makes the
-relationship between the Globe & Lens apparent.
-
 ### Console Commands
 
-Press `~` to access the command console.  You can use the commands below.
-
-__Pro-Tip:__ use the `Tab` key for help completing a partial command.
+Press `~` to access the command console.  Use the `Tab` key for help completing
+a partial command.
 
 ```sh
 fisheye <0|1>     # enable/disable fisheye mode
@@ -80,12 +77,6 @@ To create/edit globes and lenses, check out the following guides:
 
 - [Create a Globe](game/lua-scripts/globes)
 - [Create a Lens](game/lua-scripts/lenses)
-
-## Conclusions
-
-- Use Standard projection for FOV ≤ 110º.  Anything more leads to increasing distortion.
-- Use Panini or Stereographic lenses for FOV ≤ 200º.  Very practical, shape-preserving lenses with low distortion.
-- No preferences for FOV ≤ 360º.  They are more aesthetic than practical.
 
 ## Engine Code
 
