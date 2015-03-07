@@ -2058,20 +2058,20 @@ COM_InitFilesystem(void)
 // start up with id1 by default
 //
     COM_AddGameDirectory(com_basedir, "id1");
-    COM_AddGameDirectory(home, ".tyrquake/id1");
+    COM_AddGameDirectory(home, ".blinky/id1");
 
 #ifdef NQ_HACK
     if (COM_CheckParm("-rogue")) {
 	COM_AddGameDirectory(com_basedir, "rogue");
-	COM_AddGameDirectory(home, ".tyrquake/rogue");
+	COM_AddGameDirectory(home, ".blinky/rogue");
     }
     if (COM_CheckParm("-hipnotic")) {
 	COM_AddGameDirectory(com_basedir, "hipnotic");
-	COM_AddGameDirectory(home, ".tyrquake/hipnotic");
+	COM_AddGameDirectory(home, ".blinky/hipnotic");
     }
     if (COM_CheckParm("-quoth")) {
 	COM_AddGameDirectory(com_basedir, "quoth");
-	COM_AddGameDirectory(home, ".tyrquake/quoth");
+	COM_AddGameDirectory(home, ".blinky/quoth");
     }
 
 //
@@ -2082,12 +2082,12 @@ COM_InitFilesystem(void)
     if (i && i < com_argc - 1) {
 	com_modified = true;
 	COM_AddGameDirectory(com_basedir, com_argv[i + 1]);
-	COM_AddGameDirectory(home, va(".tyrquake/%s", com_argv[i + 1]));
+	COM_AddGameDirectory(home, va(".blinky/%s", com_argv[i + 1]));
     }
 #endif
 #ifdef QW_HACK
     COM_AddGameDirectory(com_basedir, "qw");
-    COM_AddGameDirectory(home, ".tyrquake/qw");
+    COM_AddGameDirectory(home, ".blinky/qw");
 #endif
 
     /* If home is available, create the game directory */
