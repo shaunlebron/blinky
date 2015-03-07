@@ -25,9 +25,9 @@ screen using a __Lens__.
 
 ![map](readme-img/map.gif)
 
-Use the shorctut keys in Blinky to try several Globes and Lenses.  You can
-customize them further with [console commands](#console-commands).  If you like
-math, you can even [make your own globes and lebses](#lua-scripts)!
+Blinky has shortcut keys for trying several Globes and Lenses.  If you want
+more control, use [console commands](#console-commands) or [edit/create your
+own globes and lebses](#lua-scripts).
 
 ![keys](readme-img/keys.png)
 
