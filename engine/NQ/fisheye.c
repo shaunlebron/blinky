@@ -37,15 +37,6 @@ FISHEYE.C
    ] fisheye 0
    ```
 
-NOTE
-----
-
-   You should have a "globes/" and "lenses/" folder in the game directory.  These
-   contain Lua scripts used to configure the views.  I've included several
-   preconfigured globes and lenses in the root directory of this repo.
-
-   The game directory is "~/.tyrquake/" in UNIX environments.
-
 GLOBES
 ------
 
@@ -1121,7 +1112,7 @@ static struct stree_root * cmdarg_lens(const char *arg)
       *root = STREE_ROOT;
 
       STree_AllocInit();
-      COM_ScanDir(root, "../lenses", arg, ".lua", true);
+      COM_ScanDir(root, "../lua-scripts/lenses", arg, ".lua", true);
    }
    return root;
 }
@@ -1179,7 +1170,7 @@ static struct stree_root * cmdarg_globe(const char *arg)
       *root = STREE_ROOT;
 
       STree_AllocInit();
-      COM_ScanDir(root, "../globes", arg, ".lua", true);
+      COM_ScanDir(root, "../lua-scripts/globes", arg, ".lua", true);
    }
    return root;
 }
@@ -1672,7 +1663,7 @@ static qboolean LUA_load_lens(void)
 
    // set full filename
    char filename[100];
-   sprintf(filename,"%s/../lenses/%s.lua",com_gamedir, lens.name);
+   sprintf(filename,"%s/lua-scripts/lenses/%s.lua", com_basedir, lens.name);
 
    // check if loaded correctly
    int errcode = 0;
@@ -1765,7 +1756,7 @@ static qboolean LUA_load_globe(void)
 
    // set full filename
    char filename[100];
-   sprintf(filename, "%s/../globes/%s.lua",com_gamedir,globe.name);
+   sprintf(filename, "%s/lua-scripts/globes/%s.lua",com_basedir,globe.name);
 
    // check if loaded correctly
    int errcode = 0;

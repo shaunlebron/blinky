@@ -87,8 +87,8 @@ f_saveglobe       # take screenshots of each globe face (environment map)
 
 To create/edit globes and lenses, check out the following guides:
 
-- [Create a Globe](lua-scripts/globes)
-- [Create a Lens](lua-scripts/lenses)
+- [Create a Globe](game/lua-scripts/globes)
+- [Create a Lens](game/lua-scripts/lenses)
 
 ## Conclusions
 
