@@ -15,7 +15,7 @@ index 0a6c4d0..143e03e 100644
  CL_OBJS     += winquake.res
  NQCL_OBJS   += conproc.o net_win.o
 -COMMON_LIBS += ws2_32 winmm dxguid
-+COMMON_LIBS += ws2_32 winmm dxguid lua52
++COMMON_LIBS += ws2_32 winmm dxguid lua
  GL_LIBS     += opengl32
  ifeq ($(DEBUG),Y)
  CL_LFLAGS += -mconsole
