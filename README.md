@@ -2,16 +2,16 @@
 
 <img src="readme-img/blinky-rocket.png" align="right" width="220px"/>
 
-An experiment to __break the 180º Field of View limit in games__.
-
-Blinky is a modification of Quake that allows it reach a 360º FoV.  A fisheye
-is one way to do this, but this project also uses map projections from
-cartography and other panoramic techniques to explore a myriad of different
-views:
+An experiment to __break the 180º Field of View limit__ in the game Quake using
+projections from cartography and panoramic photography.
 
 [>> Watch a demo video](http://youtu.be/jQOJ3yCK8pI)
 
-### Overview
+<img src="readme-img/windows.png" height="16px"> __[Blinky for Windows + Quake demo]__  
+<img src="readme-img/apple.png"   height="16px"> __[Blinky for Mac + Quake demo]__
+<img src="readme-img/linux.png"   height="16px"> __[Blinky for Linux + Quake demo]__
+
+#### Tech
 
 - continues the work of [Fisheye Quake]
 - adds a Lua scripting environment for defining:
@@ -22,27 +22,17 @@ views:
 
 ### Problem & Solution
 
-All current games and most 3D applications use the standard projection below on
-the left, which you can see produces bad distortion when pushing it near its
-180º limit.  But using the [Panini] projection on the right allows us to see
-wider angles with little distortion.  It even has less distortion than a
-standard circular fisheye (e.g.  GoPro), and it maintains the relative shape of
-objects, resulting in less nausea.
+Standard projections are not intended for wide-angle viewing.  The [Panini]
+projection seems to be best.
 
 ![old-and-new](readme-img/old-and-new.jpg)
 
-The image construction happens in two customizable phases.  In the example
-below, the environment is captured by a __Cube__ globe, and then projected with
-a __Quincuncial__ lens.  Each is defined by a Lua script that you can play with
-and swap out for others.
+In the example below, Blinky first snaps multiple pictures around you to form a
+__Globe__ of pixels.  Then it projects all those pixels to the screen using a
+__Lens__.  There are several globes and lenses to choose from in the form of
+Lua scripts.
 
 ![map](readme-img/map.gif)
-
-## PLAY
-
-<img src="readme-img/windows.png" height="16px"> __[Download for Windows]__  
-<img src="readme-img/apple.png"   height="16px"> __Mac__ (no binaries yet [#71](https://github.com/shaunlebron/blinky/issues/71))  
-<img src="readme-img/linux.png"   height="16px"> __Linux__ (no binaries yet)
 
 ### Building from source
 
