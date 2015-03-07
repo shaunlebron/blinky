@@ -38,11 +38,11 @@ and swap out for others.
 
 ![map](readme-img/map.gif)
 
-## Play!
+## PLAY
 
 <img src="readme-img/windows.png" height="16px"> __[Download for Windows]__  
-<img src="readme-img/apple.png"   height="16px"> __Mac__ (none yet [#71](https://github.com/shaunlebron/blinky/issues/71))  
-<img src="readme-img/linux.png"   height="16px"> __Linux__ (none yet)
+<img src="readme-img/apple.png"   height="16px"> __Mac__ (no binaries yet [#71](https://github.com/shaunlebron/blinky/issues/71))  
+<img src="readme-img/linux.png"   height="16px"> __Linux__ (no binaries yet)
 
 ### Building from source
 
