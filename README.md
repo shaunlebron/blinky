@@ -2,28 +2,20 @@
 
 <img src="readme-img/blinky-rocket.png" align="right" width="220px"/>
 
-An experiment to __break the 180º Field of View limit__ in the game Quake using
-projections from cartography and panoramic photography.
+__Breaking the 180º Field of View limit__ in the game Quake using projections
+from cartography and panoramic photography.
 
 [>> Watch a demo video](http://youtu.be/jQOJ3yCK8pI)
 
-<img src="readme-img/windows.png" height="16px"> __[Blinky for Windows + Quake demo]__  
-<img src="readme-img/apple.png"   height="16px"> __[Blinky for Mac + Quake demo]__
+<img src="readme-img/windows.png" height="16px"> __[Blinky for Windows + Quake demo]_  
+<img src="readme-img/apple.png"   height="16px"> __[Blinky for Mac + Quake demo]__  
 <img src="readme-img/linux.png"   height="16px"> __[Blinky for Linux + Quake demo]__
-
-#### Tech
-
-- continues the work of [Fisheye Quake]
-- adds a Lua scripting environment for defining:
-  - _Globes_ (for capturing the environment)
-  - _Lenses_ (for projecting a wide-angle image)
-- uses the cross-platform [TyrQuake] engine for Windows, Mac, and Linux
-- includes the Quake demo as a free testing sandbox
 
 ### Problem & Solution
 
 Standard projections are not intended for wide-angle viewing.  The [Panini]
-projection seems to be best.
+projection seems to be the best way to represent your natural 180º field of
+view.
 
 ![old-and-new](readme-img/old-and-new.jpg)
 
@@ -33,6 +25,15 @@ __Lens__.  There are several globes and lenses to choose from in the form of
 Lua scripts.
 
 ![map](readme-img/map.gif)
+
+### Technical Details
+
+- continues the work of [Fisheye Quake]
+- adds a Lua scripting environment for defining:
+  - _Globes_ (for capturing the environment)
+  - _Lenses_ (for projecting a wide-angle image)
+- uses the cross-platform [TyrQuake] engine for Windows, Mac, and Linux
+- includes the Quake demo as a free testing sandbox
 
 ### Building from source
 
