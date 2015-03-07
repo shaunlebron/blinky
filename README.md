@@ -42,20 +42,15 @@ and swap out for others.
 
 <img src="readme-img/windows.png" height="16px"> __[Download for Windows]__
 
-<img src="readme-img/apple.png"   height="16px"> __Mac__ users, please build/run from source:
+<img src="readme-img/apple.png"   height="16px"> __Mac__ (no binary for mac yet [#71](https://github.com/shaunlebron/blinky/issues/71))
 
-```sh
-$ brew install lua
-$ brew install sdl2
-$ ./build.sh
-$ ./play.sh
+<img src="readme-img/linux.png"   height="16px"> __Linux__ (no binary for linux yet)
+
+### Building from source
+
+After some [manual setup](BUILDING.md) for your OS, you can build/play with:
+
 ```
-
-<img src="readme-img/linux.png"   height="16px"> __Linux__ users, please build/run from source:
-
-```sh
-$ sudo apt-get install lua
-$ sudo apt-get install libsdl2-dev
 $ ./build.sh
 $ ./play.sh
 ```
