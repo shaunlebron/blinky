@@ -253,6 +253,16 @@ For example, [fahey.lua](fahey.lua) defines:
 onload = "f_contain"
 ```
 
+## Usage
+
+To use a lens in-game, enter the command:
+
+```
+f_lens <name>
+```
+
+Press `TAB` to help with auto-completion.
+
 ## References
 
 Many of the projections here were taken from:
