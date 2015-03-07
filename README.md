@@ -21,13 +21,14 @@ view.
 
 To use non-standard projections, Blinky first snaps multiple pictures around
 you to form a __Globe__ of pixels.  Then it projects all those pixels to the
-screen using a __Lens__.
+screen using a __Lens__.  Finally, it uses a __Rubix__ grid if you wish to
+visualize the mapping.
 
 ![map](readme-img/map.gif)
 
 Blinky has shortcut keys for trying several Globes and Lenses.  If you want
-more control, use [console commands](#console-commands) or [edit/create your
-own globes and lebses](#lua-scripts).
+more control, use the [console commands](#console-commands) or [edit/create
+your own globes and lebses](#lua-scripts).
 
 ![keys](readme-img/keys.png)
 
