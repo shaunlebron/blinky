@@ -7,7 +7,7 @@ from cartography and panoramic photography.
 
 [>> Watch a demo video](http://youtu.be/jQOJ3yCK8pI)
 
-<img src="readme-img/windows.png" height="16px"> __[Blinky for Windows + Quake demo]_  
+<img src="readme-img/windows.png" height="16px"> __[Blinky for Windows + Quake demo]__  
 <img src="readme-img/apple.png"   height="16px"> __[Blinky for Mac + Quake demo]__  
 <img src="readme-img/linux.png"   height="16px"> __[Blinky for Linux + Quake demo]__
 
