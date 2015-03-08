@@ -82,7 +82,7 @@ To create/edit globes and lenses, check out the following guides:
 - [Create a Globe](game/lua-scripts/globes)
 - [Create a Lens](game/lua-scripts/lenses)
 
-## Engine Code
+### Engine Code
 
 - [engine/NQ/fisheye.c](engine/NQ/fisheye.c) - new engine code
 - [engine patch](engine/fisheye.patch) - engine modifications
