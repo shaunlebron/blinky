@@ -2,15 +2,17 @@
 
 <img src="readme-img/blinky-rocket.png" align="right" width="220px"/>
 
-Proof of concept to __break the field-of-view limit__ in games.
-Modifies Quake to use fisheyes, panoramas, and cartographic projections.
-[>> Watch a demo video](http://youtu.be/jQOJ3yCK8pI)
+Proof of concept to __put peripheral vision into games__ (without VR goggles).
+Explore this interesting space by playing Quake with fisheyes, panoramas, and
+cartographic projections.
 
 <img src="readme-img/windows.png" height="16px"> [Download for Windows](https://github.com/shaunlebron/blinky/releases/download/1.3/blinky-1.3-windows.zip)  
 <img src="readme-img/apple.png"   height="16px"> [Download for Mac](https://github.com/shaunlebron/blinky/releases/download/1.3/blinky-1.3-mac.zip)  
 <img src="readme-img/linux.png"   height="16px"> (Help with linux, [issue #74](https://github.com/shaunlebron/blinky/issues/74))
 
 ### Overview
+
+[>> Watch a demo video](http://youtu.be/jQOJ3yCK8pI)
 
 Standard projections are not intended for wide-angle viewing.  The [Panini]
 projection seems to be the best way to represent your natural 180º field of
