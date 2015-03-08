@@ -2,7 +2,7 @@
 
 <img src="readme-img/blinky-rocket.png" align="right" width="220px"/>
 
-Proof of concept to __break the 180º Field of View limit__ in games.
+Proof of concept to __break the field-of-view limit__ in games.
 Modifies Quake to use fisheyes, panoramas, and cartographic projections.
 [>> Watch a demo video](http://youtu.be/jQOJ3yCK8pI)
 
