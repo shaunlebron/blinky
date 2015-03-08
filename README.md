@@ -4,7 +4,6 @@
 
 Proof of concept to __break the 180º Field of View limit__ in games.
 Modifies Quake to use fisheyes, panoramas, and cartographic projections.
-
 [>> Watch a demo video](http://youtu.be/jQOJ3yCK8pI)
 
 <img src="readme-img/windows.png" height="16px"> [Download for Windows](https://github.com/shaunlebron/blinky/releases/download/1.3/blinky-1.3-windows.zip)  
