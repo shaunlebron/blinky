@@ -28,7 +28,7 @@ visualize the mapping.
 
 Blinky has shortcut keys for trying several Globes and Lenses.  If you want
 more control, use the [console commands](#console-commands) or [edit/create
-your own globes and lebses](#lua-scripts).
+your own globes and lenses](#lua-scripts).
 
 ![keys](readme-img/keys.png)
 
