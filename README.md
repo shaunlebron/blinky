@@ -32,7 +32,10 @@ your own globes and lebses](#lua-scripts).
 
 ![keys](readme-img/keys.png)
 
-Here are some samples (TODO)
+Blinky has many fisheye and panoramic lenses from photography, but it also has
+many map projections from cartography that will give you a 360º view.
+
+![worlds](readme-img/worlds.png)
 
 ## Technical Details
 
