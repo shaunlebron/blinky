@@ -7,9 +7,9 @@ Modifies Quake to use fisheyes, panoramas, and cartographic projections.
 
 [>> Watch a demo video](http://youtu.be/jQOJ3yCK8pI)
 
-<img src="readme-img/windows.png" height="16px"> __[Blinky for Windows + Quake demo]__  
-<img src="readme-img/apple.png"   height="16px"> __[Blinky for Mac + Quake demo]__  
-<img src="readme-img/linux.png"   height="16px"> __[Blinky for Linux + Quake demo]__
+<img src="readme-img/windows.png" height="16px"> __[Blinky for Windows + Quake demo](https://github.com/shaunlebron/blinky/releases/download/1.3/blinky-1.3-windows.zip)__  
+<img src="readme-img/apple.png"   height="16px"> __[Blinky for Mac + Quake demo](https://github.com/shaunlebron/blinky/releases/download/1.3/blinky-1.3-mac.zip)__  
+<img src="readme-img/linux.png"   height="16px"> (need help building for linux, [issue #74](https://github.com/shaunlebron/blinky/issues/74))
 
 ### Overview
 
@@ -122,5 +122,4 @@ The MIT License
 [Quincuncial]:http://en.wikipedia.org/wiki/Peirce_quincuncial_projection
 [artistic montages]:http://youtu.be/-T6IAHWMd2I
 [WolfCam]:http://www.wolfcamql.fr/en
-[Download for Windows]:https://github.com/shaunlebron/blinky/releases/download/1.2/blinky-1.2-windows.zip
 [fisheye diagrams]:http://en.wikipedia.org/wiki/Fisheye_lens#Mapping_function
