@@ -116,7 +116,16 @@ To use a globe in-game, enter the command:
 f_globe <name>
 ```
 
-The available globes are:
+## Debugging
+
+To see each of the current globe's plates on screen in a table, you can use the
+debug lens:
+
+```
+f_lens debug
+```
+
+## Available globes
 
 - cube: front-facing cube
 - cube_edge: edge-facing cube
