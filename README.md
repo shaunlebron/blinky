@@ -4,7 +4,7 @@
 
 Proof of concept to __put peripheral vision into games__ (without VR goggles).
 Explore this interesting space by playing Quake with fisheyes, panoramas, and
-cartographic projections.  And contribute your own with Lua scripts.
+cartographic projections.
 
 <img src="readme-img/windows.png" height="16px"> [Download for Windows](https://github.com/shaunlebron/blinky/releases/download/1.3/blinky-1.3-windows.zip)  
 <img src="readme-img/apple.png"   height="16px"> [Download for Mac](https://github.com/shaunlebron/blinky/releases/download/1.3/blinky-1.3-mac.zip)  
