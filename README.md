@@ -2,8 +2,8 @@
 
 <img src="readme-img/blinky-rocket.png" align="right" width="220px"/>
 
-__Breaking the 180º Field of View limit__ in the game Quake using projections
-from cartography and panoramic photography.
+Proof of concept to __break the 180º Field of View limit__ in games.
+Modifies Quake to use projections from cartography and panoramic photography.
 
 [>> Watch a demo video](http://youtu.be/jQOJ3yCK8pI)
 
