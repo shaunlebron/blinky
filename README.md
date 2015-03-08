@@ -35,7 +35,7 @@ your own globes and lebses](#lua-scripts).
 Blinky has many fisheye and panoramic lenses from photography, but it also has
 many map projections from cartography that will give you a 360º view.
 
-![worlds](readme-img/worlds.png)
+![worlds](readme-img/worlds.jpg)
 
 ## Technical Details
 
