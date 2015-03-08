@@ -12,6 +12,8 @@
 | a fisheye addon for Quake |
 \---------------------------/
 
+https://github.com/shaunlebron/blinky
+
 
 CONTROLS ==================================================
 
@@ -38,10 +40,6 @@ COMMANDS ==================================================
 
   f_rubix           # display colored grid for each rendered view in the globe
   f_saveglobe       # take screenshots of each globe face (environment map)
-
-HOME PAGE =================================================
-
-  https://github.com/shaunlebron/blinky
 
 THANKS ====================================================
 
