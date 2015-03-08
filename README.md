@@ -14,16 +14,16 @@ cartographic projections.
 
 [>> Watch a demo video](http://youtu.be/jQOJ3yCK8pI)
 
-The standard projection found in all games is not intended for wide-angle
-viewing.  The [Panini] projection seems to be the best way to represent your
-natural 180º field of view.
+The standard projection used in all games was never intended for wide-angle
+views, whereas the [Panini] projection was invented specifically to be the best
+representation of your natural ~180º field of view.
 
 ![old-and-new](readme-img/old-and-new.jpg)
 
 To use non-standard projections like Panini, Blinky first snaps multiple
 pictures around you to form a __Globe__ of pixels.  Then it projects all those
-pixels to the screen using a __Lens__.  Finally, it uses a __Rubix__ grid if
-you wish to visualize the mapping.  (Cube globe with [Quincuncial] lens shown
+pixels to the screen using a __Lens__.  You can enable a __Rubix__ grid if you
+wish to visualize the mapping.  (Cube globe with [Quincuncial] lens shown
 below)
 
 ![map](readme-img/map.gif)
