@@ -23,7 +23,7 @@ representation of your natural ~170º wide vision.
 __How?__ To use non-standard projections like Panini, Blinky first snaps
 multiple pictures around you to form a _Globe_ of pixels.  Then it projects
 all those pixels to the screen using a _Lens_.  You can enable a _Rubix_
-grid if you wish to visualize the mapping.
+grid if you wish to visualize the mapping.  ([Quincuncial] projection shown below)
 
 [![map](readme-img/map.gif)](https://raw.githubusercontent.com/shaunlebron/blinky/master/readme-img/map.gif)
 
