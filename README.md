@@ -125,10 +125,8 @@ This project would not exist without these people!
 
 ## License
 
-Copyright © 2011-2015 Shaun Williams
-
-The MIT License
-
+- The [Lua scripts](lua-scripts) and [fisheye.c](engine/NQ/fisheye.c) are released under the MIT license.
+- TyrQuake is released under GPL-2.
 
 
 [Fisheye Quake]:http://strlen.com/gfxengine/fisheyequake/
