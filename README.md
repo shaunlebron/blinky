@@ -14,34 +14,36 @@ cartographic projections.
 
 [>> Watch a demo video](http://youtu.be/jQOJ3yCK8pI)
 
-The standard projection used in all games was never intended for wide-angle
-views, whereas the [Panini] projection was invented specifically to be the best
-representation of your natural ~180º field of view.
+__Why?__ The standard projection used in all games was never intended for
+wide-angle views, whereas the [Panini] projection was invented to be the best
+representation of your natural ~170º wide vision.
 
 [![old-and-new](readme-img/old-and-new.jpg)](https://raw.githubusercontent.com/shaunlebron/blinky/master/readme-img/old-and-new.jpg)
 
-To use non-standard projections like Panini, Blinky first snaps multiple
-pictures around you to form a __Globe__ of pixels.  Then it projects all those
-pixels to the screen using a __Lens__.  You can enable a __Rubix__ grid if you
-wish to visualize the mapping.  (Cube globe with [Quincuncial] lens shown
-below)
+__How?__ To use non-standard projections like Panini, Blinky first snaps
+multiple pictures around you to form a _Globe_ of pixels.  Then it projects
+all those pixels to the screen using a _Lens_.  You can enable a _Rubix_
+grid if you wish to visualize the mapping.
 
 [![map](readme-img/map.gif)](https://raw.githubusercontent.com/shaunlebron/blinky/master/readme-img/map.gif)
 
-Blinky has shortcut keys for quickly trying several Globes and Lenses.  If you
-want more control, use the [console commands](#console-commands) or even
-[edit/create](#lua-scripts) your own globes and lenses with Lua scripts.
+__Try it:__ Blinky has shortcut keys for quickly trying several Globes and
+Lenses.  If you want more control, use the [console
+commands](#console-commands) or even [edit/create](#lua-scripts) your own
+globes and lenses with Lua scripts.
 
 [![keys](readme-img/keys.png)](https://raw.githubusercontent.com/shaunlebron/blinky/master/readme-img/keys.png)
 
-Blinky has many fisheye and panoramic lenses from photography, but it also has
-many map projections from cartography that will give you a full 360º view.
+__360º vision:__ Blinky has many fisheye and panoramic lenses from photography,
+but it also has many map projections from cartography that will give you a full
+360º view.
 
 [![worlds](readme-img/worlds.jpg)](https://raw.githubusercontent.com/shaunlebron/blinky/master/readme-img/worlds.jpg)
 
-Blinky has to render 6 views per frame when using a cube globe.  So we provide
-lower poly globes as a way to balance quality and performance.  Fewer renders
-means each view has to cover more area with less resolution.
+__Performance vs Quality:__ Blinky has to render 6 views per frame when using a
+_Cube_ globe.  So we provide lower poly globes as a way to balance quality and
+performance.  Fewer renders means each view has to cover more area with less
+resolution.
 
 [![globes](readme-img/globes.jpg)](https://raw.githubusercontent.com/shaunlebron/blinky/master/readme-img/globes.jpg)
 
