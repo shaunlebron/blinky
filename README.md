@@ -3,8 +3,8 @@
 <img src="readme-img/blinky-rocket.png" align="right" width="220px"/>
 
 Proof of concept to __put peripheral vision into games__ (without VR goggles).
-Explore this interesting space by playing Quake with fisheyes, panoramas, and
-cartographic projections.
+Explore this interesting space by playing the _Quake demo_ with fisheyes,
+panoramas, and cartographic projections.
 
 <img src="readme-img/windows.png" height="16px"> [Download for Windows](https://github.com/shaunlebron/blinky/releases/download/1.3/blinky-1.3-windows.zip)  
 <img src="readme-img/apple.png"   height="16px"> [Download for Mac](https://github.com/shaunlebron/blinky/releases/download/1.3/blinky-1.3-mac.zip)  
@@ -117,6 +117,11 @@ This project would not exist without these people!
 - __Wouter van Oortmerssen__ for creating & open-sourcing [Fisheye Quake]
 - __Peter Weiden__ for creating [fisheye diagrams] on Wikipedia
 - __Kevin Shanahan__ for creating/maintaining a cross-platform Quake engine, [TyrQuake]
+
+## Contact
+
+- email: <shaun.e.williams@gmail.com>
+- twitter: [@shaunlebron](http://twitter.com/shaunlebron)
 
 ## License
 
