@@ -18,7 +18,7 @@ The standard projection used in all games was never intended for wide-angle
 views, whereas the [Panini] projection was invented specifically to be the best
 representation of your natural ~180º field of view.
 
-![old-and-new](readme-img/old-and-new.jpg)
+[![old-and-new](readme-img/old-and-new.jpg)](https://raw.githubusercontent.com/shaunlebron/blinky/master/readme-img/old-and-new.jpg)
 
 To use non-standard projections like Panini, Blinky first snaps multiple
 pictures around you to form a __Globe__ of pixels.  Then it projects all those
@@ -26,18 +26,18 @@ pixels to the screen using a __Lens__.  You can enable a __Rubix__ grid if you
 wish to visualize the mapping.  (Cube globe with [Quincuncial] lens shown
 below)
 
-![map](readme-img/map.gif)
+[![map](readme-img/map.gif)](https://raw.githubusercontent.com/shaunlebron/blinky/master/readme-img/map.gif)
 
 Blinky has shortcut keys for quickly trying several Globes and Lenses.  If you
 want more control, use the [console commands](#console-commands) or even
 [edit/create](#lua-scripts) your own globes and lenses with Lua scripts.
 
-![keys](readme-img/keys.png)
+[![keys](readme-img/keys.png)](https://raw.githubusercontent.com/shaunlebron/blinky/master/readme-img/keys.png)
 
 Blinky has many fisheye and panoramic lenses from photography, but it also has
 many map projections from cartography that will give you a full 360º view.
 
-![worlds](readme-img/worlds.jpg)
+[![worlds](readme-img/worlds.jpg)](https://raw.githubusercontent.com/shaunlebron/blinky/master/readme-img/worlds.jpg)
 
 ## Technical Details
 
