@@ -39,6 +39,12 @@ many map projections from cartography that will give you a full 360º view.
 
 [![worlds](readme-img/worlds.jpg)](https://raw.githubusercontent.com/shaunlebron/blinky/master/readme-img/worlds.jpg)
 
+Blinky has to render 6 views per frame when using a cube globe.  So we provide
+lower poly globes as a way to balance quality and performance.  Fewer renders
+means each view has to cover more area with less resolution.
+
+[![globes](readme-img/globes.jpg)](https://raw.githubusercontent.com/shaunlebron/blinky/master/readme-img/globes.jpg)
+
 ## Technical Details
 
 Blinky is a modification of the famous [Fisheye Quake].
