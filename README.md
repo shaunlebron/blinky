@@ -50,7 +50,7 @@ resolution.
 
 ## Technical Details
 
-Blinky is a modification of the famous [Fisheye Quake].
+Blinky is a modification of the famous __[Fisheye Quake]__.
 
 - adds a Lua scripting environment for defining:
   - _Globes_ (for capturing the environment)
