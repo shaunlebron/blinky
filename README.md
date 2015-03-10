@@ -10,9 +10,10 @@ panoramas, and cartographic projections.
 <img src="readme-img/apple.png"   height="16px"> [Download for Mac](https://github.com/shaunlebron/blinky/releases/download/1.3/blinky-1.3-mac.zip)  
 <img src="readme-img/linux.png"   height="16px"> (Help with linux, [issue #74](https://github.com/shaunlebron/blinky/issues/74))
 
-### Overview
+__Videos__
 
-[>> Watch a demo video](http://youtu.be/jQOJ3yCK8pI)
+- [Quick walkthrough](http://youtu.be/f9v_XN7Wxh8)
+- [Speedrun montage](http://youtu.be/jQOJ3yCK8pI)
 
 __Why?__ The standard projection used in all games was never intended for
 wide-angle views, whereas the [Panini] projection was invented to be the best
