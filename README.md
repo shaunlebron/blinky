@@ -126,7 +126,7 @@ This project would not exist without these people!
 
 ## License
 
-- The [Lua scripts](lua-scripts) and [fisheye.c](engine/NQ/fisheye.c) are released under the MIT license.
+- The [Lua scripts](game/lua-scripts) and [fisheye.c](engine/NQ/fisheye.c) are released under the MIT license.
 - TyrQuake is released under GPL-2.
 
 
