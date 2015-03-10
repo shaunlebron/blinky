@@ -12,7 +12,7 @@ panoramas, and cartographic projections.
 
 __Videos__
 
-- [Quick walkthrough](http://youtu.be/f9v_XN7Wxh8)
+- __[Quick walkthrough](http://youtu.be/f9v_XN7Wxh8)__
 - [Speedrun montage](http://youtu.be/jQOJ3yCK8pI)
 
 __Why?__ The standard projection used in all games was never intended for
