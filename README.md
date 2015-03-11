@@ -98,6 +98,12 @@ To create/edit globes and lenses, check out the following guides:
 - [engine/NQ/fisheye.c](engine/NQ/fisheye.c) - new engine code
 - [engine patch](engine/fisheye.patch) - engine modifications
 
+## Theory of Projections
+
+[>> Interactive visualization for how projections work](http://shaunlebron.github.io/visualizing-projections)
+
+[![theory](readme-img/theory.png)](http://shaunlebron.github.io/visualizing-projections)
+
 ## Future
 
 I hope to apply this to modern graphics using frame buffers for
