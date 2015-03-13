@@ -827,8 +827,18 @@ endif
 ifeq ($(TARGET_OS),UNIX)
 COMMON_CPPFLAGS += -DELF
 COMMON_OBJS += net_udp.o sys_unix.o
-COMMON_LIBS += m lua
+COMMON_LIBS += m
 NQCL_OBJS   += net_bsd.o
+
+# workaround for Blinky issue 74: https://github.com/shaunlebron/blinky/issues/74
+# We seem to have to use lua5.2 library in debian.
+IS_DEBIAN = $(shell test -f /etc/debian-version && echo "Y" || echo "N")
+ifeq ($(IS_DEBIAN),Y)
+COMMON_CPPFLAGS += $(shell pkg-config --cflags lua5.2)
+COMMON_LIBS += lua5.2
+else
+COMMON_LIBS += lua
+endif
 
 # FIXME - stupid hack
 ifeq ($(APP_BUNDLE),Y)

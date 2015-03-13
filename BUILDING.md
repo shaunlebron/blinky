@@ -79,13 +79,21 @@ So these are the wonky, unautomated steps to build the mac bundle:
 
 - Install Lua 5.2
 
-  ```sh
-  curl -R -O http://www.lua.org/ftp/lua-5.2.0.tar.gz
-  tar zxf lua-5.2.0.tar.gz
-  cd lua-5.2.0
-  make linux test
-  sudo make install
-  ```
+  - On Debian or Ubuntu:
+
+    ```sh
+    sudo apt-get install liblua5.2-dev
+    ```
+
+  - Otherwise install from source:
+
+    ```sh
+    curl -R -O http://www.lua.org/ftp/lua-5.2.0.tar.gz
+    tar zxf lua-5.2.0.tar.gz
+    cd lua-5.2.0
+    make linux test
+    sudo make install
+    ```
 
 - Install SDL 2
 
