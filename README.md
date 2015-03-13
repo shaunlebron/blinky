@@ -7,7 +7,7 @@ Explore this interesting space by playing the _Quake demo_ with fisheyes,
 panoramas, and cartographic projections.
 
 <img src="readme-img/windows.png" height="16px"> [Download for Windows](https://github.com/shaunlebron/blinky/releases/download/1.3/blinky-1.3-windows.zip)  
-<img src="readme-img/apple.png"   height="16px"> [Running on Mac](https://github.com/shaunlebron/blinky/wiki/Running-on-Mac)  
+<img src="readme-img/apple.png"   height="16px"> [Download for Mac](https://github.com/shaunlebron/blinky/releases/download/1.3/blinky-1.3-mac.zip)  
 <img src="readme-img/linux.png"   height="16px"> [Building on Linux](https://github.com/shaunlebron/blinky/blob/master/BUILDING.md#linux)
 
 __Videos__
