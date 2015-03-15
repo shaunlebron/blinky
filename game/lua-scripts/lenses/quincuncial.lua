@@ -102,11 +102,59 @@ function cnrectify(x,y)
   return latp, longd
 end
 
-lens_height = 2
-lens_width = 4
+lens_height = 2*sqrt2
+lens_width = 2*sqrt2
 onload = "f_contain"
 
-function lens_inverse(x,y)
+--[[----------------------------------------------------------------
+
+Inverse mapping goes through two coordinate frames:
+
+ Quincuncial coord frame:
+
+           /-----------\ y=sqrt2
+           |C  _/^\_  B|
+           | _/     \_ |
+           |/         \|
+           |\_   ^   _/|
+           |  \_ | _/  |
+           |D   \|/   A|
+           \-----------/ y=-sqrt2
+        x=-sqrt2     x=sqrt2
+
+ Intermediate coord frame:
+
+         FRONT        BACK
+    /-------------------------\ y=1
+    |            |            |
+    |            |            |
+    |            |            |
+    |         _  |  _         |
+    |     UP |\_ | _/| UP     |
+    |           \|/           |
+    \-------------------------/ y=-1
+    x=-2                    x=2
+
+    /-------------------------\ y=1
+    |            | \_  B   _/ |
+    |            |   \_  _/   |
+    |            |A    \/    C|
+    |            |    _/\_    |
+    |            |  _/    \_  |
+    |            |_/   D    \_|
+    \-------------------------/ y=-1
+    x=-2                    x=2
+
+--]]
+function rotate(a,b,angle)
+  local c = cos(angle)
+  local s = sin(angle)
+  local a0 = a*c - b*s
+  local b0 = a*s + b*c
+  return a0, b0
+end
+
+function lens_inverse_intermediate(x,y)
   if abs(x) > 2 or abs(y) > 1 then
     return nil
   end
@@ -118,3 +166,41 @@ function lens_inverse(x,y)
   local x1,y1,z1 = x0, z0, -y0
   return x1,y1,z1
 end
+
+function lens_inverse(x,y)
+  -- outside boundary
+  if abs(x) > sqrt2 or abs(y) > sqrt2 then
+    return nil
+  end
+
+  local x0,y0
+
+  -- front
+  if abs(x)+abs(y) <= sqrt2 then
+    x0, y0 = rotate(x,y,pi/4)
+    x0 = x0-1
+
+  -- lower right
+  elseif x>0 and y<0 then
+    x0, y0 = rotate(x,y,pi/4)
+    x0 = x0-1
+
+  -- upper left
+  elseif x<0 and y>0 then
+    x0, y0 = rotate(x,y,pi/4)
+    x0 = x0+3
+
+  -- lower left
+  elseif x<0 and y<0 then
+    x0, y0 = rotate(x,y,pi/4+pi)
+    x0, y0 = x0+1, y0-2
+
+  -- upper right
+  else
+    x0, y0 = rotate(x,y,pi/4+pi)
+    x0, y0 = x0+1, y0+2
+  end
+
+  return lens_inverse_intermediate(x0,y0)
+end
+
