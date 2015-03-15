@@ -65,6 +65,7 @@ end
 --------------------------------------------------------------------
 -- from Appendix A of "Warping Pierce Quincuncial Panoramas"
 --    by Chamberlain Fong, Brian Vogel
+--    http://arxiv.org/pdf/1011.3189.pdf
 
 sqrt2 = sqrt(2)
 sqrt22 = sqrt2/2
