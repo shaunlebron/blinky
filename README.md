@@ -6,6 +6,8 @@ Proof of concept to __put peripheral vision into games__ (without VR goggles).
 Explore this interesting space by playing the _Quake demo_ with fisheyes,
 panoramas, and cartographic projections.
 
+__Latest Release - 1.4:__
+
 <img src="readme-img/windows.png" height="16px"> [Download for Windows](https://github.com/shaunlebron/blinky/releases/download/1.4/blinky-1.4-windows.zip)  
 <img src="readme-img/apple.png"   height="16px"> [Download for Mac](https://github.com/shaunlebron/blinky/releases/download/1.4/blinky-1.4-mac.zip)  
 <img src="readme-img/linux.png"   height="16px"> [Building on Linux](https://github.com/shaunlebron/blinky/blob/master/BUILDING.md#linux)
