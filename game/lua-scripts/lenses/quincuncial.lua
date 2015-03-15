@@ -177,7 +177,7 @@ function lens_inverse(x,y)
   local x0,y0
 
   -- front
-  if abs(x)+abs(y) <= sqrt2 then
+  if abs(x)+abs(y) < sqrt2 then
     x0, y0 = rotate(x,y,pi/4)
     x0 = x0-1
 
