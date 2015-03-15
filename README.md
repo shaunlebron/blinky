@@ -14,8 +14,8 @@ __Latest Release - 1.4:__
 
 __Videos__
 
-- __[Quick walkthrough](http://youtu.be/f9v_XN7Wxh8)__
-- [Speedrun montage](http://youtu.be/jQOJ3yCK8pI)
+- __[Quick walkthrough (1.3)](http://youtu.be/f9v_XN7Wxh8)__
+- [Speedrun montage (pre 1.0)](http://youtu.be/jQOJ3yCK8pI)
 
 __Why?__ The standard projection used in all games was never intended for
 wide-angle views, whereas the [Panini] projection was invented to be the best
