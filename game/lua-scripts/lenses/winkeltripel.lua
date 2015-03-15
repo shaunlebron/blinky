@@ -27,6 +27,9 @@ function lens_inverse(x,y)
   if abs(y) >= lens_height/2 then
     return nil
   end
+  if is_inside_artifact_box(x,y) then
+    return nil
+  end
 
   local lambda = x
   local phi = y
@@ -82,3 +85,12 @@ lens_height = 2*y
 
 x,y = lens_forward(latlon_to_ray(0,pi))
 lens_width = 2*x
+
+
+-- there are some bad artifacts in the corners of the image
+-- (just remove them here manually)
+artifact_x = lens_width/2*0.71
+artifact_y = lens_height/2*0.81
+function is_inside_artifact_box(x,y)
+  return abs(x) > artifact_x and abs(y) > artifact_y
+end
