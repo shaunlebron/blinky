@@ -12,6 +12,8 @@ __Latest Release - 1.4:__
 <img src="readme-img/apple.png"   height="16px"> [Download for Mac](https://github.com/shaunlebron/blinky/releases/download/1.4/blinky-1.4-mac.zip)  
 <img src="readme-img/linux.png"   height="16px"> [Building on Linux](https://github.com/shaunlebron/blinky/blob/master/BUILDING.md#linux)
 
+(See also: [Using with full version of Quake](https://github.com/shaunlebron/blinky/wiki/Using-with-full-version-of-Quake))
+
 __Videos__
 
 - __[Quick walkthrough](http://youtu.be/f9v_XN7Wxh8)__ (from 1.3)
