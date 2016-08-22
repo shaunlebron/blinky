@@ -16,7 +16,7 @@ fi
 cd game
 
 if [[ "$OS" == "unix" ]]; then
-  ./blinky
+  ./blinky $*
 else
   # Just open the play folder in explorer.
   # Running it from msys terminal makes it load the config from unix home directory instead of the game folder.
