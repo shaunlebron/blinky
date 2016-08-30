@@ -145,5 +145,5 @@ This project would not exist without these people!
 [Panini]: http://tksharpless.net/vedutismo/Pannini/
 [Quincuncial]:http://en.wikipedia.org/wiki/Peirce_quincuncial_projection
 [artistic montages]:http://youtu.be/-T6IAHWMd2I
-[WolfCam]:http://www.wolfcamql.fr/en
+[WolfCam]:https://github.com/brugal/wolfcamql
 [fisheye diagrams]:http://en.wikipedia.org/wiki/Fisheye_lens#Mapping_function
