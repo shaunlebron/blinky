@@ -1,3 +1,5 @@
+__Update:__ we are porting to Minecraft (see [MC Render 360](http://www.minecraftforum.net/forums/mapping-and-modding/minecraft-mods/2738385-render-360-unlimited-fov) and experiments at: https://github.com/shaunlebron/flex-fov) 
+
 # Blinky
 
 <img src="readme-img/blinky-rocket.png" align="right" width="220px"/>
