@@ -121,7 +121,7 @@ easily become a standard for gamers demanding wide-angle video.  But if it is
 not performant enough for live applications, I think it could still prove
 useful in post-processed videos using something like [WolfCam].  For example,
 spectators could benefit from wide-angle viewings of previously recorded
-competitive matches or even [artistic montages].
+competitive matches or even [artistic montages][f33l].
 
 ## Thanks
 
@@ -146,6 +146,6 @@ This project would not exist without these people!
 [TyrQuake]:http://disenchant.net/tyrquake/
 [Panini]: http://tksharpless.net/vedutismo/Pannini/
 [Quincuncial]:http://en.wikipedia.org/wiki/Peirce_quincuncial_projection
-[artistic montages]:http://youtu.be/-T6IAHWMd2I
+[f33l]:https://www.dailymotion.com/video/x5483f2
 [WolfCam]:https://github.com/brugal/wolfcamql
 [fisheye diagrams]:http://en.wikipedia.org/wiki/Fisheye_lens#Mapping_function
